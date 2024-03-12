@@ -1,0 +1,13 @@
+name = "HTTN"
+uuid = "bb6aff34-4030-486e-91bc-b5b01747fa41"
+authors = ["Philipp Schmoll"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
