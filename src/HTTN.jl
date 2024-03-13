@@ -30,6 +30,8 @@ export MassiveSchwingerModel
 # export algorithms
 export find_groundstate, find_excitedstate
 export DMRG2
+export perform_timestep
+export TDVP2
 
 # export utility functions
 export constructPhysSpaces, constructVirtSpaces
@@ -44,6 +46,7 @@ include("models/QFTModels.jl")
 
 include("algorithms/dmrg.jl")
 include("algorithms/expectationvalues.jl")
+include("algorithms/tdvp.jl")
 
 include("utility/bosonOperators.jl")
 include("utility/vectorSpaces.jl")

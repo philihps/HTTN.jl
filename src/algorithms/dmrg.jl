@@ -1,7 +1,7 @@
 """ two-site DMRG algorithm """
 
 @kwdef struct DMRG2
-    bondDim::Int64 = 20
+    bondDim::Int64 = 10
     truncErr::Float64 = 1e-6
     convTolE::Float64 = 1e-6
     eigsTol::Float64 = 1e-16
