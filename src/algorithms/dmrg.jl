@@ -180,10 +180,6 @@ function find_groundstate(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG2
     return find_groundstate!(copy(finiteMPS), finiteMPO, alg)
 end
 
-function find_excitedstate(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMPS::Vector{SparseMPS}, alg::DMRG2)
-    return find_excitedstate!(copy(finiteMPS), finiteMPO, previoMPS, alg)
-end
-
 function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMPS::Vector{<:SparseMPS}, alg::DMRG2)
 
     # apply finiteMPO to finiteMPS to introduce QNs that cannot be introduced by a regular 2-site update due to different local Hilbert spaces
@@ -363,4 +359,8 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
     finalEnergy = mpsEnergy[end];
     return finiteMPS, finalEnergy;
 
+end
+
+function find_excitedstate(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMPS::Vector{SparseMPS}, alg::DMRG2)
+    return find_excitedstate!(copy(finiteMPS), finiteMPO, previoMPS, alg)
 end

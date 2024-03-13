@@ -10,7 +10,7 @@
     verbosePrint = false
 end
 
-function perform_timestep(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep::Union{Float64, ComplexF64}, alg::TDVP2)
+function perform_timestep!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep::Union{Float64, ComplexF64}, alg::TDVP2)
     """ 2-site TDVP implementation for finiteMPO with global Krylov subspace expansion """
 
     # make basis extension to include a number of global Krylov vectors
@@ -91,6 +91,10 @@ function perform_timestep(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep::
     # return optimized finiteMPS
     return finiteMPS, mpoEnvL, mpoEnvR, maximum(truncationErrors);
 
+end
+
+function perform_timestep(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep::Union{Float64, ComplexF64}, alg::TDVP2)
+    return perform_timestep!(copy(finiteMPS), finiteMPO, timeStep, alg)
 end
 
 #-------------------------------------------------

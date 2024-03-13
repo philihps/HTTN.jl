@@ -250,3 +250,18 @@ function Base.:+(mpsA::S, mpsB::S) where {S<:SparseMPS}
 
 end
 Base.:-(mpsA::SparseMPS, mpsB::SparseMPS) = mpsA + (- mpsB)
+
+
+#--------------------------------------------------------------
+# SparseMPS save and load functions
+#--------------------------------------------------------------
+
+function save_to_file(fileName::String, sparseMPS::SparseMPS; dictKey::String = "sparseMPS")
+    sparseMPS = convert.(Dict, sparseMPS)
+    JLD.save(fileName, dictKey, sparseMPS)
+end
+
+function load_from_file(fileName::String, dictKey::String = "sparseMPS")
+    sparseMPS = JLD.load(fileName, dictKey)
+    sparseMPS = SparseMPS(convert.(TensorMap, sparseMPS))
+end

@@ -35,7 +35,7 @@ export TDVP2
 
 # export utility functions
 export constructPhysSpaces, constructVirtSpaces
-
+export save_to_file, load_from_file
 
 
 # include source files
