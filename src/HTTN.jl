@@ -7,6 +7,7 @@ using Base: @kwdef
 import LinearAlgebra
 using LinearAlgebra: diag, diagm
 
+using FFTW
 using JLD
 using KrylovKit
 using Printf
@@ -37,6 +38,7 @@ export TDVP2
 # export expectation value functions
 export expectation_value_mpo, expectation_values
 export compute_entanglement_spectra, compute_entanglement_entropies
+export compute_phase_distribution
 
 # export utility functions
 export constructPhysSpaces, constructVirtSpaces
@@ -55,6 +57,7 @@ include("algorithms/dmrg.jl")
 include("algorithms/tdvp.jl")
 include("algorithms/expectation_values.jl")
 include("algorithms/entanglement_quantities.jl")
+include("algorithms/full_counting_statistics.jl")
 
 include("utility/bosonOperators.jl")
 include("utility/vectorSpaces.jl")

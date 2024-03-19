@@ -393,3 +393,18 @@ function applyMPO(finiteMPO::SparseMPO, finiteMPS::SparseMPS; maxDim::Int64 = 1,
     return compressedMPS;
 
 end
+
+
+#--------------------------------------------------------------
+# SparseMPO save and load functions
+#--------------------------------------------------------------
+
+function save_to_file(fileName::String, sparseMPO::SparseMPO; dictKey::String = "sparseMPO")
+    sparseMPO = convert.(Dict, sparseMPO)
+    JLD.save(fileName, dictKey, sparseMPO)
+end
+
+function load_from_file(fileName::String, dictKey::String = "sparseMPO")
+    sparseMPO = JLD.load(fileName, dictKey)
+    sparseMPO = SparseMPO(convert.(TensorMap, sparseMPO))
+end
