@@ -26,12 +26,17 @@ export SparseENV
 # export models
 export MassiveSchwingerParameters
 export MassiveSchwingerModel
+export local_number_operators
 
 # export algorithms
 export find_groundstate, find_excitedstate
 export DMRG2
 export perform_timestep
 export TDVP2
+
+# export expectation value functions
+export expectation_value_mpo, expectation_values
+export compute_entanglement_spectra, compute_entanglement_entropies
 
 # export utility functions
 export constructPhysSpaces, constructVirtSpaces
@@ -42,11 +47,14 @@ export save_to_file, load_from_file
 include("states/SparseMPS.jl")
 include("operators/SparseMPO.jl")
 include("environments/utils_environments.jl")
-include("models/QFTModels.jl")
+
+include("models/qft_models.jl")
+include("models/mS.jl")
 
 include("algorithms/dmrg.jl")
-include("algorithms/expectationvalues.jl")
 include("algorithms/tdvp.jl")
+include("algorithms/expectation_values.jl")
+include("algorithms/entanglement_quantities.jl")
 
 include("utility/bosonOperators.jl")
 include("utility/vectorSpaces.jl")

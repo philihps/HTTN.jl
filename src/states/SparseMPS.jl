@@ -137,10 +137,14 @@ getLinkDimsMPS(ψ::SparseMPS) = dim.(vcat([getVirtualSpaceL(ψ, idx) for idx = 1
 maxLinkDimsMPS(ψ::SparseMPS) = maximum(getLinkDimsMPS(ψ))
 
 
-site_type(::Type{<:SparseMPS{A}}) where {A} = A
-function TensorKit.storagetype(::Union{MPS, Type{MPS}}) where {A, MPS<:SparseMPS{A}}
-    return storagetype(A)
+# multiplication
+function Base.:*(ψ::SparseMPS, b::Number)
+    
+    newTensors = copy(ψ.mpsTensors);
+    newTensors[1] *= b;
+    return SparseMPS(newTensors)
 end
+Base.:*(b::Number, ψ::SparseMPS) = ψ * b
 
 function orthogonalizeMPS!(finiteMPS::SparseMPS, orthCenter::Int = 1)
     """ Function to bring MPS into mixed canonical form with orthogonality center at site 'orthCenter' """
@@ -204,7 +208,7 @@ function dotMPS(mpsA::SparseMPS, mpsB::SparseMPS)
 end
 
 # addition
-function Base.:+(mpsA::S, mpsB::S) where {S<:SparseMPS}
+function Base.:+(mpsA::SparseMPS, mpsB::SparseMPS)
     
     # get length of MPSs
     NA = length(mpsA);
@@ -249,7 +253,7 @@ function Base.:+(mpsA::S, mpsB::S) where {S<:SparseMPS}
     return SparseMPS(MPSC);
 
 end
-Base.:-(mpsA::SparseMPS, mpsB::SparseMPS) = mpsA + (- mpsB)
+Base.:-(mpsA::SparseMPS, mpsB::SparseMPS) = mpsA + (-1 * mpsB)
 
 
 #--------------------------------------------------------------

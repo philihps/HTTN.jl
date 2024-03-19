@@ -123,7 +123,7 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
             end
 
             # compute MPO expectation value
-            mpoExpVal = computeExpValMPO(finiteMPS, finiteMPO);
+            mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO);
             if abs(imag(mpoExpVal)) < 1e-12
                 mpoExpVal = real(mpoExpVal);
             else
@@ -144,7 +144,7 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
         end
 
         # compute energy variance ⟨(H - E)^2⟩
-        energyVariance = computeEnergyVariance(finiteMPS, finiteMPO);
+        energyVariance = variance_mpo(finiteMPS, finiteMPO);
         @printf("Energy variance ⟨ψ|(H - E)^2|ψ⟩ = %0.4e\n", energyVariance);
 
         # re-randomize finiteMPS if non-eigenstate was found
@@ -308,7 +308,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
             finiteMPS[1] /= sqrt(mpsNorm);
 
             # compute MPO expectation value
-            mpoExpVal = computeExpValMPO(finiteMPS, finiteMPO);
+            mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO);
             if imag(mpoExpVal) < 1e-12
                 mpoExpVal = real(mpoExpVal);
             else
@@ -329,7 +329,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
         end
 
         # compute energy variance ⟨(H - E)^2⟩
-        energyVariance = computeEnergyVariance(finiteMPS, finiteMPO);
+        energyVariance = variance_mpo(finiteMPS, finiteMPO);
         @printf("Energy variance ⟨ψ|(H - E)^2|ψ⟩ = %0.4e\n", energyVariance);
 
         # re-randomize finiteMPS if non-eigenstate was found

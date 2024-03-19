@@ -1,8 +1,4 @@
 
-abstract type AbstractQFTModelParameters end
-
-
-
 struct MassiveSchwingerParameters <: AbstractQFTModelParameters
     
     truncationParameters::NamedTuple
@@ -13,8 +9,6 @@ struct MassiveSchwingerParameters <: AbstractQFTModelParameters
     end
 
 end
-
-abstract type AbstractQFTModel end
 
 struct MassiveSchwingerModel <: AbstractQFTModel
     modelParameters::MassiveSchwingerParameters
@@ -526,5 +520,27 @@ function generate_H1(modelParameters::MassiveSchwingerParameters, modeOccupation
     #     mpo_H1[chainCenter] *= convFactor;
     # end
     return mpo_H1;
+
+end
+
+function local_number_operators(mS::MassiveSchwingerModel)
+
+    # get modeOccupations and physSpaces
+    modeOccupations = mS.modeOccupations;
+    physSpaces = mS.physSpaces;
+
+    # set number operator for every site
+    numberOperators = Vector{TensorMap}(undef, length(physSpaces));
+    for (siteIdx, maxOccupation) in enumerate(modeOccupations[2, :])
+
+        # get physical vector space
+        physSpace = physSpaces[siteIdx];
+
+        # set individual operators
+        numberOperator = getNumberOperator(maxOccupation);
+        numberOperators[siteIdx] = TensorMap(numberOperator, physSpace, physSpace);
+
+    end
+    return numberOperators
 
 end
