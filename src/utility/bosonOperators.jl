@@ -24,11 +24,7 @@ function localAnnihilationOp(k::Int64, physVecSpace::GradedSpace)
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace);
-
-    # set auxVecSpace
     auxVecSpace = U1Space(-k => 1);
-
-    # set interactionTensor
     interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace));
     interactionTensor[:, :, 1] = getAnnihilationOperator(dimPhyVecSpace - 1);
     interactionTensor = TensorMap(interactionTensor, physVecSpace, physVecSpace ⊗ auxVecSpace);
@@ -41,13 +37,22 @@ function localCreationOp(k::Int64, physVecSpace::GradedSpace)
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace);
-
-    # set auxVecSpace
     auxVecSpace = U1Space(+k => 1);
-
-    # set interactionTensor
     interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace));
     interactionTensor[:, :, 1] = getCreationOperator(dimPhyVecSpace - 1);
+    interactionTensor = TensorMap(interactionTensor, physVecSpace, physVecSpace ⊗ auxVecSpace);
+    return interactionTensor;
+
+end
+
+function locaNumberOp(physVecSpace::GradedSpace)
+    """ Construct n(k) for a momentum-conserving MPO """
+
+    # get dimension of physVecSpace 
+    dimPhyVecSpace = dim(physVecSpace);
+    auxVecSpace = U1Space(0 => 1);
+    interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace));
+    interactionTensor[:, :, 1] = getNumberOperator(dimPhyVecSpace - 1);
     interactionTensor = TensorMap(interactionTensor, physVecSpace, physVecSpace ⊗ auxVecSpace);
     return interactionTensor;
 
@@ -58,11 +63,7 @@ function localIdentityOp(physVecSpace::GradedSpace)
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace);
-
-    # set auxVecSpace
     auxVecSpace = U1Space(0 => 1);
-
-    # set interactionTensor
     interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace));
     interactionTensor[:, :, 1] = diagm(ones(dimPhyVecSpace));
     interactionTensor = TensorMap(interactionTensor, physVecSpace, physVecSpace ⊗ auxVecSpace);
@@ -75,11 +76,7 @@ function localMomentumOp(k::Int64, physVecSpace::GradedSpace)
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace);
-
-    # set auxVecSpace
     auxVecSpace = U1Space(0 => 1);
-
-    # set interactionTensor
     interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace));
     interactionTensor[:, :, 1] = k * getNumberOperator(dimPhyVecSpace - 1);
     interactionTensor = TensorMap(interactionTensor, physVecSpace, physVecSpace ⊗ auxVecSpace);

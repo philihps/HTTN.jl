@@ -141,24 +141,6 @@ function constructPhysSpaces(modelParameters::MassiveSchwingerParameters)
 
 end
 
-Pk_sW(k, L) = 2*pi/L * k;
-Ek_sW(k, L, M) = sqrt(Pk_sW(k, L)^2 + M^2);
-
-function energyMomentum_sW_massive(k::Union{Int64, Float64}, L::Union{Int64, Float64}, M::Union{Int64, Float64})
-    """ Function to compute the energy corresponding to momentum k """
-
-    Ek = sqrt(Pk_sW(k, L)^2 + M^2);
-    return Ek;
-end
-
-function energyMomentum_sW_massless(k::Union{Int64, Float64}, L::Float64, M::Union{Int64, Float64})
-    """ Function to compute the energy corresponding to momentum k """
-
-    # Ek = (2*pi/L * abs(k) + 1/(4*pi) * M * M * L / abs(k));
-    Ek = 2*pi/L * abs(k);
-    return Ek;
-end
-
 function generate_H0_Part_A(modelParameters::MassiveSchwingerParameters, modeOccupations::Matrix{Int64}, physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}})
     
     # get truncationParameters
@@ -210,10 +192,6 @@ function generate_H0_Part_A(modelParameters::MassiveSchwingerParameters, modeOcc
             dimHS = dim(physVecSpace);
 
             if momentumVal == 0
-
-                # get ordering of QNs in physVecSpace
-                qnSectors = physVecSpace.dims;
-                phyVecSpaceOrdering = [productSector.charge for productSector in keys(qnSectors)];
 
                 # set modeFactor
                 modeFactor = M;
@@ -276,6 +254,12 @@ function generate_H0_Part_A(modelParameters::MassiveSchwingerParameters, modeOcc
 
 end
 
+function generate_H0(mSModel::MassiveSchwingerModel)
+
+
+
+end
+
 function generate_H0(modelParameters::MassiveSchwingerParameters, modeOccupations::Matrix{Int64}, physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}})
     """ Function to generate the non-interacting part H0 of the massive Schwinger Hamiltonian """
 
@@ -300,34 +284,6 @@ function generate_H0(modelParameters::MassiveSchwingerParameters, modeOccupation
     # idMPO[chainCenter] *= -2π * L /12;
     # mpo_H0 = addMPOs(mpo_H0, idMPO);
     return mpo_H0;
-
-end
-
-function convertLocalOperatorsToMPO(localOperators::Vector{<:AbstractTensorMap}; truncMomentumQNs::Union{Int64, Float64} = Inf)
-    """ Generates MPO out of three-index local operators using kroneckerDeltaMPS """
-
-    # construct kroneckerDeltaMPS
-    kronDeltaIndices = [space(localOp, 3)' for localOp in localOperators];
-    kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaIndices);
-
-    # combine local operators and kroneckerDeltaMPS
-    finalMPO = convertLocalOperatorsToMPO(localOperators, kroneckerDeltaMPS);
-    return finalMPO;
-    
-end
-
-function convertLocalOperatorsToMPO(localOperators::SparseEXP, kroneckerDeltaMPS::SparseMPS)
-    """ Generates MPO out of three-index local operators using kroneckerDeltaMPS """
-
-    # get length of localOperators
-    numSites = length(localOperators);
-
-    # combine local operators and kroneckerDeltaMPS
-    mpoTensors = Vector{TensorMap}(undef, numSites);
-    for siteIdx = 1 : numSites
-        @tensor mpoTensors[siteIdx][-1 -2; -3 -4] := localOperators[siteIdx][-2, -4, 1] * kroneckerDeltaMPS[siteIdx][-1, 1, -3];
-    end
-    return SparseMPO(mpoTensors);
 
 end
 
@@ -430,51 +386,11 @@ function generate_H1(modelParameters::MassiveSchwingerParameters, modeOccupation
     expOperator_neg = SparseEXP(localOperators_neg);
     expOperator_pos = SparseEXP(localOperators_pos);
 
-    # # display(expOperator_neg[2])
-    # # display(expOperator_neg[3])
-    # # display(space(expOperator_neg[2]))
-    # # display(space(expOperator_neg[3]))
-
-    # # create two-mode unitary
-    # spaceL = space(expOperator_neg[2], 1);
-    # spaceR = space(expOperator_neg[3], 1);
-    # randTensor = TensorMap(randn, spaceL ⊗ spaceR, spaceL ⊗ spaceR);
-    # randTensor = 0.5 * (randTensor + randTensor');
-    # twoModeUnitary = exp(1im * randTensor);
-
-    # # construct two-mode vertex operator
-    # deltaTensor = TensorMap([0 0 0 ; 0 0 1 ; 0 0 0], U1Space(0 => 1, -1 => 1, +1 => 1), U1Space(0 => 1, -1 => 1, +1 => 1)');
-    # @tensor twoModeVertexOperator[-1 -2; -3 -4] := expOperator_neg[2][-1, -3, 1] * expOperator_neg[3][-2, -4, 2] * deltaTensor[1, 2];
-    
-    # # convert to regular matrix
-    # fullMatrix = real(convert(Array, twoModeVertexOperator));
-    # fullMatrix = reshape(fullMatrix, 4, 4);
-    # display(fullMatrix)
-
-    # # apply two-mode unitary transformation
-    # twoModeVertexOperator = twoModeUnitary * twoModeVertexOperator * twoModeUnitary';
-
-    # # convert to regular matrix
-    # fullMatrix = real(convert(Array, twoModeVertexOperator));
-    # fullMatrix = reshape(fullMatrix, 4, 4);
-    # display(fullMatrix)
-
-    # U, S, V = tsvd(twoModeVertexOperator, (1, 3), (2, 4));
-    # display(S)
-
     # construct momentum-preserving MPO using a kroneckerDelta MPS
     kronDeltaSpaces = [space(localOp, 3)' for localOp in expOperator_neg];
     kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces);
     V_neg = convertLocalOperatorsToMPO(expOperator_neg, kroneckerDeltaMPS);
     V_pos = convertLocalOperatorsToMPO(expOperator_pos, kroneckerDeltaMPS);
-    # if truncMethod != 4
-    #     V_neg = convertLocalOperatorsToMPO(localOperators_neg);
-    #     V_pos = convertLocalOperatorsToMPO(localOperators_pos);
-    # else
-    #     truncMomentum = 1 * momentumModes[end];
-    #     V_neg = convertLocalOperatorsToMPO(localOperators_neg, truncMomentumQNs = truncMomentum);
-    #     V_pos = convertLocalOperatorsToMPO(localOperators_pos, truncMomentumQNs = truncMomentum);
-    # end
 
     # add factor of 1/2 due to cos(x) = 1/2 * (exp(+ix) + exp(-ix))
     if θ != 0

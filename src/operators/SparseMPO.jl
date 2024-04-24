@@ -404,7 +404,7 @@ function save_to_file(fileName::String, sparseMPO::SparseMPO; dictKey::String = 
     JLD.save(fileName, dictKey, sparseMPO)
 end
 
-function load_from_file(fileName::String, dictKey::String = "sparseMPO")
-    sparseMPO = JLD.load(fileName, dictKey)
-    sparseMPO = SparseMPO(convert.(TensorMap, sparseMPO))
-end
+# function load_from_file(fileName::String, dictKey::String = "sparseMPO")
+#     sparseMPO = JLD.load(fileName, dictKey)
+#     sparseMPO = SparseMPO(convert.(TensorMap, sparseMPO))
+# end

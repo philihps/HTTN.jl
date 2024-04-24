@@ -265,7 +265,7 @@ function save_to_file(fileName::String, sparseMPS::SparseMPS; dictKey::String = 
     JLD.save(fileName, dictKey, sparseMPS)
 end
 
-function load_from_file(fileName::String, dictKey::String = "sparseMPS")
-    sparseMPS = JLD.load(fileName, dictKey)
-    sparseMPS = SparseMPS(convert.(TensorMap, sparseMPS))
-end
+# function load_from_file(fileName::String, dictKey::String = "sparseMPS")
+#     sparseMPS = JLD.load(fileName, dictKey)
+#     sparseMPS = SparseMPS(convert.(TensorMap, sparseMPS))
+# end
