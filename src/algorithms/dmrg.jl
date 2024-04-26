@@ -187,7 +187,16 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 end
 
 # LineSearch settings
-optimAlg = LBFGS(12, verbosity = 2, maxiter  = 15);
+optimAlg = LBFGS(12, verbosity = 1, maxiter  = 25);
+
+# function to check acceptance of new basis
+function checkAcceptance(oldVal::Float64, newVal::Float64, oldXi::Float64, newXi::Float64)
+    if (oldVal > newVal) && ((oldXi - newXi) > 0)
+        return true;
+    else
+        return false;
+    end
+end
 
 function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::AbstractQFTModel, alg::DMRG2BO)
 
@@ -260,6 +269,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
                     # compute cost function pre optimization
                     costFuncPre = computeRenyiEntropy(newTheta);
+                    vNEntropyPre = computeEntropy(newTheta);
                     
                     # optimize twoSiteUnitary
                     optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
@@ -274,10 +284,13 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
                     # compute cost function post optimiization
                     costFuncPost = computeRenyiEntropy(optimizedTheta);
-                    display([costFuncPre costFuncPost costFuncPre > costFuncPost])
+                    vNEntropyPost = computeEntropy(optimizedTheta);
+                    # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
+                    display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                    println()
 
                     # decompose optimizedTheta
-                    if costFuncPre > costFuncPost
+                    if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
 
                         # copy two site tensor
                         newTheta = copy(optimizedTheta);
@@ -286,7 +299,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                         # bogParameters[kR] = -optimalXi;
                         bogParameters[kR] -= optimalXi;
                         QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
-                        println(bogParameters)
+                        println(bogParameters, "\n")
 
                         # recreate modified MPO
                         finiteMPO = mpoHandle(QFTModel);
@@ -344,6 +357,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
                     # compute cost function pre optimization
                     costFuncPre = computeRenyiEntropy(newTheta);
+                    vNEntropyPre = computeEntropy(newTheta);
 
                     # optimize twoSiteUnitary
                     optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
@@ -358,10 +372,13 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
                     # compute cost function post optimiization
                     costFuncPost = computeRenyiEntropy(optimizedTheta);
-                    display([costFuncPre costFuncPost costFuncPre > costFuncPost])
+                    vNEntropyPost = computeEntropy(optimizedTheta);
+                    # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
+                    display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                    println()
 
                     # decompose optimizedTheta
-                    if costFuncPre > costFuncPost
+                    if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
 
                         # copy two site tensor
                         newTheta = copy(optimizedTheta);
@@ -370,7 +387,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                         # bogParameters[kR] = -optimalXi;
                         bogParameters[kR] -= optimalXi;
                         QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
-                        println(bogParameters)
+                        println(bogParameters, "\n")
 
                         # recreate modified MPO
                         finiteMPO = mpoHandle(QFTModel);

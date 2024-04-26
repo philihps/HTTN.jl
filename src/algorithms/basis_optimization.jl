@@ -9,9 +9,15 @@ function applyTwoModeTransformation(twoModeU::AbstractTensorMap, twoModeT::Abstr
     return twoModeUT;
 end
 
-function computeRenyiEntropy(twoSiteTensor)
+function computeRenyiEntropy(twoSiteTensor::TensorMap)
     _, S, _ = tsvd(twoSiteTensor, (1, 2), (3, 4));
     return tr(S);
+end
+
+function computeEntropy(twoSiteTensor::TensorMap)
+    _, S, _ = tsvd(twoSiteTensor, (1, 2), (3, 4));
+    vnEntropy = abs(-tr(S^2 * log(S^2)));
+    return vnEntropy;
 end
 
 function matrixExponentialSeries(operator::TensorMap, nMax::Int64)

@@ -614,24 +614,82 @@ function generate_H1(modelParameters::SineGordonParameters, modeOccupations::Mat
 
 end
 
-function local_number_operators(mS::SineGordonModel)
+function local_number_operators(sG::SineGordonModel)
 
     # get modeOccupations and physSpaces
-    modeOccupations = mS.modeOccupations;
-    physSpaces = mS.physSpaces;
+    modeOccupations = sG.modeOccupations;
+    physSpaces = sG.physSpaces;
+
+    # get compactification radius
+    R = sG.modelParameters.hamiltonianParameters[:R];
 
     # set number operator for every site
     numberOperators = Vector{TensorMap}(undef, length(physSpaces));
-    for (siteIdx, maxOccupation) in enumerate(modeOccupations[2, :])
+    for (siteIdx, momentumVal) in enumerate(modeOccupations[1, :])
 
-        # get physical vector space
+        # get physical vector space and occupation number
         physSpace = physSpaces[siteIdx];
+        nMax = modeOccupations[2, siteIdx];
 
         # set individual operators
-        numberOperator = getNumberOperator(maxOccupation);
-        numberOperators[siteIdx] = TensorMap(numberOperator, physSpace, physSpace);
+        if momentumVal == 0
+            onSiteOperator = generateOperatorΠ0(nMax, R);
+        else
+            onSiteOperator = getNumberOperator(nMax);
+        end
+        numberOperators[siteIdx] = TensorMap(onSiteOperator, physSpace, physSpace);
 
     end
-    return numberOperators
+    return numberOperators;
+
+end
+
+function pairing_operators(sG::SineGordonModel)
+
+    #----------------------------------------------------------------------------
+    # compute expectation values ⟨a(-k) a(+k)⟩ and ⟨a(-k)^† a(+k)^†⟩
+    #----------------------------------------------------------------------------
+
+    # get kMax
+    kMax = sG.modelParameters.truncationParameters[:kMax];
+
+    # get physSpaces and momentumModes
+    physSpaces = sG.physSpaces;
+    momentumModes = sG.modeOccupations[1, :];
+
+    # construct MPOs
+    mpos_AnAn = Vector{SparseMPO}(undef, kMax);
+    mpos_CrCr = Vector{SparseMPO}(undef, kMax);
+    for (kIdx, kVal) = enumerate(collect(1 : kMax))
+
+        # construct momentum-preserving MPO for ⟨a(-k) a(+k)⟩
+        localOperators = Vector{TensorMap}(undef, length(physSpaces));
+        for (siteIdx, momentumVal) = enumerate(momentumModes)
+            if abs(momentumVal) == kVal
+                localOperators[siteIdx] = +1im * localAnnihilationOp(momentumVal, physSpaces[siteIdx]);
+            else
+                localOperators[siteIdx] = localIdentityOp(physSpaces[siteIdx]);
+            end
+        end
+
+        # construct momentum-preserving MPO using a kroneckerDelta MPS
+        mpos_AnAn[kIdx] = convertLocalOperatorsToMPO(localOperators);
+
+        # construct momentum-preserving MPO for ⟨a(-k)^† a(+k)^†⟩
+        localOperators = Vector{TensorMap}(undef, length(physSpaces));
+        for (siteIdx, momentumVal) = enumerate(momentumModes)
+            if abs(momentumVal) == kVal
+                localOperators[siteIdx] = -1im * localCreationOp(momentumVal, physSpaces[siteIdx]);
+            else
+                localOperators[siteIdx] = localIdentityOp(physSpaces[siteIdx]);
+            end
+        end
+
+        # construct momentum-preserving MPO using a kroneckerDelta MPS
+        mpos_CrCr[kIdx] = convertLocalOperatorsToMPO(localOperators);
+
+    end
+
+    return mpos_AnAn, mpos_CrCr
 
 end

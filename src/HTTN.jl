@@ -34,6 +34,7 @@ export SineGordonModel
 export generate_H0, generateH1, generate_MPO_mS, generate_MPO_sG
 export updateBogoliubovPrameters
 export local_number_operators
+export pairing_operators
 
 # export algorithms
 export find_groundstate, find_excitedstate

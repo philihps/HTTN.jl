@@ -14,15 +14,17 @@ using TensorKit
 
 # set truncation parameters
 truncMethod = 5;
-kMax = 1;
-nMax = 20;
+kMax = 4;
+nMax = 4;
 nMaxZM = 18;
 modeOrdering = 1;
 bogoliubovR = 1;
-bogParameters = 0.6 * ones(Float64, kMax);
+bogParameters = 0.4 .+ 0.1 * reverse(collect(1 : kMax));
+# bogParameters = [1.25, 0.7658787726053576, 0.5916149758233501, 0.46691233917615466, 0.37809892346039614, 0.31132850050333677];
+bogParameters = [ 1.0730311449195271, 0.7349048939229015, 0.5492985081346116, 0.42663356984035494];
 
 # set model parameters
-β = 3.4;
+β = 3.5;
 λ = 1.0;
 L = 25.0;
 R = sqrt(4 * π) / β;
@@ -32,7 +34,7 @@ bondDim = 1000;
 convTolE = 1e-6;
 
 # use numerical basis optimization
-useBasisOptimization = 1;
+useBasisOptimization = bogoliubovR;
 
 # create NamedTuple for truncation parameters and model parameters
 truncationParameters = (kMax = kMax, nMax = nMax, nMaxZM = nMaxZM, truncMethod = truncMethod, modeOrdering = modeOrdering, bogoliubovR = bogoliubovR, bogParameters = bogParameters);
@@ -74,12 +76,27 @@ end
 # # excitedStateMPS, excitedStateEnergy = find_excitedstate(groundStateMPS, hamMPO, lowEnergyStates, DMRG2(bondDim = 1000, truncErr = 1e-6, verbosePrint = true));
 # # @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
 
-# # # compute entanglement entropies
-# # mpsEntanglementEntropies = compute_entanglement_entropies(groundStateMPS);
+# compute entanglement entropies
+mpsEntanglementEntropies = compute_entanglement_entropies(groundStateMPS);
+println(mpsEntanglementEntropies)
 
-# # # compute local occupation numbers
-# # numberOperators = local_number_operators(mS);
-# # localOccupations = expectation_values(groundStateMPS, numberOperators);
+# compute local occupation numbers
+numberOperators = local_number_operators(sG);
+localOccupations = expectation_values(groundStateMPS, numberOperators);
+println(localOccupations)
+
+
+# compute ⟨a(-k) a(+k)⟩
+mpos_AnAn, mpos_CrCr = pairing_operators(sG);
+expVals_AnAn = zeros(ComplexF64, kMax);
+expVals_CrCr = zeros(ComplexF64, kMax);
+for idx = 1 : kMax
+    expVals_AnAn[idx] = expectation_value_mpo(groundStateMPS, mpos_AnAn[idx]);
+    expVals_CrCr[idx] = expectation_value_mpo(groundStateMPS, mpos_CrCr[idx]);
+end
+println(real.(expVals_AnAn))
+println(real.(expVals_CrCr))
+
 
 # # # compute expectation value of vertex operator
 # # vertexOperatorExpVal = expectation_value_mpo(groundStateMPS, sG.mpo_H1);

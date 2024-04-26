@@ -38,20 +38,19 @@ end
 function expectation_values(finiteMPS::SparseMPS, onsiteOperators::Vector{TensorMap})
     """ Computes the expectation value < psi | onsiteOp | psi > for all sites of the MPS """
 
-    # get length of finiteMPS
-    N = length(finiteMPS);
+    fMPS = copy(finiteMPS);
 
     # compute expectation values
-    expVals = zeros(Float64, N);
-    for siteIdx = 1 : N
+    expVals = zeros(Float64, length(fMPS));
+    for siteIdx = 1 : length(fMPS)
 
         # bring MPS into canonical form
-        orthogonalizeMPS!(finiteMPS, siteIdx);
-        psiNormSq = real(tr(finiteMPS[siteIdx]' * finiteMPS[siteIdx]));
+        orthogonalizeMPS!(fMPS, siteIdx);
+        psiNormSq = real(tr(fMPS[siteIdx]' * fMPS[siteIdx]));
         
         # compute expectation value
         onsiteOp = onsiteOperators[siteIdx];
-        expVal = @tensor conj(finiteMPS[siteIdx][1, 2, 4]) * onsiteOp[2, 3] * finiteMPS[siteIdx][1, 3, 4];
+        expVal = @tensor conj(fMPS[siteIdx][1, 2, 4]) * onsiteOp[2, 3] * fMPS[siteIdx][1, 3, 4];
         expVals[siteIdx] = real(expVal) / psiNormSq;
     
     end
