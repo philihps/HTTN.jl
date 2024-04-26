@@ -82,6 +82,8 @@ Base.iterate(E::SparseEXP, args...) = iterate(E.expTensors, args...);
 # TensorKit.space(E::EXPTensor, idx) = space(E, idx)
 # TensorKit.space(E::SparseEXP, idx) = space(E.expTensors, idx)
 
+getLinkDimsMPO(M::SparseMPO) = dim.(vcat([getVirtualSpaceL(M, idx) for idx = 1 : length(M)], getVirtualSpaceR(M, length(M))))
+maxLinkDimsMPO(M::SparseMPO) = maximum(getLinkDimsMPO(M))
 
 #--------------------------------------------------------------
 # SparseMPO utilities
@@ -110,7 +112,7 @@ This is equivalent to the left virtual space of the MPS tensor at site 'siteIdx 
 # function getVirtualSpaceR end
 
 function getVirtualSpaceR(M::SparseMPO, siteIdx::Integer)
-    return dual(space(M.mpoTensors[siteIdx], 4));
+    return dual(space(M.mpoTensors[siteIdx], 3));
 end
 
 """

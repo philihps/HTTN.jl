@@ -14,9 +14,9 @@ struct SineGordonModel <: AbstractQFTModel
     modelParameters::SineGordonParameters
     modeOccupations::Matrix{Int64}
     physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}}
-    mpo_H0::SparseMPO
-    mpo_H1::SparseMPO
-    modelMPO::SparseMPO
+    # mpo_H0::SparseMPO
+    # mpo_H1::SparseMPO
+    # modelMPO::SparseMPO
 end
 
 function kappaFunc(p::Float64)
@@ -40,28 +40,52 @@ function SineGordonModel(truncationParameters::NamedTuple, hamiltonianParameters
     # display(modeOccupations)
     # display(physSpaces)
 
-    # construct non-interacting MPO
-    mpo_H0 = generate_H0(modelParameters, modeOccupations, physSpaces);
+    # # construct non-interacting MPO
+    # mpo_H0 = generate_H0(modelParameters, modeOccupations, physSpaces);
 
-    # construct interacting MPO
-    mpo_H1 = generate_H1(modelParameters, modeOccupations, physSpaces);
+    # # construct interacting MPO
+    # mpo_H1 = generate_H1(modelParameters, modeOccupations, physSpaces);
 
-    # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
-    if λ == 0.0
-        mpo_sG = 2 * π / L * mpo_H0;
-    else        
-        p = 1.0 / R;
-        convFactor = - λ * 2 * π / L * kappaFunc(p) * (L)^(2 - p^2) / (2 * pi)^(1 - p^2);
-        mpo_sG = 2 * π / L * mpo_H0 + convFactor * mpo_H1;
-    end
-    return SineGordonModel(modelParameters, modeOccupations, physSpaces, mpo_H0, mpo_H1, mpo_sG);
+    # # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
+    # if λ == 0.0
+    #     mpo_sG = 2 * π / L * mpo_H0;
+    # else        
+    #     p = 1.0 / R;
+    #     convFactor = - λ * 2 * π / L * kappaFunc(p) * (L)^(2 - p^2) / (2 * pi)^(1 - p^2);
+    #     mpo_sG = 2 * π / L * mpo_H0 + convFactor * mpo_H1;
+    # end
+    # return SineGordonModel(modelParameters, modeOccupations, physSpaces, mpo_H0, mpo_H1, mpo_sG);
+
+    return SineGordonModel(modelParameters, modeOccupations, physSpaces);
+
+end
+
+function updateBogoliubovPrameters(sGModel::SineGordonModel, bogParameters::Union{Vector{Int64}, Vector{Float64}, Vector{ComplexF64}})
+
+    # update truncationParameters
+    truncationParameters = sGModel.modelParameters.truncationParameters;
+    truncationParameters = (
+        kMax = truncationParameters[:kMax], 
+        nMax = truncationParameters[:nMax], 
+        nMaxZM = truncationParameters[:nMaxZM], 
+        truncMethod = truncationParameters[:truncMethod], 
+        modeOrdering = truncationParameters[:modeOrdering], 
+        bogoliubovR = truncationParameters[:bogoliubovR], 
+        bogParameters = bogParameters
+    );
+
+    # get hamiltonianParameters
+    hamiltonianParameters = sGModel.modelParameters.hamiltonianParameters;
+
+    # construct struct to store all model parameters
+    modelParameters = SineGordonParameters(truncationParameters, hamiltonianParameters);
+    return SineGordonModel(modelParameters, sGModel.modeOccupations, sGModel.physSpaces);
 
 end
 
 function generate_H0(sGModel::SineGordonModel)
 
-    modeOccupations, physSpaces = constructPhysSpaces(sGModel.modelParameters);
-    mpo_H0 = generate_H0(modelParameters, modeOccupations, physSpaces);
+    mpo_H0 = generate_H0(sGModel.modelParameters, sGModel.modeOccupations, sGModel.physSpaces);
     return mpo_H0;
 
 end
@@ -209,8 +233,6 @@ function generate_H0_Part_A(modelParameters::SineGordonParameters, modeOccupatio
     hamiltonianParameters = modelParameters.hamiltonianParameters;
     R = hamiltonianParameters[:R];
     L = hamiltonianParameters[:L];
-
-    # compute R
 
     # get momentumModes
     momentumModes = modeOccupations[1, :];
@@ -368,8 +390,8 @@ function generate_H0_Part_B(modelParameters::SineGordonParameters, modeOccupatio
         ξ = bogParameters[abs(kVal)]
         μ = real(cosh(abs(ξ)));
         ν = real(exp(1im * angle(ξ)) * sinh(abs(ξ)));
-        mpoAnAn[1] *= energyMomentum_sG(kVal) * (-2 * μ * ν);
-        mpoCrCr[1] *= energyMomentum_sG(kVal) * (-2 * μ * ν);
+        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sG(kVal) * (-2 * μ * ν);
+        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sG(kVal) * (-2 * μ * ν);
 
         # store sum of MPOs
         storeIndividualMPOs[kIdx] = mpoAnAn + mpoCrCr;
@@ -419,7 +441,7 @@ function generate_H0_Part_C(modelParameters::SineGordonParameters, modeOccupatio
         ξ = bogParameters[abs(kVal)]
         μ = real(cosh(abs(ξ)));
         ν = real(exp(1im * angle(ξ)) * sinh(abs(ξ)));
-        mpoIdId[1] *= energyMomentum_sG(kVal) * 2 * ν^2;
+        mpoIdId[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sG(kVal) * 2 * ν^2;
 
         # store MPO
         storeIndividualMPOs[kIdx] = mpoIdId;

@@ -32,6 +32,7 @@ export MassiveSchwingerModel
 export SineGordonParameters
 export SineGordonModel
 export generate_H0, generateH1, generate_MPO_mS, generate_MPO_sG
+export updateBogoliubovPrameters
 export local_number_operators
 
 # export algorithms
@@ -46,7 +47,7 @@ export compute_entanglement_spectra, compute_entanglement_entropies
 export compute_phase_distribution
 
 # export utility functions
-export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS
+export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export save_to_file, load_from_file
 
 

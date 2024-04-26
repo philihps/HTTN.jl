@@ -193,6 +193,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
     # create MPO that should be simulated
     finiteMPO = mpoHandle(QFTModel);
+    println(getLinkDimsMPO(finiteMPO))
 
     # get bogParameters
     bogParameters = QFTModel.modelParameters.truncationParameters[:bogParameters];
@@ -216,10 +217,16 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
         # initialize MPO environments
         mpoEnvL, mpoEnvR = initializeMPOEnvironments(finiteMPS, finiteMPO);
 
+        # initialize vector to store energies
+        oldEigsEnergies = zeros(Float64, length(finiteMPS) - 1, 2);
+
         # main DMRG loop
         loopCounter = 1;
         runOptimizationDMRG = true;
         while runOptimizationDMRG
+
+            # initialize vector to store energies
+            newEigsEnergies = zeros(Float64, length(finiteMPS) - 1, 2);
 
             # sweep L ---> R
             for siteIdx = 1 : +1 : (length(finiteMPS) - 1)
@@ -232,8 +239,9 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     eigsolve(theta, 1, :SR, KrylovKit.Lanczos(tol = alg.eigsTol, maxiter = alg.maxIterations)) do x
                         applyH2(x, mpoEnvL[siteIdx], finiteMPO[siteIdx], finiteMPO[siteIdx + 1], mpoEnvR[siteIdx + 1])
                     end
-                # eigVal = eigenVal[1];
+                eigVal = eigenVal[1];
                 newTheta = eigenVec[1];
+                newEigsEnergies[siteIdx, 1] = eigVal;
 
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
@@ -252,7 +260,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
                     # compute cost function pre optimization
                     costFuncPre = computeRenyiEntropy(newTheta);
-
+                    
                     # optimize twoSiteUnitary
                     optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
                         scale! = _scale!, 
@@ -268,13 +276,22 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     costFuncPost = computeRenyiEntropy(optimizedTheta);
                     display([costFuncPre costFuncPost costFuncPre > costFuncPost])
 
-                    # # decompose optimizedTheta
-                    # if costFuncPre > costFuncPost
-                    #     newTheta = copy(optimizedTheta);
-                    # end
+                    # decompose optimizedTheta
+                    if costFuncPre > costFuncPost
 
-                    # update bogParameters
-                    bogParameters[kR] = optimalXi;
+                        # copy two site tensor
+                        newTheta = copy(optimizedTheta);
+
+                        # update QFTModel with new bogParameters
+                        # bogParameters[kR] = -optimalXi;
+                        bogParameters[kR] -= optimalXi;
+                        QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
+                        println(bogParameters)
+
+                        # recreate modified MPO
+                        finiteMPO = mpoHandle(QFTModel);
+
+                    end
                     
                 end
 
@@ -306,8 +323,9 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     eigsolve(theta, 1, :SR, KrylovKit.Lanczos(tol = alg.eigsTol, maxiter = alg.maxIterations)) do x
                         applyH2(x, mpoEnvL[siteIdx], finiteMPO[siteIdx], finiteMPO[siteIdx + 1], mpoEnvR[siteIdx + 1])
                     end
-                # eigVal = eigenVal[1];
+                eigVal = eigenVal[1];
                 newTheta = eigenVec[1];
+                newEigsEnergies[siteIdx, 2] = eigVal;
 
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
@@ -342,13 +360,22 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     costFuncPost = computeRenyiEntropy(optimizedTheta);
                     display([costFuncPre costFuncPost costFuncPre > costFuncPost])
 
-                    # # decompose optimizedTheta
-                    # if costFuncPre > costFuncPost
-                    #     newTheta = copy(optimizedTheta);
-                    # end
+                    # decompose optimizedTheta
+                    if costFuncPre > costFuncPost
 
-                    # update bogParameters
-                    bogParameters[kR] = optimalXi;
+                        # copy two site tensor
+                        newTheta = copy(optimizedTheta);
+
+                        # update QFTModel with new bogParameters
+                        # bogParameters[kR] = -optimalXi;
+                        bogParameters[kR] -= optimalXi;
+                        QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
+                        println(bogParameters)
+
+                        # recreate modified MPO
+                        finiteMPO = mpoHandle(QFTModel);
+
+                    end
                     
                 end
 
@@ -389,6 +416,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
             loopCounter += 1;
 
         end
+
+        display(bogParameters)
 
         # compute energy variance ⟨(H - E)^2⟩
         energyVariance = variance_mpo(finiteMPS, finiteMPO);
