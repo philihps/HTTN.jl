@@ -14,9 +14,9 @@ struct MassiveSchwingerModel <: AbstractQFTModel
     modelParameters::MassiveSchwingerParameters
     modeOccupations::Matrix{Int64}
     physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}}
-    mpo_H0::SparseMPO
-    mpo_H1::SparseMPO
-    modelMPO::SparseMPO
+    # mpo_H0::SparseMPO
+    # mpo_H1::SparseMPO
+    # modelMPO::SparseMPO
 end
 
 
@@ -37,12 +37,80 @@ function MassiveSchwingerModel(truncationParameters::NamedTuple, hamiltonianPara
     # display(modeOccupations)
     # display(physSpaces)
 
-    # construct non-interacting MPO
-    mpo_H0 = generate_H0(modelParameters, modeOccupations, physSpaces);
+    # # construct non-interacting MPO
+    # mpo_H0 = generate_H0(modelParameters, modeOccupations, physSpaces);
 
-    # construct interacting MPO
+    # # construct interacting MPO
+    # mpo_H1 = generate_H1(modelParameters, modeOccupations, physSpaces);
+
+    # # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
+    # if m == 0
+    #     mpo_mS = mpo_H0;
+    # else
+
+    #     # use infinite size prefactor for H1
+    #     convFactor = - L * m * M / (4 * pi) * exp(0.5772156649);
+    #     mpo_H1 *= convFactor;
+
+    #     # sum up H0 and H1 with corresponding prefactors
+    #     mpo_mS = mpo_H0 + mpo_H1;
+
+    # end
+    return MassiveSchwingerModel(modelParameters, modeOccupations, physSpaces);
+
+end
+
+function updateBogoliubovPrameters(mSModel::MassiveSchwingerModel, bogParameters::Union{Vector{Int64}, Vector{Float64}, Vector{ComplexF64}})
+
+    # update truncationParameters
+    truncationParameters = mSModel.modelParameters.truncationParameters;
+    truncationParameters = (
+        kMax = truncationParameters[:kMax], 
+        nMax = truncationParameters[:nMax], 
+        nMaxZM = truncationParameters[:nMaxZM], 
+        truncMethod = truncationParameters[:truncMethod], 
+        modeOrdering = truncationParameters[:modeOrdering], 
+        bogoliubovR = truncationParameters[:bogoliubovR], 
+        bogParameters = bogParameters
+    );
+
+    # get hamiltonianParameters
+    hamiltonianParameters = mSModel.modelParameters.hamiltonianParameters;
+
+    # construct struct to store all model parameters
+    modelParameters = MassiveSchwingerParameters(truncationParameters, hamiltonianParameters);
+    return MassiveSchwingerModel(modelParameters, mSModel.modeOccupations, mSModel.physSpaces);
+
+end
+
+function generate_H0(mSModel::MassiveSchwingerModel)
+
+    mpo_H0 = generate_H0(mSModel.modelParameters, mSModel.modeOccupations, mSModel.physSpaces);
+    return mpo_H0;
+
+end
+
+function generate_H1(mSModel::MassiveSchwingerModel)
+
+    modeOccupations, physSpaces = constructPhysSpaces(mSModel.modelParameters);
     mpo_H1 = generate_H1(modelParameters, modeOccupations, physSpaces);
+    return mpo_H1;
 
+end
+
+function generate_MPO_mS(mSModel::MassiveSchwingerModel)
+
+    # get hamiltonianParameters
+    θ = mSModel.modelParameters.hamiltonianParameters[:θ];
+    m = mSModel.modelParameters.hamiltonianParameters[:m];
+    M = mSModel.modelParameters.hamiltonianParameters[:M];
+    L = mSModel.modelParameters.hamiltonianParameters[:L];
+    
+    # construct MPOs
+    modeOccupations, physSpaces = constructPhysSpaces(mSModel.modelParameters);
+    mpo_H0 = generate_H0(mSModel.modelParameters, modeOccupations, physSpaces);
+    mpo_H1 = generate_H1(mSModel.modelParameters, modeOccupations, physSpaces);
+    
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     if m == 0
         mpo_mS = mpo_H0;
@@ -56,7 +124,7 @@ function MassiveSchwingerModel(truncationParameters::NamedTuple, hamiltonianPara
         mpo_mS = mpo_H0 + mpo_H1;
 
     end
-    return MassiveSchwingerModel(modelParameters, modeOccupations, physSpaces, mpo_H0, mpo_H1, mpo_mS);
+    return mpo_mS;
 
 end
 
@@ -173,7 +241,7 @@ function generate_H0_Part_A(modelParameters::MassiveSchwingerParameters, modeOcc
                 # set modeFactor
                 modeFactor = M;
 
-                mpoBlock = zeros(ComplexF64, 1, dimHS, 1, dimHS);
+                mpoBlock = zeros(Float64, 1, dimHS, 1, dimHS);
                 mpoBlock[1, :, 1, :] = modeFactor * getNumberOperator(dimHS - 1);
 
             end
@@ -458,5 +526,55 @@ function local_number_operators(mS::MassiveSchwingerModel)
 
     end
     return numberOperators
+
+end
+
+function pairing_operators(mS::MassiveSchwingerModel)
+
+    #----------------------------------------------------------------------------
+    # compute expectation values ⟨a(-k) a(+k)⟩ and ⟨a(-k)^† a(+k)^†⟩
+    #----------------------------------------------------------------------------
+
+    # get kMax
+    kMax = mS.modelParameters.truncationParameters[:kMax];
+
+    # get physSpaces and momentumModes
+    physSpaces = mS.physSpaces;
+    momentumModes = mS.modeOccupations[1, :];
+
+    # construct MPOs
+    mpos_AnAn = Vector{SparseMPO}(undef, kMax);
+    mpos_CrCr = Vector{SparseMPO}(undef, kMax);
+    for (kIdx, kVal) = enumerate(collect(1 : kMax))
+
+        # construct momentum-preserving MPO for ⟨a(-k) a(+k)⟩
+        localOperators = Vector{TensorMap}(undef, length(physSpaces));
+        for (siteIdx, momentumVal) = enumerate(momentumModes)
+            if abs(momentumVal) == kVal
+                localOperators[siteIdx] = +1im * localAnnihilationOp(momentumVal, physSpaces[siteIdx]);
+            else
+                localOperators[siteIdx] = localIdentityOp(physSpaces[siteIdx]);
+            end
+        end
+
+        # construct momentum-preserving MPO using a kroneckerDelta MPS
+        mpos_AnAn[kIdx] = convertLocalOperatorsToMPO(localOperators);
+
+        # construct momentum-preserving MPO for ⟨a(-k)^† a(+k)^†⟩
+        localOperators = Vector{TensorMap}(undef, length(physSpaces));
+        for (siteIdx, momentumVal) = enumerate(momentumModes)
+            if abs(momentumVal) == kVal
+                localOperators[siteIdx] = -1im * localCreationOp(momentumVal, physSpaces[siteIdx]);
+            else
+                localOperators[siteIdx] = localIdentityOp(physSpaces[siteIdx]);
+            end
+        end
+
+        # construct momentum-preserving MPO using a kroneckerDelta MPS
+        mpos_CrCr[kIdx] = convertLocalOperatorsToMPO(localOperators);
+
+    end
+
+    return mpos_AnAn, mpos_CrCr
 
 end

@@ -95,7 +95,7 @@ function SparseMPS(physSpaces::Vector{<:Union{S, CompositeSpace{S}}}, virtSpaces
     for siteIdx = 1 : numSites
         initTensor = 1e-0 * convert(Array, inputState[siteIdx]);
         siteTensor = TensorMap(randn, Float64, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
-        if siteIdx == chainCenter
+        if siteIdx == 1
             siteTensor = 1e-2 * convert(Array, siteTensor);
         else
             siteTensor = 1e-1 * convert(Array, siteTensor);

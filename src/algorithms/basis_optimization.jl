@@ -11,6 +11,7 @@ end
 
 function computeRenyiEntropy(twoSiteTensor::TensorMap)
     _, S, _ = tsvd(twoSiteTensor, (1, 2), (3, 4));
+    # return abs(-tr(S^2 * log(S^2)));
     return tr(S);
 end
 
@@ -36,16 +37,23 @@ function squeezingOp(ξ::Union{Int64, Float64, ComplexF64}, nMax::Int64, kL::Int
     IdNu = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)]);
 
     # compute μ and ν
-    μ = cosh(abs(ξ));
-    ν = exp(1im * angle(ξ)) * sinh(abs(ξ));
+    # μ = cosh(abs(ξ));
+    # ν = exp(1im * angle(ξ)) * sinh(abs(ξ));
+    # compute μ and ν
+    μ = cosh(ξ);
+    ν = sinh(ξ);
 
     # construct K0, K1 and K2
+    # K0 = -log(μ) * (NuId + IdNu + IdId);
+    # K1 = conj(ν)/μ * AnAn;
+    # K2 = -ν/μ * CrCr;
     K0 = -log(μ) * (NuId + IdNu + IdId);
-    K1 = conj(ν)/μ * AnAn;
-    K2 = -ν/μ * CrCr;
+    K1 = tanh(ξ) * AnAn;
+    K2 = -tanh(ξ) * CrCr;
 
     # construct squeezing operator
-    S = matrixExponentialSeries(K2, nMax) * matrixExponentialSeries(K0, nMax) * matrixExponentialSeries(K1, nMax);
+    # S = matrixExponentialSeries(K2, nMax) * matrixExponentialSeries(K0, nMax) * matrixExponentialSeries(K1, nMax);
+    S = matrixExponentialSeries(K2, 10) * matrixExponentialSeries(K0, 10) * matrixExponentialSeries(K1, 10);
     # S = exp(K2) * exp(K0) * exp(K1);
     return S;
 

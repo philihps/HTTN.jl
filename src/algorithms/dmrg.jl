@@ -4,7 +4,7 @@
     bondDim::Int64 = 10
     truncErr::Float64 = 1e-6
     convTolE::Float64 = 1e-6
-    eigsTol::Float64 = 1e-16
+    eigsTol::Float64 = 1e-12
     maxIterations::Int64 = 1
     subspaceExpansion::Bool = true
     verbosePrint = false
@@ -14,7 +14,7 @@ end
     bondDim::Int64 = 10
     truncErr::Float64 = 1e-6
     convTolE::Float64 = 1e-6
-    eigsTol::Float64 = 1e-16
+    eigsTol::Float64 = 1e-12
     maxIterations::Int64 = 1
     subspaceExpansion::Bool = true
     verbosePrint = false
@@ -69,10 +69,20 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
         # initialize MPO environments
         mpoEnvL, mpoEnvR = initializeMPOEnvironments(finiteMPS, finiteMPO);
 
+        # initialize vector to store energies
+        oldEigsEnergies = zeros(Float64, length(finiteMPS) - 1);
+
+        # store vector of truncation errors
+        ϵs = ones(Float64, length(finiteMPS) - 1);
+        ϵ = maximum(ϵs);
+
         # main DMRG loop
         loopCounter = 1;
         runOptimizationDMRG = true;
         while runOptimizationDMRG
+
+            # initialize vector to store energies
+            newEigsEnergies = zeros(Float64, length(finiteMPS) - 1);
 
             # sweep L ---> R
             for siteIdx = 1 : +1 : (length(finiteMPS) - 1)
@@ -85,14 +95,20 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                     eigsolve(theta, 1, :SR, KrylovKit.Lanczos(tol = alg.eigsTol, maxiter = alg.maxIterations)) do x
                         applyH2(x, mpoEnvL[siteIdx], finiteMPO[siteIdx], finiteMPO[siteIdx + 1], mpoEnvR[siteIdx + 1])
                     end
-                # eigVal = eigenVal[1];
+                eigVal = eigenVal[1];
                 newTheta = eigenVec[1];
+                newEigsEnergies[siteIdx] = eigVal;
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr), alg = TensorKit.SVD());
                 S /= norm(S);
                 U = permute(U, (1, 2), (3, ));
                 V = permute(S * V, (1, 2), (3, ));
+
+                # # compute error
+                # v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                # ϵs[siteIdx] = abs(1 - abs(v));
 
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
@@ -114,14 +130,20 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                     eigsolve(theta, 1, :SR, KrylovKit.Lanczos(tol = alg.eigsTol, maxiter = alg.maxIterations)) do x
                         applyH2(x, mpoEnvL[siteIdx], finiteMPO[siteIdx], finiteMPO[siteIdx + 1], mpoEnvR[siteIdx + 1])
                     end
-                # eigVal = eigenVal[1];
+                eigVal = eigenVal[1];
                 newTheta = eigenVec[1];
+                newEigsEnergies[siteIdx] = eigVal;
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr), alg = TensorKit.SVD());
                 S /= norm(S);
                 U = permute(U * S, (1, 2), (3, ));
                 V = permute(V, (1, 2), (3, ));
+
+                # # compute error
+                # v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                # ϵs[siteIdx] = abs(1 - abs(v));
 
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
@@ -143,13 +165,16 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
             
             # check convergence of ground state energy
             energyConvergence = abs(mpsEnergy[end - 1] - mpsEnergy[end]);
+            # energyConvergenceA = norm(newEigsEnergies .- oldEigsEnergies) / length(finiteMPS);
+            # display([energyConvergence energyConvergenceA maximum(ϵs)])
             alg.verbosePrint && @printf("DMRG step %d - energy, convergence = %0.8f, %0.8e\n", loopCounter, mpoExpVal, energyConvergence);
             if energyConvergence < alg.convTolE
                 runOptimizationDMRG = false;
             end
 
-            # increase loopCounter
+            # increase loopCounter and update oldEigsEnergies
             loopCounter += 1;
+            # oldEigsEnergies = copy(newEigsEnergies);
 
         end
 
@@ -191,7 +216,8 @@ optimAlg = LBFGS(12, verbosity = 1, maxiter  = 25);
 
 # function to check acceptance of new basis
 function checkAcceptance(oldVal::Float64, newVal::Float64, oldXi::Float64, newXi::Float64)
-    if (oldVal > newVal) && ((oldXi - newXi) > 0)
+    if ((oldVal - newVal) > 1e-4) && ((oldXi - newXi) > 0)
+    # if (oldVal > newVal)
         return true;
     else
         return false;
@@ -213,6 +239,10 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
         maxDimMPS = 2 * maxLinkDimsMPS(finiteMPS);
         finiteMPS = applyMPO(finiteMPO, finiteMPS, maxDim = maxDimMPS, truncErr = 1e-6, compressionAlg = "zipUp");
     end
+
+    # initialize array to store Bogoliubov parameters
+    storeBogoliubovParameters = zeros(Float64, 0, QFTModel.modelParameters.truncationParameters[:kMax]);
+    # storeBogoliubovParameters = vcat(storeBogoliubovParameters, reshape(bogParameters, 1, length(bogParameters)));
 
     # initialize mpsEnergy
     mpsEnergy = Float64[1.0];
@@ -255,7 +285,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0
+                if mod(siteIdx, 2) == 0 && loopCounter > 1
             
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2);
@@ -265,7 +295,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     # set kL and kR
                     kL = -1 * Int(siteIdx / 2);
                     kR = +1 * Int(siteIdx / 2);
-                    display([kL  kR])
+                    # display([kL  kR])
 
                     # compute cost function pre optimization
                     costFuncPre = computeRenyiEntropy(newTheta);
@@ -286,14 +316,15 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     costFuncPost = computeRenyiEntropy(optimizedTheta);
                     vNEntropyPost = computeEntropy(optimizedTheta);
                     # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                    display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
-                    println()
+                    # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                    # println()
 
                     # decompose optimizedTheta
                     if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
 
                         # copy two site tensor
                         newTheta = copy(optimizedTheta);
+                        println("new optimal ξ = ", optimalXi)
 
                         # update QFTModel with new bogParameters
                         # bogParameters[kR] = -optimalXi;
@@ -325,6 +356,9 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
             end
 
+            # # store bogParameters
+            # storeBogoliubovParameters = vcat(storeBogoliubovParameters, reshape(bogParameters, 1, length(bogParameters)));
+
             # sweep L <--- R
             for siteIdx = (length(finiteMPS) - 1) : -1 : 1
 
@@ -343,7 +377,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0
+                if mod(siteIdx, 2) == 0 && loopCounter > 0
             
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2);
@@ -353,7 +387,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     # set kL and kR
                     kL = -1 * Int(siteIdx / 2);
                     kR = +1 * Int(siteIdx / 2);
-                    display([kL  kR])
+                    # display([kL  kR])
 
                     # compute cost function pre optimization
                     costFuncPre = computeRenyiEntropy(newTheta);
@@ -374,14 +408,15 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     costFuncPost = computeRenyiEntropy(optimizedTheta);
                     vNEntropyPost = computeEntropy(optimizedTheta);
                     # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                    display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
-                    println()
+                    # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                    # println()
 
                     # decompose optimizedTheta
                     if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
 
                         # copy two site tensor
                         newTheta = copy(optimizedTheta);
+                        println("new optimal ξ = ", optimalXi)
 
                         # update QFTModel with new bogParameters
                         # bogParameters[kR] = -optimalXi;
@@ -413,6 +448,9 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                 
             end
 
+            # store bogParameters
+            storeBogoliubovParameters = vcat(storeBogoliubovParameters, reshape(bogParameters, 1, length(bogParameters)));
+
             # compute MPO expectation value
             mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO);
             if abs(imag(mpoExpVal)) < 1e-12
@@ -424,13 +462,16 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
             
             # check convergence of ground state energy
             energyConvergence = abs(mpsEnergy[end - 1] - mpsEnergy[end]);
+            # energyConvergenceNew = norm(newEigsEnergies .- oldEigsEnergies);
+            # display([energyConvergence energyConvergenceNew])
             alg.verbosePrint && @printf("DMRG step %d - energy, convergence = %0.8f, %0.8e\n", loopCounter, mpoExpVal, energyConvergence);
             if energyConvergence < alg.convTolE
                 runOptimizationDMRG = false;
             end
 
-            # increase loopCounter
+            # increase loopCounter and update oldEigsEnergies
             loopCounter += 1;
+            oldEigsEnergies = newEigsEnergies;
 
         end
 
@@ -465,7 +506,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
     # return optimized finiteMPS
     finalEnergy = mpsEnergy[end];
-    return finiteMPS, finalEnergy
+    return finiteMPS, finalEnergy, storeBogoliubovParameters
 
 end
 
