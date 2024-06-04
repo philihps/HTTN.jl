@@ -322,12 +322,6 @@ function generate_H0_Part_A(modelParameters::MassiveSchwingerParameters, modeOcc
 
 end
 
-function generate_H0(mSModel::MassiveSchwingerModel)
-
-
-
-end
-
 function generate_H0(modelParameters::MassiveSchwingerParameters, modeOccupations::Matrix{Int64}, physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}})
     """ Function to generate the non-interacting part H0 of the massive Schwinger Hamiltonian """
 
