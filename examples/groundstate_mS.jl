@@ -48,25 +48,25 @@ truncErr = 1e-4;
 # use numerical basis optimization
 useBasisOptimization = bogoliubovR;
 
-# plot entanglement entropy
-xLimits = (0, 2 * kMax);
-if modeOrdering == 0
-    if kMax == 3
-        xTicks = (collect(0 : (2 * kMax)), (L"-3", L"-2", L"-1", L"0", L"+1", L"+2", L"+3"));
-    elseif kMax == 4
-        xTicks = (collect(0 : (2 * kMax)), (L"-4", L"-3", L"-2", L"-1", L"0", L"+1", L"+2", L"+3", L"+4"));
-    elseif kMax == 6
-        xTicks = (collect(0 : (2 * kMax)), (L"-6", L"-5", L"-4", L"-3", L"-2", L"-1", L"0", L"+1", L"+2", L"+3", L"+4", L"+5", L"+6"));
-    end
-elseif modeOrdering == 1
-    if kMax == 3
-        xTicks = (collect(0 : (2 * kMax)), (L"0", L"-1", L"+1", L"-2", L"+2", L"-3", L"+3"));
-    elseif kMax == 4
-        xTicks = (collect(0 : (2 * kMax)), (L"0", L"-1", L"+1", L"-2", L"+2", L"-3", L"+3", L"-4", L"+4"));
-    elseif kMax == 6
-        xTicks = (collect(0 : (2 * kMax)), (L"0", L"-1", L"+1", L"-2", L"+2", L"-3", L"+3", L"-4", L"+4", L"-5", L"+5", L"-6", L"+6"));
-    end
-end
+# # plot entanglement entropy
+# xLimits = (0, 2 * kMax);
+# if modeOrdering == 0
+#     if kMax == 3
+#         xTicks = (collect(0 : (2 * kMax)), (L"-3", L"-2", L"-1", L"0", L"+1", L"+2", L"+3"));
+#     elseif kMax == 4
+#         xTicks = (collect(0 : (2 * kMax)), (L"-4", L"-3", L"-2", L"-1", L"0", L"+1", L"+2", L"+3", L"+4"));
+#     elseif kMax == 6
+#         xTicks = (collect(0 : (2 * kMax)), (L"-6", L"-5", L"-4", L"-3", L"-2", L"-1", L"0", L"+1", L"+2", L"+3", L"+4", L"+5", L"+6"));
+#     end
+# elseif modeOrdering == 1
+#     if kMax == 3
+#         xTicks = (collect(0 : (2 * kMax)), (L"0", L"-1", L"+1", L"-2", L"+2", L"-3", L"+3"));
+#     elseif kMax == 4
+#         xTicks = (collect(0 : (2 * kMax)), (L"0", L"-1", L"+1", L"-2", L"+2", L"-3", L"+3", L"-4", L"+4"));
+#     elseif kMax == 6
+#         xTicks = (collect(0 : (2 * kMax)), (L"0", L"-1", L"+1", L"-2", L"+2", L"-3", L"+3", L"-4", L"+4", L"-5", L"+5", L"-6", L"+6"));
+#     end
+# end
 
 # initialize plot for entanglement entropy
 entanglementEntropyPlot = plot( 
@@ -155,13 +155,13 @@ for (idxM, m) in enumerate(fermionMasses)
     mpsEntanglementEntropies = compute_entanglement_entropies(groundStateMPS);
     println(mpsEntanglementEntropies)
 
-    # plot entanglement entropy
-    labelString = @sprintf("m = %0.1f", m);
-    labelString = latexstring(labelString);
-    plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
-        linewidth = 2.0, 
-        label = labelString, 
-    );
+    # # plot entanglement entropy
+    # labelString = @sprintf("m = %0.1f", m);
+    # labelString = latexstring(labelString);
+    # plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
+    #     linewidth = 2.0, 
+    #     label = labelString, 
+    # );
 
     # get MPS linkDims
     println(getLinkDimsMPS(groundStateMPS))
@@ -194,7 +194,7 @@ for (idxM, m) in enumerate(fermionMasses)
 
 end
 
-display(entanglementEntropyPlot)
+# display(entanglementEntropyPlot)
 
 # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
 # println(mpsEntanglementEntropies)

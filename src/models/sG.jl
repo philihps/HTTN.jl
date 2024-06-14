@@ -19,6 +19,10 @@ struct SineGordonModel <: AbstractQFTModel
     # modelMPO::SparseMPO
 end
 
+function getMomentumModes(sG::SineGordonModel)
+    return sG.modeOccupations[1, :]
+end
+
 function kappaFunc(p::Float64)
     kappaVal = 2 * gamma(p^2 / 2) / pi / gamma(1 - p^2 / 2) * (sqrt(pi) * gamma(1 / (2 - p^2)) / 2 / gamma(p^2 / (4 - 2 * p^2)))^(2 - p^2);
     return kappaVal;
@@ -80,6 +84,69 @@ function updateBogoliubovPrameters(sGModel::SineGordonModel, bogParameters::Unio
     # construct struct to store all model parameters
     modelParameters = SineGordonParameters(truncationParameters, hamiltonianParameters);
     return SineGordonModel(modelParameters, sGModel.modeOccupations, sGModel.physSpaces);
+
+end
+
+function initializeVacuumMPS(sG::SineGordonModel; modeOrdering::Int64 = 1)
+    """ construct vacuum MPS tensor with physSpaces and virtSpaces """
+
+    # get physSpaces
+    physSpaces = sG.physSpaces;
+    numSites = length(physSpaces);
+
+    # set virtSpaces
+    virtSpaces = fill(U1Space(0 => 1), numSites + 1);
+
+    # initialize vacuum MPS
+    mpsTensors = Vector{TensorMap}(undef, numSites);
+    if modeOrdering == 0
+        zeroSitePos = Int((numSites - 1) / 2 + 1);
+    elseif modeOrdering == 1
+        zeroSitePos = 1;
+    end
+    for siteIdx = 1 : numSites
+        if siteIdx == zeroSitePos
+            mpsTensor = zeros(ComplexF64, dim(virtSpaces[siteIdx]), dim(physSpaces[siteIdx]), dim(virtSpaces[siteIdx + 1]));
+            middleIndex = Int((dim(physSpaces[siteIdx]) - 1) / 2) + 1;
+            mpsTensor[1, middleIndex, 1] = 1.0;
+            mpsTensors[siteIdx] = TensorMap(mpsTensor, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
+        else
+            mpsTensors[siteIdx] = TensorMap(ones, ComplexF64, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
+        end
+    end
+    return SparseMPS(mpsTensors, normalizeMPS = true);
+
+end
+
+function initializeMPS(sG::SineGordonModel, initMPS::SparseMPS; modeOrdering::Int64 = 1)
+    """ construct random MPS tensor with physVecSpaces and virtVecSpaces """
+
+    # construct physical and virtual vector spaces for the MPS
+    physSpaces = sG.physSpaces;
+    boundarySpaceL = U1Space(0 => 1);
+    boundarySpaceR = U1Space(0 => 1);
+    virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
+    
+    numSites = length(physSpaces);
+    mpsTensors = Vector{TensorMap}(undef, numSites);
+    if modeOrdering == 0
+        zeroSitePos = Int((numSites - 1) / 2 + 1);
+    elseif modeOrdering == 1
+        zeroSitePos = 1;
+    end
+    for siteIdx = 1 : numSites
+        initTensor = 1e-0 * convert(Array, initMPS[siteIdx]);
+        siteTensor = TensorMap(randn, Float64, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
+        if siteIdx == zeroSitePos
+            siteTensor = 1e-2 * convert(Array, siteTensor);
+        else
+            siteTensor = 1e-1 * convert(Array, siteTensor);
+        end
+        minTensorDim = min(size(initTensor), size(siteTensor));
+        siteTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]] = initTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]];
+        mpsTensors[siteIdx] = TensorMap(siteTensor, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
+    end
+    return SparseMPS(mpsTensors, normalizeMPS = true);
 
 end
 

@@ -22,7 +22,7 @@ function computeEntropy(twoSiteTensor::TensorMap)
 end
 
 function matrixExponentialSeries(operator::TensorMap, nMax::Int64)
-    matrixExp = sum([1/factorial(n) * operator^n for n in collect(0 : nMax)]);
+    matrixExp = sum([1 / factorial(n) * operator^n for n in collect(0 : nMax)]);
     return matrixExp;
 end
 
@@ -52,8 +52,8 @@ function squeezingOp(ξ::Union{Int64, Float64, ComplexF64}, nMax::Int64, kL::Int
     K2 = -tanh(ξ) * CrCr;
 
     # construct squeezing operator
-    # S = matrixExponentialSeries(K2, nMax) * matrixExponentialSeries(K0, nMax) * matrixExponentialSeries(K1, nMax);
-    S = matrixExponentialSeries(K2, 10) * matrixExponentialSeries(K0, 10) * matrixExponentialSeries(K1, 10);
+    S = matrixExponentialSeries(K2, nMax) * matrixExponentialSeries(K0, nMax) * matrixExponentialSeries(K1, nMax);
+    # S = matrixExponentialSeries(K2, min(nMax, 10)) * matrixExponentialSeries(K0, 10) * matrixExponentialSeries(K1, min(nMax, 10));
     # S = exp(K2) * exp(K0) * exp(K1);
     return S;
 

@@ -17,6 +17,7 @@ end
     eigsTol::Float64 = 1e-12
     maxIterations::Int64 = 1
     subspaceExpansion::Bool = true
+    startOptimization::Int = 0
     verbosePrint = false
 end
 
@@ -53,12 +54,16 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 
     # apply finiteMPO to finiteMPS to introduce QNs that cannot be introduced by a regular 2-site update due to different local Hilbert spaces
     if alg.subspaceExpansion
+        println("doing subspace expansion")
         maxDimMPS = 2 * maxLinkDimsMPS(finiteMPS);
-        finiteMPS = applyMPO(finiteMPO, finiteMPS, maxDim = maxDimMPS, truncErr = 1e-6, compressionAlg = "zipUp");
+        finiteMPS = applyMPO(finiteMPO, finiteMPS, maxDim = maxDimMPS, truncErr = 1e-4, compressionAlg = "zipUp");
     end
 
     # initialize mpsEnergy
     mpsEnergy = Float64[1.0];
+
+    # initialize array to store truncation errors
+    ϵs = zeros(Float64, length(finiteMPS) - 1);
 
     # run DMRG until the energy variance is sufficiently close to 0
     optimizationLoopCounter = 1;
@@ -105,10 +110,10 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                 U = permute(U, (1, 2), (3, ));
                 V = permute(S * V, (1, 2), (3, ));
 
-                # # compute error
-                # v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
-                # # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
-                # ϵs[siteIdx] = abs(1 - abs(v));
+                # compute error
+                v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                ϵs[siteIdx] = abs(1 - abs(v));
 
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
@@ -140,10 +145,10 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                 U = permute(U * S, (1, 2), (3, ));
                 V = permute(V, (1, 2), (3, ));
 
-                # # compute error
-                # v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
-                # # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
-                # ϵs[siteIdx] = abs(1 - abs(v));
+                # compute error
+                v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                ϵs[siteIdx] = abs(1 - abs(v));
 
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
@@ -183,7 +188,7 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
         @printf("Energy variance ⟨ψ|(H - E)^2|ψ⟩ = %0.4e\n", energyVariance);
 
         # re-randomize finiteMPS if non-eigenstate was found
-        if energyVariance > 5e-2
+        if energyVariance > 1e-0
             if optimizationLoopCounter < maxOptimSteps
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS = eachindex(finiteMPS)
@@ -207,17 +212,17 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 
     # return optimized finiteMPS
     finalEnergy = mpsEnergy[end];
-    return finiteMPS, finalEnergy
+    return finiteMPS, finalEnergy, ϵs
 
 end
 
 # LineSearch settings
-optimAlg = LBFGS(12, verbosity = 1, maxiter  = 25);
+optimAlg = LBFGS(8, verbosity = 1, maxiter  = 25, gradtol = 1e-6);
 
 # function to check acceptance of new basis
 function checkAcceptance(oldVal::Float64, newVal::Float64, oldXi::Float64, newXi::Float64)
-    if ((oldVal - newVal) > 1e-4) && ((oldXi - newXi) > 0)
-    # if (oldVal > newVal)
+    if ((oldVal - newVal) > 1e-4) && ((oldXi - newXi) > 0) && abs(newXi) <= 0.75
+    # if ((oldVal - newVal) > 1e-4) && ((oldXi - newXi) > 0)
         return true;
     else
         return false;
@@ -237,7 +242,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
     # apply finiteMPO to finiteMPS to introduce QNs that cannot be introduced by a regular 2-site update due to different local Hilbert spaces
     if alg.subspaceExpansion
         maxDimMPS = 2 * maxLinkDimsMPS(finiteMPS);
-        finiteMPS = applyMPO(finiteMPO, finiteMPS, maxDim = maxDimMPS, truncErr = 1e-6, compressionAlg = "zipUp");
+        finiteMPS = applyMPO(finiteMPO, finiteMPS, maxDim = maxDimMPS, truncErr = 1e-4, compressionAlg = "zipUp");
     end
 
     # initialize array to store Bogoliubov parameters
@@ -246,6 +251,9 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
     # initialize mpsEnergy
     mpsEnergy = Float64[1.0];
+
+    # initialize array to store truncation errors
+    ϵs = zeros(Float64, length(finiteMPS) - 1);
 
     # run DMRG until the energy variance is sufficiently close to 0
     optimizationLoopCounter = 1;
@@ -259,6 +267,10 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
         # initialize vector to store energies
         oldEigsEnergies = zeros(Float64, length(finiteMPS) - 1, 2);
 
+        # store vector of truncation errors
+        ϵs = ones(Float64, length(finiteMPS) - 1);
+        ϵ = maximum(ϵs);
+
         # main DMRG loop
         loopCounter = 1;
         runOptimizationDMRG = true;
@@ -269,6 +281,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
             # sweep L ---> R
             for siteIdx = 1 : +1 : (length(finiteMPS) - 1)
+
+                # @info "optimizing site" siteIdx
 
                 # construct initial theta
                 theta = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, 4));
@@ -285,7 +299,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0 && loopCounter > 1
+                if mod(siteIdx, 2) == 0 && loopCounter > startOptimization
             
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2);
@@ -300,6 +314,21 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     # compute cost function pre optimization
                     costFuncPre = computeRenyiEntropy(newTheta);
                     vNEntropyPre = computeEntropy(newTheta);
+
+                    # # see landscape of ξ
+                    # listOfXiValues = collect(-0.5 : 0.025 : 0.5);
+                    # storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
+                    # for (idx, ξ) in enumerate(listOfXiValues)
+                    #     sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR);
+                    #     storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp, newTheta));
+                    # end
+                    # renyiEntropyPlot = plot(listOfXiValues, storeEntanglementEntropy,
+                    #     linewidth = 2.0,
+                    #     xlabel = L"\xi", 
+                    #     ylabel = L"S", 
+                    #     frame = :box
+                    # )
+                    # display(renyiEntropyPlot)
                     
                     # optimize twoSiteUnitary
                     optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
@@ -347,6 +376,11 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                 U = permute(U, (1, 2), (3, ));
                 V = permute(S * V, (1, 2), (3, ));
 
+                # compute error
+                v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                ϵs[siteIdx] = abs(1 - abs(v));
+
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
                 finiteMPS[siteIdx + 1] = V;
@@ -361,6 +395,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
             # sweep L <--- R
             for siteIdx = (length(finiteMPS) - 1) : -1 : 1
+
+                # @info "optimizing site" siteIdx
 
                 # construct initial theta
                 theta = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, 4));
@@ -377,7 +413,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0 && loopCounter > 0
+                if mod(siteIdx, 2) == 0 && loopCounter > startOptimization
             
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2);
@@ -392,6 +428,21 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     # compute cost function pre optimization
                     costFuncPre = computeRenyiEntropy(newTheta);
                     vNEntropyPre = computeEntropy(newTheta);
+
+                    # # see landscape of ξ
+                    # listOfXiValues = collect(-0.5 : 0.025 : 0.5);
+                    # storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
+                    # for (idx, ξ) in enumerate(listOfXiValues)
+                    #     sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR);
+                    #     storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp, newTheta));
+                    # end
+                    # renyiEntropyPlot = plot(listOfXiValues, storeEntanglementEntropy,
+                    #     linewidth = 2.0,
+                    #     xlabel = L"\xi", 
+                    #     ylabel = L"S", 
+                    #     frame = :box
+                    # )
+                    # display(renyiEntropyPlot)
 
                     # optimize twoSiteUnitary
                     optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
@@ -439,6 +490,11 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                 U = permute(U * S, (1, 2), (3, ));
                 V = permute(V, (1, 2), (3, ));
 
+                # compute error
+                v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                ϵs[siteIdx] = abs(1 - abs(v));
+
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
                 finiteMPS[siteIdx + 1] = V;
@@ -482,7 +538,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
         @printf("Energy variance ⟨ψ|(H - E)^2|ψ⟩ = %0.4e\n", energyVariance);
 
         # re-randomize finiteMPS if non-eigenstate was found
-        if energyVariance > 5e-2
+        if energyVariance > 1e-0
             if optimizationLoopCounter < maxOptimSteps
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS = eachindex(finiteMPS)
@@ -506,7 +562,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
     # return optimized finiteMPS
     finalEnergy = mpsEnergy[end];
-    return finiteMPS, finalEnergy, storeBogoliubovParameters
+    return finiteMPS, finalEnergy, storeBogoliubovParameters, ϵs
 
 end
 
@@ -671,7 +727,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
         @printf("Energy variance ⟨ψ|(H - E)^2|ψ⟩ = %0.4e\n", energyVariance);
 
         # re-randomize finiteMPS if non-eigenstate was found
-        if energyVariance > 5e-2
+        if energyVariance > 1e-0
             if optimizationLoopCounter < maxOptimSteps
                 @printf("\nre-randomizing MPS...\n")
                 maxDimMPS = 2 * maxLinkDimsMPS(finiteMPS);

@@ -44,3 +44,99 @@ function compute_entanglement_entropies(finiteMPS::SparseMPS; svCutOff::Float64 
     return entEntropy;
 
 end
+
+function compute_arbitrary_bipartition(finiteMPS::SparseMPS, openPositions::Vector{Int64})
+    """ Computes reduced density matrix for the physical indices that are specified in openPositions """
+
+    # get length of finiteMPS
+    N = length(finiteMPS);
+
+    # initialize reduced density matrix
+    reducedDensityMatrix = TensorMap(ones, space(finiteMPS[1], 1), space(finiteMPS[1], 1));
+    numberOfOpenPhysicalIndices = 0;
+    for siteIdx = 1 : N
+
+        if siteIdx < N
+
+            if any(openPositions .== siteIdx)
+                indsRDM = vcat(- collect(1 : numberOfOpenPhysicalIndices), 1, 2);
+                indsB = [1, - (numberOfOpenPhysicalIndices + 2), - (numberOfOpenPhysicalIndices + 3)];
+                indsK = [2, - (numberOfOpenPhysicalIndices + 1), - (numberOfOpenPhysicalIndices + 4)];
+                reducedDensityMatrix = ncon([reducedDensityMatrix, finiteMPS[siteIdx], finiteMPS[siteIdx]], [indsRDM, indsB, indsK], [false, true, false]);
+                numberOfOpenPhysicalIndices += 2;
+            else
+                indsRDM = vcat(- collect(1 : numberOfOpenPhysicalIndices), 1, 2);
+                indsB = [1, 3, - (numberOfOpenPhysicalIndices + 1)];
+                indsK = [2, 3, - (numberOfOpenPhysicalIndices + 2)];
+                reducedDensityMatrix = ncon([reducedDensityMatrix, finiteMPS[siteIdx], finiteMPS[siteIdx]], [indsRDM, indsB, indsK], [false, true, false]);
+            end
+
+        else
+
+            if any(openPositions .== siteIdx)
+                indsRDM = vcat(- collect(1 : numberOfOpenPhysicalIndices), 1, 2);
+                indsB = [1, - (numberOfOpenPhysicalIndices + 2), 3];
+                indsK = [2, - (numberOfOpenPhysicalIndices + 1), 3];
+                reducedDensityMatrix = ncon([reducedDensityMatrix, finiteMPS[siteIdx], finiteMPS[siteIdx]], [indsRDM, indsB, indsK], [false, true, false]);
+                numberOfOpenPhysicalIndices += 2;
+            else
+                indsRDM = vcat(- collect(1 : numberOfOpenPhysicalIndices), 1, 2);
+                indsB = [1, 3, 4];
+                indsK = [2, 3, 4];
+                reducedDensityMatrix = ncon([reducedDensityMatrix, finiteMPS[siteIdx], finiteMPS[siteIdx]], [indsRDM, indsB, indsK], [false, true, false]);
+            end
+
+        end
+
+    end
+
+    # permute indices correctly
+    reducedDensityMatrix = permute(reducedDensityMatrix, Tuple(idx for idx = 1 : 2 : numberOfOpenPhysicalIndices), Tuple(idx for idx = 2 : 2 : numberOfOpenPhysicalIndices));
+    return reducedDensityMatrix;
+
+end
+
+function compute_mutual_information(momentumModes::Vector{Int64}, finiteMPS::SparseMPS; svCutOff::Float64 = 1e-12)
+    
+    #----------------------------------------------------------------------------
+    # compute entanglement entropy between -k and +k and between [-k, +k] and the rest
+    #----------------------------------------------------------------------------
+
+    storeReducedDensityMatrices = Vector{TensorMap}(undef, length(finiteMPS));
+    for (siteIdx, momentumVal) in enumerate(momentumModes)
+        storeReducedDensityMatrices[siteIdx] = compute_arbitrary_bipartition(finiteMPS, [siteIdx]);
+    end
+
+    # compute reduced density matrix
+    entanglementEntropyMatrix = zeros(Float64, length(finiteMPS), length(finiteMPS));
+    for (siteIdxA, momentumValA) in enumerate(momentumModes)
+
+        for (siteIdxB, momentumValB) in enumerate(momentumModes)
+
+            if siteIdxA < siteIdxB
+                openIndices = [siteIdxA, siteIdxB];
+                reducedDensityMatrixA = storeReducedDensityMatrices[siteIdxA];
+                reducedDensityMatrixB = storeReducedDensityMatrices[siteIdxB];
+                reducedDensityMatrixC = compute_arbitrary_bipartition(finiteMPS, openIndices);
+                _, eigValsA = tsvd(reducedDensityMatrixA, trunc = truncbelow(svCutOff));
+                _, eigValsB = tsvd(reducedDensityMatrixB, trunc = truncbelow(svCutOff));
+                _, eigValsC = tsvd(reducedDensityMatrixC, trunc = truncbelow(svCutOff));
+                eigValsA /= tr(eigValsA);
+                eigValsB /= tr(eigValsB);
+                eigValsC /= tr(eigValsC);
+                entEntA = - real(tr(eigValsA * log(eigValsA)));
+                entEntB = - real(tr(eigValsB * log(eigValsB)));
+                entEntC = - real(tr(eigValsC * log(eigValsC)));
+                mutualInformation = (entEntA + entEntB - entEntC);
+                entanglementEntropyMatrix[siteIdxA, siteIdxB] = mutualInformation;
+                entanglementEntropyMatrix[siteIdxB, siteIdxA] = mutualInformation;
+            end
+
+        end
+
+    end
+
+    # function return
+    return entanglementEntropyMatrix;
+
+end

@@ -95,29 +95,6 @@ end
 
 function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep::Union{Float64, ComplexF64}, finalBeta::Union{Int64, Float64}, alg::METTS2)
 
-    # # Make an array of 'site' indices
-    # s = siteinds("S=1/2", N)
-
-    # # Make gates (1,2),(2,3),(3,4),...
-    # gates = ops([("expτSS", (n, n + 1), (τ=-timeStep / 2,)) for n in 1:(N - 1)], s)
-    # # Include gates in reverse order to complete Trotter formula
-    # append!(gates, reverse(gates))
-
-    # # Make y-rotation gates to use in METTS collapses
-    # Ry_gates = ops([("Ry", n, (θ=π / 2,)) for n in 1:N], s)
-
-    # # Arbitrary initial state
-    # psi = random_mps(s)
-
-    # # Make H for measuring the energy
-    # terms = OpSum()
-    # for j in 1:(N - 1)
-    # terms += 1 / 2, "S+", j, "S-", j + 1
-    # terms += 1 / 2, "S-", j, "S+", j + 1
-    # terms += "Sz", j, "Sz", j + 1
-    # end
-    # H = MPO(terms, s)
-
     # make timeRanges and check timeStep is commensurate
     timeRanges = timeStep : timeStep : (finalBeta / 2)
     if norm(length(timeRanges) * timeStep - finalBeta / 2) > 1e-10
@@ -227,13 +204,7 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep::Union{Float
 
         #-----------------------------------------------------------------
 
-        # # Do the time evolution by applying the gates
-        # for τ in τ_range
-        #   psi = apply(gates, psi; cutoff)
-        #   normalize!(psi)
-        # end
-
-        # Measure properties after >= alg.numWarmUp METTS have been made
+        # measure properties after >= alg.numWarmUp METTS have been made
         if step > alg.numWarmUp
             mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO);
             if abs(imag(mpoExpVal)) < 1e-12

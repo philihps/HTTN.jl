@@ -21,7 +21,7 @@ m = 0.300;
 M = 1 / sqrt(π);
 L = 100.0;
 
-# create NamedTuple for truncation and model parameters
+# create NamedTuple for truncation parameters and model parameters
 truncationParameters = (kMax = kMax, nMax = nMax, nMaxZM = nMaxZM, truncMethod = truncMethod, modeOrdering = modeOrdering, bogoliubovR = bogoliubovR);
 hamiltonianParameters = (θ = θ, m = m, M = M, L = L);
 
