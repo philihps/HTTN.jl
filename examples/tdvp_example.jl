@@ -26,9 +26,12 @@ truncationParameters = (kMax = kMax, nMax = nMax, nMaxZM = nMaxZM, truncMethod =
 hamiltonianParameters = (θ = θ, m = m, M = M, L = L);
 
 # construct Schwinger model with MPO
-schwingerModel = MassiveSchwingerModel(truncationParameters, hamiltonianParameters);
-physSpaces = schwingerModel.physSpaces;
-hamMPO = schwingerModel.modelMPO;
+mS = MassiveSchwingerModel(truncationParameters, hamiltonianParameters);
+physSpaces = mS.physSpaces;
+
+# construct massiveSchwinger MPO
+hamMPO = generate_MPO_mS(mS);
+println(getLinkDimsMPO(hamMPO))
 
 # initialize vaccum MPS (ground state of non-interacting Hamiltonian)
 vacuumMPS = SparseMPS(ones, ComplexF64, physSpaces, fill(U1Space(0 => 1), 2 * kMax + 1 + 1));

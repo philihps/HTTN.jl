@@ -41,6 +41,8 @@ export find_groundstate, find_excitedstate
 export DMRG2, DMRG2BO
 export perform_timestep
 export TDVP2
+export metts
+export METTS2
 
 # export expectation value functions
 export expectation_value_mpo, expectation_values
@@ -65,6 +67,7 @@ include("models/utils.jl")
 include("algorithms/dmrg.jl")
 include("algorithms/basis_optimization.jl")
 include("algorithms/tdvp.jl")
+include("algorithms/metts.jl")
 include("algorithms/expectation_values.jl")
 include("algorithms/entanglement_quantities.jl")
 include("algorithms/full_counting_statistics.jl")

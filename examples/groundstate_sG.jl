@@ -7,16 +7,19 @@ using Pkg
 using Revise
 
 # Pkg.activate(".")
+using LinearAlgebra: diagm
 using HTTN
 using LaTeXStrings
 using Plots
 using Printf
 using TensorKit
 
+include("/Users/philipp/Downloads/MPOcompression.jl")
+
 
 # set truncation parameters
 truncMethod = 5;
-kMax = 3;
+kMax = 6;
 nMax = 8;
 nMaxZM = 12;
 modeOrdering = 1;
@@ -82,82 +85,132 @@ for (idxB, β) in enumerate(betaList)
     sG = SineGordonModel(truncationParameters, hamiltonianParameters);
     display(sG.modeOccupations)
 
-    # construct physical and virtual vector spaces for the MPS
-    boundarySpaceL = U1Space(0 => 1);
-    boundarySpaceR = U1Space(0 => 1);
-    physSpaces = sG.physSpaces;
-    virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
+    # construct sineGordon MPO
+    hamMPO = generate_MPO_sG(sG);
+    println(getLinkDimsMPO(hamMPO))
 
-    # initialize MPS
-    initialMPS = SparseMPS(randn, ComplexF64, physSpaces, virtSpaces);
+    # # compress MPO
+    # nonCompressedMPO = Vector{TensorMap}(undef, length(hamMPO));
+    # for idx = eachindex(hamMPO)
+    #     nonCompressedMPO[idx] = hamMPO[idx];
+    # end
+    # compressedMPO = compress_MPO(nonCompressedMPO)
 
-    storeBogoliubovParameters = [];
-    if useBasisOptimization == 0
+    # println("Comparison of the bond dimensions")
+    # for j in 1:length(compressedMPO)
+    #     mat = nonCompressedMPO[j]
+    #     println("Position $j")
+    #     println("Original size: $((dim(mat.codom[2]), dim(mat.dom[1])) )")
+    #     mat = compressedMPO[j]
+    #     println("After compression: $((dim(mat.codom[2]), dim(mat.dom[1])) )")
+    # end
 
-        # construct sineGordon MPO
-        hamMPO = generate_MPO_sG(sG);
-        println(getLinkDimsMPO(hamMPO))
+    # cM = compressedMPO[1]; uCM = nonCompressedMPO[1];
+    # localDim = dim(cM.codom[1])
+    # @tensor temp[1; 2] := conj(cM[-1 -2; 1 -3]) * uCM[-1 -2; 2 -3] / localDim
+    # for j in 2:length(compressedMPO)
+    #     cM = compressedMPO[j]; uCM = nonCompressedMPO[j];
+    #     localDim = dim(cM.codom[1])
+    #     @tensor temp[1; 2] := temp[-1; -2] * conj(cM[-3 -1; 1 -4]) * uCM[-3 -2; 2 -4] / localDim
+    # end
+    # display("( comMPO, nonCompMPO ) : $temp")
 
-        # run DMRG for ground state
-        groundStateMPS, groundStateEnergy = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
-        @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
+    # cM = nonCompressedMPO[1]; uCM = nonCompressedMPO[1];
+    # localDim = dim(cM.codom[1])
+    # @tensor temp[1; 2] := conj(cM[-1 -2; 1 -3]) * uCM[-1 -2; 2 -3] / localDim
+    # for j in 2:length(compressedMPO)
+    #     cM = nonCompressedMPO[j]; uCM = nonCompressedMPO[j];
+    #     localDim = dim(cM.codom[1])
+    #     @tensor temp[1; 2] := temp[-1; -2] * conj(cM[-3 -1; 1 -4]) * uCM[-3 -2; 2 -4] / localDim
+    # end
+    # display("( nonCompMPO, nonCompMPO ) : $temp")
 
-        # # run DMRG for excited state
-        # lowEnergyStates = Vector{SparseMPS}([groundStateMPS]);
-        # excitedStateMPS, excitedStateEnergy = find_excitedstate(groundStateMPS, hamMPO, lowEnergyStates, DMRG2(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
-        # @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
+    # cM = compressedMPO[1]; uCM = compressedMPO[1];
+    # localDim = dim(cM.codom[1])
+    # @tensor temp[1; 2] := conj(cM[-1 -2; 1 -3]) * uCM[-1 -2; 2 -3] / localDim
+    # for j in 2:length(compressedMPO)
+    #     cM = compressedMPO[j]; uCM = compressedMPO[j];
+    #     localDim = dim(cM.codom[1])
+    #     @tensor temp[1; 2] := temp[-1; -2] * conj(cM[-3 -1; 1 -4]) * uCM[-3 -2; 2 -4] / localDim
+    # end
+    # display("( comMPO, comMPO ) : $temp")
 
-    elseif useBasisOptimization == 1
+    # # construct physical and virtual vector spaces for the MPS
+    # boundarySpaceL = U1Space(0 => 1);
+    # boundarySpaceR = U1Space(0 => 1);
+    # physSpaces = sG.physSpaces;
+    # virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
 
-        # run DMRG for ground state
-        groundStateMPS, groundStateEnergy, storeBogoliubovParameters = find_groundstate(initialMPS, generate_MPO_sG, sG, DMRG2BO(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
-        @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
+    # # initialize MPS
+    # initialMPS = SparseMPS(randn, ComplexF64, physSpaces, virtSpaces);
 
-        # # plot bogParameters
-        # bogParametersPlot = plot(frame = :box);
-        # for kIdx = axes(storeBogoliubovParameters, 2)
-        #     labelString = @sprintf("k = \\pm %d", kIdx);
-        #     labelString = latexstring(labelString);
-        #     plot!(bogParametersPlot, collect(1 : size(storeBogoliubovParameters, 1)), storeBogoliubovParameters[:, kIdx], 
-        #         markers = :circle, 
-        #         linewidth = 2.0,
-        #         label = labelString
-        #     )
-        # end
-        # display(bogParametersPlot)
+    # storeBogoliubovParameters = [];
+    # if useBasisOptimization == 0
 
-        # display(plot(1 : kMax, storeBogoliubovParameters[end, :], linewidth = 2.0, frame = :box))
+    #     # construct sineGordon MPO
+    #     hamMPO = generate_MPO_sG(sG);
+    #     println(getLinkDimsMPO(hamMPO))
 
-        # construct rotated sineGordon MPO
-        finalBogParameters = storeBogoliubovParameters[end, :];
-        sG = updateBogoliubovPrameters(sG, finalBogParameters);
-        hamMPO = generate_MPO_sG(sG);
+    #     # run DMRG for ground state
+    #     groundStateMPS, groundStateEnergy = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
+    #     @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
 
-        # # run DMRG for excited state
-        # lowEnergyStates = Vector{SparseMPS}([groundStateMPS]);
-        # excitedStateMPS, excitedStateEnergy = find_excitedstate(groundStateMPS, hamMPO, lowEnergyStates, DMRG2(bondDim = 1000, truncErr = 1e-6, verbosePrint = true));
-        # @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
+    #     # # run DMRG for excited state
+    #     # lowEnergyStates = Vector{SparseMPS}([groundStateMPS]);
+    #     # excitedStateMPS, excitedStateEnergy = find_excitedstate(groundStateMPS, hamMPO, lowEnergyStates, DMRG2(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
+    #     # @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
 
-    end
+    # elseif useBasisOptimization == 1
 
-    # compute entanglement entropies
-    mpsEntanglementEntropies = compute_entanglement_entropies(groundStateMPS);
-    println(mpsEntanglementEntropies)
+    #     # run DMRG for ground state
+    #     groundStateMPS, groundStateEnergy, storeBogoliubovParameters = find_groundstate(initialMPS, generate_MPO_sG, sG, DMRG2BO(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
+    #     @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
 
-    # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
+    #     # # plot bogParameters
+    #     # bogParametersPlot = plot(frame = :box);
+    #     # for kIdx = axes(storeBogoliubovParameters, 2)
+    #     #     labelString = @sprintf("k = \\pm %d", kIdx);
+    #     #     labelString = latexstring(labelString);
+    #     #     plot!(bogParametersPlot, collect(1 : size(storeBogoliubovParameters, 1)), storeBogoliubovParameters[:, kIdx], 
+    #     #         markers = :circle, 
+    #     #         linewidth = 2.0,
+    #     #         label = labelString
+    #     #     )
+    #     # end
+    #     # display(bogParametersPlot)
+
+    #     # display(plot(1 : kMax, storeBogoliubovParameters[end, :], linewidth = 2.0, frame = :box))
+
+    #     # construct rotated sineGordon MPO
+    #     finalBogParameters = storeBogoliubovParameters[end, :];
+    #     sG = updateBogoliubovPrameters(sG, finalBogParameters);
+    #     hamMPO = generate_MPO_sG(sG);
+
+    #     # # run DMRG for excited state
+    #     # lowEnergyStates = Vector{SparseMPS}([groundStateMPS]);
+    #     # excitedStateMPS, excitedStateEnergy = find_excitedstate(groundStateMPS, hamMPO, lowEnergyStates, DMRG2(bondDim = 1000, truncErr = 1e-6, verbosePrint = true));
+    #     # @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
+
+    # end
+
+    # # compute entanglement entropies
+    # mpsEntanglementEntropies = compute_entanglement_entropies(groundStateMPS);
     # println(mpsEntanglementEntropies)
 
+    # # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
+    # # println(mpsEntanglementEntropies)
 
-    # plot entanglement entropy
-    labelString = @sprintf("\\beta = %0.1f \\cdot \\beta_{\\textrm{FF}}", β/βFF);
-    labelString = latexstring(labelString);
-    plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
-        linewidth = 2.0, 
-        label = labelString, 
-    );
+
+    # # plot entanglement entropy
+    # labelString = @sprintf("\\beta = %0.1f \\cdot \\beta_{\\textrm{FF}}", β/βFF);
+    # labelString = latexstring(labelString);
+    # plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
+    #     linewidth = 2.0, 
+    #     label = labelString, 
+    # );
 
 end
-display(entanglementEntropyPlot)
+# display(entanglementEntropyPlot)
 
 # # compute local occupation numbers
 # numberOperators = local_number_operators(sG);

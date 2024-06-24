@@ -16,25 +16,26 @@ using TensorKit
 
 # set truncation parameters
 truncMethod = 5;
-kMax = 1;
-nMax = 2;
+kMax = 14;
+nMax = 14;
 nMaxZM = 12;
-modeOrdering = 0;
+modeOrdering = 1;
 bogoliubovR = 0;
 bogParameters = 0.4 .+ 0.1 * reverse(collect(1 : kMax));
 # bogParameters = [1.25, 0.7658787726053576, 0.5916149758233501, 0.46691233917615466, 0.37809892346039614, 0.31132850050333677];
 bogParameters = [1.0730311449195271, 0.7349048939229015, 0.5492985081346116, 0.42663356984035494, 0.3, 0.2];
 bogParameters = [ 1.13, 0.80, 0.61, 0.48, 0.39, 0.32, 0.27, 0.22];
-# bogParameters = [1.07, 0.64, 0.55, 0.43];
+bogParameters = [1.07, 0.64, 0.55, 0.43];
 # bogParameters = [0.974, 0.642, 0.4];
 # bogParameters = [0.974, 0.642];
-bogParameters = rand(kMax);
+# bogParameters = rand(kMax);
+bogParameters = [0.96, 0.52, 0.54, 0.44];
 
 # set model parameters
 θ = 1.0 * π;
 e = 1.0;
 M = e / sqrt(π);
-m = 0.4;
+m = 0.3;
 L = 100.0;
 
 # set fermion mass
@@ -72,7 +73,7 @@ entanglementEntropyPlot = plot(
     xlims = xLimits, 
     xticks = xTicks, 
     xlab = L"k", 
-    ylims = (0, Inf), 
+    # ylims = (0, Inf), 
     ylab = L"S(k_L,k_R)", 
     linewidth = 2.0, 
     legend = :topright, 
@@ -97,6 +98,7 @@ for (idxM, m) in enumerate(fermionMasses)
     virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
 
     # initialize MPS
+    virtSpaces = fill(U1Space(0 => 1), length(physSpaces) + 1);
     initialMPS = SparseMPS(randn, ComplexF64, physSpaces, virtSpaces);
 
     storeBogoliubovParameters = [];
@@ -105,8 +107,7 @@ for (idxM, m) in enumerate(fermionMasses)
         # construct massiveSchwinger MPO
         hamMPO = generate_MPO_mS(mS);
         println(getLinkDimsMPO(hamMPO))
-
-        display(hamMPO)
+        # display(hamMPO)
 
         # run DMRG for ground state
         groundStateMPS, groundStateEnergy = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
@@ -162,6 +163,35 @@ for (idxM, m) in enumerate(fermionMasses)
         label = labelString, 
     );
 
+    # get MPS linkDims
+    println(getLinkDimsMPS(groundStateMPS))
+    # println(getLinkDimsMPS(excitedStateMPS))
+
+    # compute local occupation numbers
+    numberOperators = local_number_operators(mS);
+    localOccupations = expectation_values(groundStateMPS, numberOperators);
+    println(localOccupations)
+
+    # compute ⟨a(-k) a(+k)⟩
+    mpos_AnAn, mpos_CrCr = pairing_operators(mS);
+    expVals_AnAn = zeros(ComplexF64, kMax);
+    expVals_CrCr = zeros(ComplexF64, kMax);
+    for idx = 1 : kMax
+        expVals_AnAn[idx] = expectation_value_mpo(groundStateMPS, mpos_AnAn[idx]);
+        expVals_CrCr[idx] = expectation_value_mpo(groundStateMPS, mpos_CrCr[idx]);
+    end
+    println(real.(expVals_AnAn))
+    println(real.(expVals_CrCr))
+
+    # expVals_AnAn = zeros(ComplexF64, kMax);
+    # expVals_CrCr = zeros(ComplexF64, kMax);
+    # for idx = 1 : kMax
+    #     expVals_AnAn[idx] = expectation_value_mpo(excitedStateMPS, mpos_AnAn[idx]);
+    #     # expVals_CrCr[idx] = expectation_value_mpo(excitedStateMPS, mpos_CrCr[idx]);
+    # end
+    # println(real.(expVals_AnAn))
+    # # println(real.(expVals_CrCr))
+
 end
 
 display(entanglementEntropyPlot)
@@ -169,25 +199,25 @@ display(entanglementEntropyPlot)
 # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
 # println(mpsEntanglementEntropies)
 
-# compute local occupation numbers
-numberOperators = local_number_operators(mS);
-localOccupations = expectation_values(groundStateMPS, numberOperators);
-println(localOccupations)
-
-# localOccupations = expectation_values(excitedStateMPS, numberOperators);
+# # compute local occupation numbers
+# numberOperators = local_number_operators(mS);
+# localOccupations = expectation_values(groundStateMPS, numberOperators);
 # println(localOccupations)
 
+# # localOccupations = expectation_values(excitedStateMPS, numberOperators);
+# # println(localOccupations)
 
-# compute ⟨a(-k) a(+k)⟩
-mpos_AnAn, mpos_CrCr = pairing_operators(mS);
-expVals_AnAn = zeros(ComplexF64, kMax);
-expVals_CrCr = zeros(ComplexF64, kMax);
-for idx = 1 : kMax
-    expVals_AnAn[idx] = expectation_value_mpo(groundStateMPS, mpos_AnAn[idx]);
-    expVals_CrCr[idx] = expectation_value_mpo(groundStateMPS, mpos_CrCr[idx]);
-end
-println(real.(expVals_AnAn))
-# println(real.(expVals_CrCr))
+
+# # compute ⟨a(-k) a(+k)⟩
+# mpos_AnAn, mpos_CrCr = pairing_operators(mS);
+# expVals_AnAn = zeros(ComplexF64, kMax);
+# expVals_CrCr = zeros(ComplexF64, kMax);
+# for idx = 1 : kMax
+#     expVals_AnAn[idx] = expectation_value_mpo(groundStateMPS, mpos_AnAn[idx]);
+#     expVals_CrCr[idx] = expectation_value_mpo(groundStateMPS, mpos_CrCr[idx]);
+# end
+# println(real.(expVals_AnAn))
+# # println(real.(expVals_CrCr))
 
 # expVals_AnAn = zeros(ComplexF64, kMax);
 # expVals_CrCr = zeros(ComplexF64, kMax);
@@ -202,6 +232,6 @@ println(real.(expVals_AnAn))
 # # # compute expectation value of vertex operator
 # # vertexOperatorExpVal = expectation_value_mpo(groundStateMPS, sG.mpo_H1);
 
-# get MPS linkDims
-println(getLinkDimsMPS(groundStateMPS))
-# println(getLinkDimsMPS(excitedStateMPS))
+# # get MPS linkDims
+# println(getLinkDimsMPS(groundStateMPS))
+# # println(getLinkDimsMPS(excitedStateMPS))
