@@ -83,6 +83,10 @@ function updateBogoliubovPrameters(mSModel::MassiveSchwingerModel, bogParameters
 
 end
 
+function getMomentumModes(mS::MassiveSchwingerModel)
+    return mS.modeOccupations[1, :]
+end
+
 function generate_H0(mSModel::MassiveSchwingerModel)
 
     mpo_H0 = generate_H0(mSModel.modelParameters, mSModel.modeOccupations, mSModel.physSpaces);
@@ -206,6 +210,64 @@ function constructPhysSpaces(modelParameters::MassiveSchwingerParameters)
         end
     end
     return modeOccupations, physSpaces
+
+end
+
+function initializeVacuumMPS(mS::MassiveSchwingerModel; modeOrdering::Int64 = 1)
+    """ construct vacuum MPS tensor with physSpaces and virtSpaces """
+
+    # get physSpaces
+    physSpaces = mS.physSpaces;
+    numSites = length(physSpaces);
+
+    # set virtSpaces
+    virtSpaces = fill(U1Space(0 => 1), numSites + 1);
+
+    # initialize vacuum MPS
+    mpsTensors = Vector{TensorMap}(undef, numSites);
+    if modeOrdering == 0
+        zeroSitePos = Int((numSites - 1) / 2 + 1);
+    elseif modeOrdering == 1
+        zeroSitePos = 1;
+    end
+    for siteIdx = 1 : numSites
+        mpsTensor = zeros(Float64, dim(virtSpaces[siteIdx]), dim(physSpaces[siteIdx]), dim(virtSpaces[siteIdx + 1]));
+        mpsTensor[1, 1, 1] = 1.0;
+        mpsTensors[siteIdx] = TensorMap(mpsTensor, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
+    end
+    return SparseMPS(mpsTensors, normalizeMPS = true);
+
+end
+
+function initializeMPS(mS::MassiveSchwingerModel, initMPS::SparseMPS; modeOrdering::Int64 = 1)
+    """ construct random MPS tensor with physVecSpaces and virtVecSpaces """
+
+    # construct physical and virtual vector spaces for the MPS
+    physSpaces = mS.physSpaces;
+    boundarySpaceL = U1Space(0 => 1);
+    boundarySpaceR = U1Space(0 => 1);
+    virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
+    
+    numSites = length(physSpaces);
+    mpsTensors = Vector{TensorMap}(undef, numSites);
+    if modeOrdering == 0
+        zeroSitePos = Int((numSites - 1) / 2 + 1);
+    elseif modeOrdering == 1
+        zeroSitePos = 1;
+    end
+    for siteIdx = 1 : numSites
+        initTensor = 1e-0 * convert(Array, initMPS[siteIdx]);
+        siteTensor = TensorMap(randn, Float64, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
+        if siteIdx == zeroSitePos
+            siteTensor = 1e-2 * convert(Array, siteTensor);
+        else
+            siteTensor = 1e-1 * convert(Array, siteTensor);
+        end
+        minTensorDim = min(size(initTensor), size(siteTensor));
+        siteTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]] = initTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]];
+        mpsTensors[siteIdx] = TensorMap(siteTensor, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
+    end
+    return SparseMPS(mpsTensors, normalizeMPS = true);
 
 end
 

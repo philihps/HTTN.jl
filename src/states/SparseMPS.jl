@@ -125,6 +125,7 @@ Base.getindex(ψ::SparseMPS, idx) = ψ.mpsTensors[idx];
 Base.setindex!(ψ::SparseMPS, mpsTensor, idx::Int) = (ψ.mpsTensors[idx] = mpsTensor)
 Base.size(ψ::SparseMPS, args...) = size(ψ.mpsTensors, args...)
 Base.length(ψ::SparseMPS) = length(ψ.mpsTensors)
+Base.eltype(ψ::SparseMPS) = eltype(ψ.mpsTensors)
 Base.iterate(ψ::SparseMPS, args...) = iterate(ψ.mpsTensors, args...)
 Base.eachindex(ψ::SparseMPS, args...) = eachindex(ψ.mpsTensors, args...)
 Base.copy(ψ::SparseMPS) = SparseMPS(copy(ψ.mpsTensors))

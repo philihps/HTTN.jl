@@ -20,8 +20,7 @@ function variance_mpo(finiteMPS::SparseMPS, finiteMPO::SparseMPO)
     myMPS = copy(finiteMPS);
 
     # compute H|ψ⟩
-    maxBondDim = 3000;
-    finiteMPOMPS = applyMPO(finiteMPO, myMPS, maxDim = maxBondDim, truncErr = 1e-6, compressionAlg = "zipUp");
+    finiteMPOMPS = applyMPO(finiteMPO, myMPS, truncErr = 1e-4, compressionAlg = "zipUp");
 
     # compute E = ⟨ψ|H|ψ⟩
     mpsEnergy = dotMPS(myMPS, finiteMPOMPS);

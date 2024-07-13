@@ -14,6 +14,7 @@ module HTTN
     using Printf
     using LaTeXStrings
     using Plots
+    using Roots
     using SpecialFunctions
     using TensorKit
     using Zygote
@@ -48,9 +49,12 @@ module HTTN
     export metts
     export METTS2
 
+    # export mpo compression functions
+    export compress_MPO, convert_MPO_33block, convert_33block_MPO
+
     # export expectation value functions
     export expectation_value_mpo, expectation_values
-    export compute_entanglement_spectra, compute_entanglement_entropies, compute_arbitrary_bipartition, compute_mutual_information
+    export compute_entanglement_spectra, compute_entanglement_entropies, compute_arbitrary_bipartition, compute_mutual_information, compute_mutual_information_pairs
     export compute_phase_distribution
 
     # export utility functions
@@ -75,6 +79,8 @@ module HTTN
     include("algorithms/expectation_values.jl")
     include("algorithms/entanglement_quantities.jl")
     include("algorithms/full_counting_statistics.jl")
+    
+    include("algorithms/mpo_compression.jl")
 
     include("utility/bosonOperators.jl")
     include("utility/vectorSpaces.jl")

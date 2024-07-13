@@ -102,13 +102,21 @@ function compute_mutual_information(momentumModes::Vector{Int64}, finiteMPS::Spa
     # compute entanglement entropy between -k and +k and between [-k, +k] and the rest
     #----------------------------------------------------------------------------
 
-    storeReducedDensityMatrices = Vector{TensorMap}(undef, length(finiteMPS));
+    # initialize matrix for the mutual information
+    mutualInformationMatrix = zeros(Float64, length(momentumModes), length(momentumModes));
+    
+    # compute reduced density matrix and self information for each mode
+    storeReducedDensityMatrices = Vector{TensorMap}(undef, length(momentumModes));
     for (siteIdx, momentumVal) in enumerate(momentumModes)
-        storeReducedDensityMatrices[siteIdx] = compute_arbitrary_bipartition(finiteMPS, [siteIdx]);
+        reducedDensityMatrix = compute_arbitrary_bipartition(finiteMPS, [siteIdx]);
+        _, eigVals = tsvd(reducedDensityMatrix, trunc = truncbelow(svCutOff));
+        eigVals /= tr(eigVals);
+        entanglementEntropy = - real(tr(eigVals * log(eigVals)));
+        storeReducedDensityMatrices[siteIdx] = reducedDensityMatrix;
+        mutualInformationMatrix[siteIdx, siteIdx] = entanglementEntropy;
     end
 
-    # compute reduced density matrix
-    entanglementEntropyMatrix = zeros(Float64, length(finiteMPS), length(finiteMPS));
+    # compute mutual information between all pairs of modes
     for (siteIdxA, momentumValA) in enumerate(momentumModes)
 
         for (siteIdxB, momentumValB) in enumerate(momentumModes)
@@ -128,8 +136,8 @@ function compute_mutual_information(momentumModes::Vector{Int64}, finiteMPS::Spa
                 entEntB = - real(tr(eigValsB * log(eigValsB)));
                 entEntC = - real(tr(eigValsC * log(eigValsC)));
                 mutualInformation = (entEntA + entEntB - entEntC);
-                entanglementEntropyMatrix[siteIdxA, siteIdxB] = mutualInformation;
-                entanglementEntropyMatrix[siteIdxB, siteIdxA] = mutualInformation;
+                mutualInformationMatrix[siteIdxA, siteIdxB] = mutualInformation;
+                mutualInformationMatrix[siteIdxB, siteIdxA] = mutualInformation;
             end
 
         end
@@ -137,6 +145,6 @@ function compute_mutual_information(momentumModes::Vector{Int64}, finiteMPS::Spa
     end
 
     # function return
-    return entanglementEntropyMatrix;
+    return mutualInformationMatrix;
 
 end

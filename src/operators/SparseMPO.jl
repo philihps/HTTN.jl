@@ -133,7 +133,9 @@ Base.getindex(M::SparseMPO, idx) = M.mpoTensors[idx];
 Base.setindex!(M::SparseMPO, mpoTensor, idx::Int) = (M.mpoTensors[idx] = mpoTensor)
 Base.size(M::SparseMPO, args...) = size(M.mpoTensors, args...)
 Base.length(M::SparseMPO) = length(M.mpoTensors)
+Base.eltype(M::SparseMPO) = eltype(M.mpoTensors)
 Base.iterate(M::SparseMPO, args...) = iterate(M.mpoTensors, args...)
+Base.eachindex(M::SparseMPO, args...) = eachindex(M.mpoTensors, args...)
 Base.lastindex(M::SparseMPO) = lastindex(M.mpoTensors)
 Base.copy(M::SparseMPO) = SparseMPO(copy(M.mpoTensors))
 function Base.similar(M::SparseMPO{A}) where {A}
@@ -246,7 +248,7 @@ function normalizeMPO(finiteMPO::SparseMPO)
 
 end
 
-function applyMPO(finiteMPO::SparseMPO, finiteMPS::SparseMPS; maxDim::Int64 = 1, truncErr::Float64 = 1e-6, compressionAlg::String = "variationalContraction")
+function applyMPO(finiteMPO::SparseMPO, finiteMPS::SparseMPS; truncErr::Float64 = 1e-6, maxDim::Int64 = 2500, compressionAlg::String = "variationalContraction")
     """ Applies finiteMPO to finiteMPS and compressed the MPS to bond dimension 'maxDim' """
     """ Algorithm 'densityMatrix' is exact, algorithm 'zipUp' is faster but less accurate """
 
@@ -281,6 +283,7 @@ function applyMPO(finiteMPO::SparseMPO, finiteMPS::SparseMPS; maxDim::Int64 = 1,
 
             # make eigen decomposition of rho and truncate to maximal bond dimension
             U, S, V = tsvd(rho, trunc = truncdim(maxDim) & truncerr(truncErr));
+            # U, S, V = tsvd(rho, trunc = truncerr(truncErr));
 
             # compute right environment for the site to the left
             if siteIdx > 1
@@ -304,6 +307,7 @@ function applyMPO(finiteMPO::SparseMPO, finiteMPS::SparseMPS; maxDim::Int64 = 1,
             if siteIdx < N
                 @tensor localTensor[-1 -2; -3 -4] := isomoL[-1, 1, 3] * compressedMPS[siteIdx][1, 2, -3] * finiteMPO[siteIdx][3, -2, -4, 2];
                 U, S, V = tsvd(localTensor, (1, 2), (3, 4), trunc = truncdim(maxDim) & truncerr(truncErr), alg = TensorKit.SVD());
+                # U, S, V = tsvd(localTensor, (1, 2), (3, 4), trunc = truncerr(truncErr), alg = TensorKit.SVD());
                 compressedMPS[siteIdx] = permute(U, (1, 2), (3, ));
                 isomoL = S * V;
             else
@@ -343,6 +347,7 @@ function applyMPO(finiteMPO::SparseMPO, finiteMPS::SparseMPS; maxDim::Int64 = 1,
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncdim(maxDim) & truncerr(truncErr));
+                # U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncerr(truncErr));
                 S /= norm(S);
                 U = permute(U, (1, 2), (3, ));
                 V = permute(S * V, (1, 2), (3, ));
@@ -364,6 +369,7 @@ function applyMPO(finiteMPO::SparseMPO, finiteMPS::SparseMPS; maxDim::Int64 = 1,
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncdim(maxDim) & truncerr(truncErr));
+                # U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncerr(truncErr));
                 S /= norm(S);
                 U = permute(U * S, (1, 2), (3, ));
                 V = permute(V, (1, 2), (3, ));

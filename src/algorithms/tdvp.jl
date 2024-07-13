@@ -31,8 +31,7 @@ function perform_timestep!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep:
         AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, 4));
 
         # compute H(n, n + 1) and apply it to AC(n, n + 1) to evolve it with exp(-1im * timeStep/2 * H(n, n + 1))
-        H_AC2 = ∂∂AC2(siteIdx, finiteMPO, mpoEnvL, mpoEnvR);
-        newAC2, convHist = exponentiate(H_AC2, -1im * timeStep / 2, AC2, Lanczos());
+        newAC2, convHist = exponentiate(x -> applyAC2(x, finiteMPO[siteIdx + 0], finiteMPO[siteIdx + 1], mpoEnvL[siteIdx + 0], mpoEnvR[siteIdx + 1]), -1im * timeStep / 2, AC2, Lanczos());
 
         #  perform SVD and truncate to desired bond dimension
         U, S, V, ϵ = tsvd(newAC2, (1, 2), (3, 4), trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT), alg = TensorKit.SVD());
@@ -50,8 +49,7 @@ function perform_timestep!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep:
 
         # compute K(n + 1) and apply it to V(n + 1) to evolve it with exp(+1im * timeStep/2 * K(n + 1))
         if siteIdx < (length(finiteMPS) - 1)
-            H_AC = ∂∂AC(siteIdx + 1, finiteMPO, mpoEnvL, mpoEnvR);
-            finiteMPS[siteIdx + 1], convHist = exponentiate(H_AC, +1im * timeStep / 2, finiteMPS[siteIdx + 1], Lanczos());
+            finiteMPS[siteIdx + 1], convHist = exponentiate(x -> applyAC(x, finiteMPO[siteIdx + 1], mpoEnvL[siteIdx + 1], mpoEnvR[siteIdx + 1]), +1im * timeStep / 2, finiteMPS[siteIdx + 1], Lanczos());
         end
 
     end
@@ -63,8 +61,7 @@ function perform_timestep!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep:
         AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, 4));
 
         # compute H(n, n + 1) and apply it to AC(n, n + 1) to evolve it with exp(-1im * timeStep/2 * H(n, n + 1))
-        H_AC2 = ∂∂AC2(siteIdx, finiteMPO, mpoEnvL, mpoEnvR);
-        newAC2, convHist = exponentiate(H_AC2, -1im * timeStep / 2, AC2, Lanczos());
+        newAC2, convHist = exponentiate(x -> applyAC2(x, finiteMPO[siteIdx + 0], finiteMPO[siteIdx + 1], mpoEnvL[siteIdx + 0], mpoEnvR[siteIdx + 1]), -1im * timeStep / 2, AC2, Lanczos());
 
         #  perform SVD and truncate to desired bond dimension
         U, S, V, ϵ = tsvd(newAC2, (1, 2), (3, 4), trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT), alg = TensorKit.SVD());
@@ -82,8 +79,7 @@ function perform_timestep!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep:
 
         # compute K(n) and apply it to V(n) to evolve it with exp(+1im * timeStep/2 * K(n))
         if siteIdx > 1
-            H_AC = ∂∂AC(siteIdx + 0, finiteMPO, mpoEnvL, mpoEnvR);
-            finiteMPS[siteIdx + 0], convHist = exponentiate(H_AC, +1im * timeStep / 2, finiteMPS[siteIdx + 0], Lanczos());
+            finiteMPS[siteIdx + 0], convHist = exponentiate(x -> applyAC(x, finiteMPO[siteIdx + 0], mpoEnvL[siteIdx + 0], mpoEnvR[siteIdx + 0]), +1im * timeStep / 2, finiteMPS[siteIdx + 0], Lanczos());
         end
 
     end
@@ -98,49 +94,13 @@ function perform_timestep(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep::
 end
 
 #-------------------------------------------------
-# code copied and modified from MPSKit
-# https://github.com/maartenvd/MPSKit.jl
 
-struct MPO_∂∂C
-    envL::TensorMap
-    envR::TensorMap
-end
-∂∂C(siteIdx::Int, envL::Vector{<:AbstractTensorMap}, envR::Vector{<:AbstractTensorMap}) = 
-    MPO_∂∂C(envL[siteIdx + 1], envR[siteIdx + 0]);
-
-struct MPO_∂∂AC
-    MPO::TensorMap
-    envL::TensorMap
-    envR::TensorMap
-end
-∂∂AC(siteIdx::Int, MPO::SparseMPO, envL::Vector{<:AbstractTensorMap}, envR::Vector{<:AbstractTensorMap}) = 
-    MPO_∂∂AC(MPO[siteIdx + 0], envL[siteIdx + 0], envR[siteIdx + 0]);
-
-struct MPO_∂∂AC2
-    MPOL::TensorMap
-    MPOR::TensorMap
-    envL::TensorMap
-    envR::TensorMap
-end
-∂∂AC2(siteIdx::Int, MPO::SparseMPO, envL::Vector{<:AbstractTensorMap}, envR::Vector{<:AbstractTensorMap}) = 
-    MPO_∂∂AC2(MPO[siteIdx + 0], MPO[siteIdx + 1], envL[siteIdx + 0], envR[siteIdx + 1]);
-
-Base.:*(h::Union{<:MPO_∂∂C, <:MPO_∂∂AC, <:MPO_∂∂AC2}, v) = h(v);
-(h::MPO_∂∂C)(x) = ∂C(x, h.envL, h.envR);
-(h::MPO_∂∂AC)(x) = ∂AC(x, h.MPO, h.envL, h.envR);
-(h::MPO_∂∂AC2)(x) = ∂AC2(x, h.MPOL, h.MPOR, h.envL, h.envR);
-
-function ∂C(x::TensorMap, envL::TensorMap, envR::TensorMap)
-    @tensor x[-1; -2] := envL[-1, 3, 1] * x[1, 2] * envR[2, 3, -2];
-    return x;
-end
-
-function ∂AC(x::TensorMap, mpo::TensorMap, envL::TensorMap, envR::TensorMap)
+function applyAC(x::TensorMap, mpo::TensorMap, envL::TensorMap, envR::TensorMap)
     @tensor x[-1 -2; -3] := envL[-1, 2, 1] * x[1, 3, 4] * mpo[2, -2, 5, 3] * envR[4, 5, -3]
     return x;
 end
 
-function ∂AC2(x::TensorMap, mpoL::TensorMap, mpoR::TensorMap, envL::TensorMap, envR::TensorMap)
+function applyAC2(x::TensorMap, mpoL::TensorMap, mpoR::TensorMap, envL::TensorMap, envR::TensorMap)
     @tensor x[-1 -2; -3 -4] := envL[-1, 2, 1] * x[1, 3, 5, 6] * mpoL[2, -2, 4, 3] * mpoR[4, -3, 7, 5] * envR[6, 7, -4];
 end
 
@@ -233,7 +193,8 @@ function basisExtend(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::TDVP2)
     krylovVectors = Vector{SparseMPS}(undef, alg.krylovDim);
     for idxK in 1 : alg.krylovDim
         prevMPS = idxK == 1 ? finiteMPS : krylovVectors[idxK - 1];
-        krylovVectors[idxK] = normalizeMPS(applyMPO(finiteMPO, prevMPS, maxDim = maxDimKrylovVectors, truncErr = alg.truncErrK, compressionAlg = alg.compressionAlg));
+        # krylovVectors[idxK] = normalizeMPS(applyMPO(finiteMPO, prevMPS, maxDim = maxDimKrylovVectors, truncErr = alg.truncErrK, compressionAlg = alg.compressionAlg));
+        krylovVectors[idxK] = normalizeMPS(applyMPO(finiteMPO, prevMPS, truncErr = alg.truncErrK, compressionAlg = alg.compressionAlg));
         # println("maxLinkDim Krylov MPS : ", maxLinkDimsMPS(krylovVectors[idxK]))
     end
 
