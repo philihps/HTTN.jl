@@ -65,7 +65,7 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 
     # run DMRG until the energy variance is sufficiently close to 0
     optimizationLoopCounter = 1;
-    maxOptimSteps = 10;
+    maxOptimSteps = 1;
     runOptimization = true;
     while runOptimization
 
@@ -254,7 +254,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
     # run DMRG until the energy variance is sufficiently close to 0
     optimizationLoopCounter = 1;
-    maxOptimSteps = 10;
+    maxOptimSteps = 1;
     runOptimization = true;
     while runOptimization
 
@@ -374,7 +374,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                         # select optimalXi corresponding to lowest costFuncPost
                         costFuncPost, minIdx = findmin(newCostFunction);
                         optimalXi = optimalXi[minIdx];
-                        @show optimalXi
+                        # @show optimalXi
 
                         # decompose optimizedTheta
                         if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
@@ -522,7 +522,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                         # select optimalXi corresponding to lowest costFuncPost
                         costFuncPost, minIdx = findmin(newCostFunction);
                         optimalXi = optimalXi[minIdx];
-                        @show optimalXi
+                        # @show optimalXi
 
                         # decompose optimizedTheta
                         if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
@@ -603,7 +603,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
         @printf("Energy variance ⟨ψ|(H - E)^2|ψ⟩ = %0.4e\n", energyVariance);
 
         # re-randomize finiteMPS if non-eigenstate was found
-        if energyVariance > 1e-1
+        if energyVariance > 1e-0
             if optimizationLoopCounter < maxOptimSteps
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS = eachindex(finiteMPS)
@@ -653,7 +653,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
 
     # run DMRG until the energy variance is sufficiently close to 0
     optimizationLoopCounter = 1;
-    maxOptimSteps = 10;
+    maxOptimSteps = 1;
     runOptimization = true;
     while runOptimization
 

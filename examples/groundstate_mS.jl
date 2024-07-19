@@ -7,7 +7,9 @@ using Pkg
 using Revise
 
 # Pkg.activate(".")
+using DelimitedFiles
 using HTTN
+using JLD
 using LaTeXStrings
 using Plots
 using Printf
@@ -15,11 +17,12 @@ using TensorKit
 
 
 # set truncation parameters
+modelName = "massiveSchwinger";
 truncMethod = 5;
-kMax = 14;
-nMax = 14;
+kMax = 6;
+nMax = 8;
 nMaxZM = 12;
-modeOrdering = 1;
+modeOrdering = 0;
 bogoliubovR = 0;
 bogParameters = 0.4 .+ 0.1 * reverse(collect(1 : kMax));
 # bogParameters = [1.25, 0.7658787726053576, 0.5916149758233501, 0.46691233917615466, 0.37809892346039614, 0.31132850050333677];
@@ -40,40 +43,33 @@ L = 100.0;
 
 # set fermion mass
 fermionMasses = collect(0.100 : 0.10 : 0.100);
+fermionMasses = [0.10, 0.30, 0.50];
+# fermionMasses = collect(0.20 : 0.05 : 0.35);
 
 # set DMRG parameters
-bondDim = 2500;
-truncErr = 1e-4;
+bondDim = 256;
+truncErr = 1e-6;
+subspaceExpansion = true;
 
 # use numerical basis optimization
 useBasisOptimization = bogoliubovR;
 
-# # plot entanglement entropy
-# xLimits = (0, 2 * kMax);
-# if modeOrdering == 0
-#     if kMax == 3
-#         xTicks = (collect(0 : (2 * kMax)), (L"-3", L"-2", L"-1", L"0", L"+1", L"+2", L"+3"));
-#     elseif kMax == 4
-#         xTicks = (collect(0 : (2 * kMax)), (L"-4", L"-3", L"-2", L"-1", L"0", L"+1", L"+2", L"+3", L"+4"));
-#     elseif kMax == 6
-#         xTicks = (collect(0 : (2 * kMax)), (L"-6", L"-5", L"-4", L"-3", L"-2", L"-1", L"0", L"+1", L"+2", L"+3", L"+4", L"+5", L"+6"));
-#     end
-# elseif modeOrdering == 1
-#     if kMax == 3
-#         xTicks = (collect(0 : (2 * kMax)), (L"0", L"-1", L"+1", L"-2", L"+2", L"-3", L"+3"));
-#     elseif kMax == 4
-#         xTicks = (collect(0 : (2 * kMax)), (L"0", L"-1", L"+1", L"-2", L"+2", L"-3", L"+3", L"-4", L"+4"));
-#     elseif kMax == 6
-#         xTicks = (collect(0 : (2 * kMax)), (L"0", L"-1", L"+1", L"-2", L"+2", L"-3", L"+3", L"-4", L"+4", L"-5", L"+5", L"-6", L"+6"));
-#     end
-# end
+# plot entanglement entropy
+xLimits = (0, 2 * kMax);
+momentumModes = convert.(Int64, collect(-kMax : 1 : +kMax));
+if modeOrdering == 1
+    momentumModes = sort(momentumModes, by = abs);
+end
+xTicks = (
+    (collect(0 : (2 * kMax))), [kVal == 0 ? latexstring(@sprintf("%d", kVal)) : latexstring(@sprintf("%+d", kVal)) for kVal in momentumModes]
+)
 
 # initialize plot for entanglement entropy
 entanglementEntropyPlot = plot( 
     xlims = xLimits, 
     xticks = xTicks, 
     xlab = L"k", 
-    # ylims = (0, Inf), 
+    ylims = (0, Inf), 
     ylab = L"S(k_L,k_R)", 
     linewidth = 2.0, 
     legend = :topright, 
@@ -97,9 +93,11 @@ for (idxM, m) in enumerate(fermionMasses)
     physSpaces = mS.physSpaces;
     virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
 
-    # initialize MPS
-    virtSpaces = fill(U1Space(0 => 1), length(physSpaces) + 1);
-    initialMPS = SparseMPS(randn, ComplexF64, physSpaces, virtSpaces);
+    # initialize vacuum MPS
+    # initialMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+    vacuumMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+    initialMPS = initializeMPS(mS, vacuumMPS, modeOrdering = modeOrdering);
+    # initialMPS = SparseMPS(randn, ComplexF64, physSpaces, virtSpaces);
 
     storeBogoliubovParameters = [];
     if useBasisOptimization == 0
@@ -110,7 +108,7 @@ for (idxM, m) in enumerate(fermionMasses)
         # display(hamMPO)
 
         # run DMRG for ground state
-        groundStateMPS, groundStateEnergy = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
+        groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, verbosePrint = true));
         @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
 
         # # run DMRG for excited state
@@ -121,7 +119,7 @@ for (idxM, m) in enumerate(fermionMasses)
     elseif useBasisOptimization == 1
 
         # run DMRG for ground state
-        groundStateMPS, groundStateEnergy, storeBogoliubovParameters = find_groundstate(initialMPS, generate_MPO_mS, mS, DMRG2BO(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
+        groundStateMPS, groundStateEnergy, storeBogoliubovParameters, truncErrors = find_groundstate(initialMPS, generate_MPO_mS, mS, DMRG2BO(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion,  verbosePrint = true));
         @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
 
         # # plot bogParameters
@@ -151,37 +149,139 @@ for (idxM, m) in enumerate(fermionMasses)
 
     end
 
-    # compute entanglement entropies
-    mpsEntanglementEntropies = compute_entanglement_entropies(groundStateMPS);
-    println(mpsEntanglementEntropies)
-
-    # # plot entanglement entropy
-    # labelString = @sprintf("m = %0.1f", m);
-    # labelString = latexstring(labelString);
-    # plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
-    #     linewidth = 2.0, 
-    #     label = labelString, 
-    # );
-
     # get MPS linkDims
     println(getLinkDimsMPS(groundStateMPS))
     # println(getLinkDimsMPS(excitedStateMPS))
 
-    # compute local occupation numbers
-    numberOperators = local_number_operators(mS);
-    localOccupations = expectation_values(groundStateMPS, numberOperators);
-    println(localOccupations)
+    # construct main directory path to store simulation files
+    mainDirPath = "numFiles/" * modelName * "/modeOrdering_" * string(modeOrdering) * "/bogoliubovRot_" * string(bogoliubovR) * "/truncMethod_" * string(truncMethod);
 
-    # compute ⟨a(-k) a(+k)⟩
-    mpos_AnAn, mpos_CrCr = pairing_operators(mS);
-    expVals_AnAn = zeros(ComplexF64, kMax);
-    expVals_CrCr = zeros(ComplexF64, kMax);
-    for idx = 1 : kMax
-        expVals_AnAn[idx] = expectation_value_mpo(groundStateMPS, mpos_AnAn[idx]);
-        expVals_CrCr[idx] = expectation_value_mpo(groundStateMPS, mpos_CrCr[idx]);
+    # construct fileString
+    folderStringMPS = mainDirPath * "/MPS/kMax_" * string(kMax);
+    ~isdir(folderStringMPS) && mkpath(folderStringMPS)
+
+    # construct fileString
+    fileStringMPS = @sprintf("%s/mps_kMax_%d_nMax_%d_nMaxZM_%d_T_%0.2f_M_%0.2f_m_%0.3f_L_%0.2f_bondDim_%d.jld", folderStringMPS, kMax, nMax, nMaxZM, θ, M, m, L, bondDim);
+
+    # store MPS states and energies
+    if useBasisOptimization == 0
+        save(fileStringMPS, 
+            "mS", mS, 
+            "groundStateMPS", convert.(Dict, groundStateMPS), 
+            "truncErrors", truncErrors, 
+            "groundStateEnergy", groundStateEnergy
+        );
+    elseif useBasisOptimization == 1
+        save(fileStringMPS, 
+            "mS", mS, 
+            "groundStateMPS", convert.(Dict, groundStateMPS), 
+            "groundStateEnergy", groundStateEnergy, 
+            "truncErrors", truncErrors, 
+            "storeBogoliubovParameters", storeBogoliubovParameters
+        );
     end
-    println(real.(expVals_AnAn))
-    println(real.(expVals_CrCr))
+    display(fileStringMPS)
+
+
+    # compute entanglement entropies
+    mpsEntanglementEntropies = compute_entanglement_entropies(groundStateMPS);
+    println(mpsEntanglementEntropies)
+
+    # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
+    # println(mpsEntanglementEntropies)
+
+
+    # plot entanglement entropy
+    labelString = @sprintf("m = %0.3f", m);
+    labelString = latexstring(labelString);
+    plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
+        linewidth = 2.0, 
+        label = labelString, 
+    );
+
+
+    # # compute mutual information between all pairs of modes [k, k']
+    # momentumModes = getMomentumModes(mS);
+    # mutualInformationMatrix = compute_mutual_information(momentumModes, groundStateMPS);
+    # mutualInformationMatrix ./= maximum(mutualInformationMatrix);
+    # display(mutualInformationMatrix)
+    # entanglementHeatMap = heatmap(collect(0 : (2 * kMax)), collect(0 : (2 * kMax)), mutualInformationMatrix, 
+    #     xticks = xTicks, 
+    #     yticks = xTicks, 
+    #     lims = (0, 2 * kMax), 
+    #     c = cgrad(:Blues), 
+    #     aspect_ratio = :equal
+    # );
+    # display(entanglementHeatMap)
+
+    # # permute rows and columns to match modeOrdering = 0
+    # if modeOrdering == 0
+    #     indexPermutation = collect(1 : length(momentumModes));
+    # elseif modeOrdering == 1
+    #     indexPermutation = vcat(collect(2 * kMax : -2 : 2), collect(1 : 2 : (2 * kMax + 1)));
+    # end
+    # B = mutualInformationMatrix[indexPermutation, indexPermutation];
+    # B ./= maximum(B)
+    # display(B)
+
+    # # store self information as table [kx ky QMI]
+    # entanglementEntropyTable = zeros(Float64, 0, 3);
+    # for (idxA, momValA) in enumerate(momentumModes), (idxB, momValB) in enumerate(momentumModes)
+    #     if momValA == momValB
+    #         entanglementEntropyTable = vcat(entanglementEntropyTable, [idxA idxB B[idxA, idxB]]);
+    #     else
+    #         entanglementEntropyTable = vcat(entanglementEntropyTable, [idxA idxB 0]);
+    #     end
+    # end
+    
+    # fileString = @sprintf("selfInformation_mS_kMax_%d_m_%0.3f_modeOrdering_%d.txt", kMax, m, modeOrdering)
+    # columnString = @sprintf("kx\t ky\t QMI\n");
+    # open(fileString; write = true) do f
+    #     write(f, columnString)
+    #     writedlm(f, entanglementEntropyTable)
+    # end
+
+    # # store mutual information as table [kx ky QMI]
+    # entanglementEntropyTable = zeros(Float64, 0, 3);
+    # for (idxA, momValA) in enumerate(momentumModes), (idxB, momValB) in enumerate(momentumModes)
+    #     entanglementEntropyTable = vcat(entanglementEntropyTable, [idxA idxB B[idxA, idxB]]);
+    # end
+    
+    # fileString = @sprintf("mutualInformation_mS_kMax_%d_m_%0.3f_modeOrdering_%d.txt", kMax, m, modeOrdering)
+    # columnString = @sprintf("kx\t ky\t QMI\n");
+    # open(fileString; write = true) do f
+    #     write(f, columnString)
+    #     writedlm(f, entanglementEntropyTable)
+    # end
+
+    # # plot "spectrum" of the mutual information
+    # relevantElements = vec(mutualInformationMatrix);
+    # # relevantElements = [mutualInformationMatrix[idx, idy] for idx = axes(mutualInformationMatrix, 1), idy = axes(mutualInformationMatrix, 2) if idx != idy];
+    # mutualInformationSpectrumPlot = plot(1 : length(relevantElements), sort(relevantElements, rev = true), 
+    #     yaxis = :log10, 
+    #     xlabel = L"i", 
+    #     ylabel = L"\mathcal{I}", 
+    #     linewidth = 2.0, 
+    #     label = "", 
+    #     frame = :box, 
+    # )
+    # display(mutualInformationSpectrumPlot)
+
+    # # compute local occupation numbers
+    # numberOperators = local_number_operators(mS);
+    # localOccupations = expectation_values(groundStateMPS, numberOperators);
+    # println(localOccupations)
+
+    # # compute ⟨a(-k) a(+k)⟩
+    # mpos_AnAn, mpos_CrCr = pairing_operators(mS);
+    # expVals_AnAn = zeros(ComplexF64, kMax);
+    # expVals_CrCr = zeros(ComplexF64, kMax);
+    # for idx = 1 : kMax
+    #     expVals_AnAn[idx] = expectation_value_mpo(groundStateMPS, mpos_AnAn[idx]);
+    #     expVals_CrCr[idx] = expectation_value_mpo(groundStateMPS, mpos_CrCr[idx]);
+    # end
+    # println(real.(expVals_AnAn))
+    # println(real.(expVals_CrCr))
 
     # expVals_AnAn = zeros(ComplexF64, kMax);
     # expVals_CrCr = zeros(ComplexF64, kMax);
@@ -193,8 +293,7 @@ for (idxM, m) in enumerate(fermionMasses)
     # # println(real.(expVals_CrCr))
 
 end
-
-# display(entanglementEntropyPlot)
+display(entanglementEntropyPlot)
 
 # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
 # println(mpsEntanglementEntropies)
