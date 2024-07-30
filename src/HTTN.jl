@@ -1,4 +1,5 @@
 
+__precompile__(false)
 module HTTN
 
     # include external packages
@@ -10,14 +11,14 @@ module HTTN
     using FFTW
     using JLD
     using KrylovKit
-    using OptimKit
+    # using OptimKit
     using Printf
     using LaTeXStrings
     using Plots
     using Roots
     using SpecialFunctions
     using TensorKit
-    using Zygote
+    # using Zygote
 
     # export states
     export SparseMPS
@@ -45,7 +46,7 @@ module HTTN
     export find_groundstate, find_excitedstate
     export DMRG2, DMRG2BO
     export perform_timestep
-    export TDVP2
+    export TDVP2, TDVP2BO
     export metts
     export METTS2
 
