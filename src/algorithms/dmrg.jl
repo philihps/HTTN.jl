@@ -7,7 +7,7 @@
     eigsTol::Float64 = 1e-12
     maxIterations::Int64 = 1
     subspaceExpansion::Bool = true
-    verbosePrint = false
+    verbosePrint::Int64 = 0
 end
 
 @kwdef struct DMRG2BO
@@ -18,7 +18,7 @@ end
     maxIterations::Int64 = 1
     subspaceExpansion::Bool = true
     startOptimization::Int = 1
-    verbosePrint = false
+    verbosePrint::Int64 = 0
 end
 
 function applyH2(X, EL, mpo1, mpo2, ER)
@@ -170,7 +170,7 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
             energyConvergence = abs(mpsEnergy[end - 1] - mpsEnergy[end]);
             # energyConvergenceA = norm(newEigsEnergies .- oldEigsEnergies) / length(finiteMPS);
             # display([energyConvergence energyConvergenceA maximum(ϵs)])
-            alg.verbosePrint && @printf("DMRG step %d - energy, convergence = %0.8f, %0.8e\n", loopCounter, mpoExpVal, energyConvergence);
+            alg.verbosePrint > 0 && @printf("DMRG step %d - energy, convergence = %0.8f, %0.8e\n", loopCounter, mpoExpVal, energyConvergence);
             if energyConvergence < alg.convTolE
                 runOptimizationDMRG = false;
             end
@@ -214,13 +214,12 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 
 end
 
-# LineSearch settings
-optimAlg = LBFGS(8, verbosity = 1, maxiter  = 25, gradtol = 1e-6);
+# # LineSearch settings
+# optimAlg = LBFGS(8, verbosity = 1, maxiter  = 25, gradtol = 1e-6);
 
 # function to check acceptance of new basis
 function checkAcceptance(oldVal::Float64, newVal::Float64, oldXi::Float64, newXi::Float64)
-    if ((oldVal - newVal) > 1e-4) && ((oldXi - newXi) > 0) && abs(newXi) <= 0.75
-    # if ((oldVal - newVal) > 1e-4) && ((oldXi - newXi) > 0)
+    if (oldVal - newVal > 1e-3)
         return true;
     else
         return false;
@@ -313,30 +312,34 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     vNEntropyPre = computeEntropy(newTheta);
 
                     # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
-                    listOfXiValues = collect(-0.6 : 0.05 : +0.6);
-                    storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
-                    storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
-                    for (idx, ξ) in enumerate(listOfXiValues)
-                        sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR);
-                        storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp, newTheta));
-                        storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta);
-                    end
+                    if alg.verbosePrint == 2
 
-                    titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR);
-                    titleString = latexstring(titleString);
-                    renyiEntropyPlot = plot(listOfXiValues, storeEntanglementEntropy,
-                        linewidth = 2.0,
-                        xlabel = L"\xi", 
-                        ylabel = L"S", 
-                        label = L"S(\xi)", 
-                        frame = :box, 
-                        title = titleString, 
-                    )
-                    plot!(renyiEntropyPlot, listOfXiValues, storeAnalyticGradient, 
-                        linewidth = 2.0, 
-                        label = L"\partial S(\xi)/\partial \xi", 
-                    )
-                    display(renyiEntropyPlot)
+                        listOfXiValues = collect(-0.6 : 0.05 : +0.6);
+                        storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
+                        storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
+                        for (idx, ξ) in enumerate(listOfXiValues)
+                            sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR);
+                            storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp, newTheta));
+                            storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta);
+                        end
+
+                        titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR);
+                        titleString = latexstring(titleString);
+                        renyiEntropyPlot = plot(listOfXiValues, storeEntanglementEntropy,
+                            linewidth = 2.0,
+                            xlabel = L"\xi", 
+                            ylabel = L"S", 
+                            label = L"S(\xi)", 
+                            frame = :box, 
+                            title = titleString, 
+                        )
+                        plot!(renyiEntropyPlot, listOfXiValues, storeAnalyticGradient, 
+                            linewidth = 2.0, 
+                            label = L"\partial S(\xi)/\partial \xi", 
+                        )
+                        display(renyiEntropyPlot)
+
+                    end
 
                     # find optimimal ξ by roots of gradient
                     # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.5, +0.5);
@@ -461,30 +464,34 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     vNEntropyPre = computeEntropy(newTheta);
 
                     # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
-                    listOfXiValues = collect(-0.6 : 0.05 : +0.6);
-                    storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
-                    storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
-                    for (idx, ξ) in enumerate(listOfXiValues)
-                        sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR);
-                        storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp, newTheta));
-                        storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta);
+                    if alg.verbosePrint == 2
+                        
+                        listOfXiValues = collect(-0.6 : 0.05 : +0.6);
+                        storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
+                        storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
+                        for (idx, ξ) in enumerate(listOfXiValues)
+                            sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR);
+                            storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp, newTheta));
+                            storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta);
+                        end
+                        
+                        titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR);
+                        titleString = latexstring(titleString);
+                        renyiEntropyPlot = plot(listOfXiValues, storeEntanglementEntropy,
+                            linewidth = 2.0,
+                            xlabel = L"\xi", 
+                            ylabel = L"S", 
+                            label = L"S(\xi)", 
+                            frame = :box, 
+                            title = titleString, 
+                        )
+                        plot!(renyiEntropyPlot, listOfXiValues, storeAnalyticGradient, 
+                            linewidth = 2.0, 
+                            label = L"\partial S(\xi)/\partial \xi", 
+                        )
+                        display(renyiEntropyPlot)
+
                     end
-                    
-                    titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR);
-                    titleString = latexstring(titleString);
-                    renyiEntropyPlot = plot(listOfXiValues, storeEntanglementEntropy,
-                        linewidth = 2.0,
-                        xlabel = L"\xi", 
-                        ylabel = L"S", 
-                        label = L"S(\xi)", 
-                        frame = :box, 
-                        title = titleString, 
-                    )
-                    plot!(renyiEntropyPlot, listOfXiValues, storeAnalyticGradient, 
-                        linewidth = 2.0, 
-                        label = L"\partial S(\xi)/\partial \xi", 
-                    )
-                    display(renyiEntropyPlot)
 
                     # find optimimal ξ by roots of gradient
                     # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.5, +0.5);
@@ -585,7 +592,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
             energyConvergence = abs(mpsEnergy[end - 1] - mpsEnergy[end]);
             # energyConvergenceNew = norm(newEigsEnergies .- oldEigsEnergies);
             # display([energyConvergence energyConvergenceNew])
-            alg.verbosePrint && @printf("DMRG step %d - energy, convergence = %0.8f, %0.8e\n", loopCounter, mpoExpVal, energyConvergence);
+            alg.verbosePrint > 0 && @printf("DMRG step %d - energy, convergence = %0.8f, %0.8e\n", loopCounter, mpoExpVal, energyConvergence);
             if energyConvergence < alg.convTolE
                 runOptimizationDMRG = false;
             end
@@ -690,6 +697,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr), alg = TensorKit.SVD());
+                S /= norm(S);
                 U = permute(U, (1, 2), (3, ));
                 V = permute(S * V, (1, 2), (3, ));
 
@@ -736,6 +744,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr), alg = TensorKit.SVD());
+                S /= norm(S);
                 U = permute(U * S, (1, 2), (3, ));
                 V = permute(V, (1, 2), (3, ));
 
@@ -760,10 +769,6 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
                 
             end
 
-            # normalize MPS after DMRG step
-            mpsNorm = tr(finiteMPS[1]' * finiteMPS[1]);
-            finiteMPS[1] /= sqrt(mpsNorm);
-
             # compute MPO expectation value
             mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO);
             if imag(mpoExpVal) < 1e-12
@@ -775,7 +780,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
 
             # check convergence of ground state energy
             energyConvergence = abs(mpsEnergy[end - 1] - mpsEnergy[end]);
-            alg.verbosePrint && @printf("DMRG step %d - energy, convergence = %0.8f, %0.8e\n", loopCounter, mpoExpVal, energyConvergence);
+            alg.verbosePrint > 0 && @printf("DMRG step %d - energy, convergence = %0.8f, %0.8e\n", loopCounter, mpoExpVal, energyConvergence);
             if energyConvergence < alg.convTolE
                 runOptimizationDMRG = false;
             end
@@ -816,6 +821,427 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
 
 end
 
+function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS::Vector{<:SparseMPS}, QFTModel::AbstractQFTModel, alg::DMRG2BO)
+
+    # create MPO that should be simulated
+    finiteMPO = mpoHandle(QFTModel);
+    println(getLinkDimsMPO(finiteMPO))
+
+    # get bogParameters
+    bogParameters = QFTModel.modelParameters.truncationParameters[:bogParameters];
+    println(bogParameters)
+
+    # apply finiteMPO to finiteMPS to introduce QNs that cannot be introduced by a regular 2-site update due to different local Hilbert spaces
+    if alg.subspaceExpansion
+        finiteMPS = applyMPO(finiteMPO, finiteMPS, truncErr = 1e-3, compressionAlg = "zipUp");
+    end
+
+    # initialize array to store Bogoliubov parameters
+    storeBogoliubovParameters = zeros(Float64, 0, QFTModel.modelParameters.truncationParameters[:kMax]);
+    # storeBogoliubovParameters = vcat(storeBogoliubovParameters, reshape(bogParameters, 1, length(bogParameters)));
+
+    # set penaltyWeights
+    penaltyWeights = 1e2 * ones(length(previoMPS));
+
+    # initialize mpsEnergy
+    mpsEnergy = Float64[1.0];
+
+    # run DMRG until the energy variance is sufficiently close to 0
+    optimizationLoopCounter = 1;
+    maxOptimSteps = 1;
+    runOptimization = true;
+    while runOptimization
+
+        # initialize MPO environments
+        mpoEnvL, mpoEnvR = initializeMPOEnvironments(finiteMPS, finiteMPO);
+
+        # initialize projector environments
+        projEnvsL, projEnvsR = initializePROEnvironments(finiteMPS, previoMPS);
+
+        # main DMRG loop
+        loopCounter = 1;
+        runOptimizationDMRG = true;
+        while runOptimizationDMRG
+
+            # sweep L ---> R
+            for siteIdx = 1 : +1 : (length(finiteMPS) - 1)
+
+                # construct initial theta
+                thetaN = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, 4));
+
+                # construct thetas for orthStates
+                thetasO = Vector{TensorMap}(undef, length(previoMPS))
+                for orthMPO = eachindex(previoMPS)
+                    thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] * permute(previoMPS[orthMPO][siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, 4));
+                end
+
+                # optimize wave function to get newAC
+                eigenVal, eigenVec = 
+                    eigsolve(thetaN, 1, :SR, KrylovKit.Lanczos(tol = alg.eigsTol, maxiter = alg.maxIterations)) do x
+                        applyH2_X(x, siteIdx, mpoEnvL, finiteMPO, mpoEnvR, projEnvsL, thetasO, projEnvsR, penaltyWeights)
+                    end
+                # eigVal = eigenVal[1];
+                newTheta = eigenVec[1];
+
+                # ------------------------------------------------------------
+                # perform local basis optimization to reduce entanglement
+
+                if mod(siteIdx, 2) == 0 && loopCounter > alg.startOptimization
+            
+                    # get physVecSpaces for squeezing operator
+                    PL = space(finiteMPS[siteIdx + 0], 2);
+                    PR = space(finiteMPS[siteIdx + 1], 2);
+                    nMax = Int(0.5 * (dim(PL) - 1 + dim(PR) - 1));
+
+                    # set kL and kR
+                    kL = -1 * Int(siteIdx / 2);
+                    kR = +1 * Int(siteIdx / 2);
+                    # display([kL  kR])
+
+                    # compute cost function pre optimization
+                    costFuncPre = computeRenyiEntropy(newTheta);
+                    vNEntropyPre = computeEntropy(newTheta);
+
+                    # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
+                    if alg.verbosePrint == 2
+
+                        listOfXiValues = collect(-0.6 : 0.05 : +0.6);
+                        storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
+                        storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
+                        for (idx, ξ) in enumerate(listOfXiValues)
+                            sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR);
+                            storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp, newTheta));
+                            storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta);
+                        end
+
+                        titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR);
+                        titleString = latexstring(titleString);
+                        renyiEntropyPlot = plot(listOfXiValues, storeEntanglementEntropy,
+                            linewidth = 2.0,
+                            xlabel = L"\xi", 
+                            ylabel = L"S", 
+                            label = L"S(\xi)", 
+                            frame = :box, 
+                            title = titleString, 
+                        )
+                        plot!(renyiEntropyPlot, listOfXiValues, storeAnalyticGradient, 
+                            linewidth = 2.0, 
+                            label = L"\partial S(\xi)/\partial \xi", 
+                        )
+                        display(renyiEntropyPlot)
+
+                    end
+
+                    # find optimimal ξ by roots of gradient
+                    # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.5, +0.5);
+                    optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), 0.0);
+                    alg.verbosePrint > 0 && @show optimalXi
+                    
+                    # # optimize twoSiteUnitary
+                    # optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
+                    #     scale! = _scale!, 
+                    #     add! = _add!, 
+                    # );
+                    # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
+
+                    if any(abs.(optimalXi) .> 1e-3)
+
+                        # check acceptance of optimalXi
+                        newCostFunction = zeros(Float64, length(optimalXi));
+                        for (idx, ξ) in enumerate(optimalXi)
+
+                            # transform newTheta with optimalS
+                            optimalS = squeezingOp(ξ, nMax, kL, kR, PL, PR);
+                            optimizedTheta = applyTwoModeTransformation(optimalS, newTheta);
+
+                            # compute cost function post optimiization
+                            costFuncPost = computeRenyiEntropy(optimizedTheta);
+                            vNEntropyPost = computeEntropy(optimizedTheta);
+                            # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
+                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                            # println()
+
+                            newCostFunction[idx] = costFuncPost;
+
+                        end
+
+                        # select optimalXi corresponding to lowest costFuncPost
+                        costFuncPost, minIdx = findmin(newCostFunction);
+                        optimalXi = optimalXi[minIdx];
+                        # @show optimalXi
+
+                        # decompose optimizedTheta
+                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
+
+                            # update two site tensor
+                            optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR);
+                            newTheta = applyTwoModeTransformation(optimalS, newTheta);
+                            alg.verbosePrint > 0 && println("new optimal ξ = ", optimalXi)
+
+                            # update QFTModel with new bogParameters
+                            # bogParameters[kR] = -optimalXi;
+                            bogParameters[kR] -= optimalXi;
+                            QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
+                            println(bogParameters, "\n")
+
+                            # recreate modified MPO
+                            finiteMPO = mpoHandle(QFTModel);
+
+                        end
+
+                    end
+                    
+                end
+
+                # ------------------------------------------------------------
+
+                #  perform SVD and truncate to desired bond dimension
+                U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr), alg = TensorKit.SVD());
+                S /= norm(S);
+                U = permute(U, (1, 2), (3, ));
+                V = permute(S * V, (1, 2), (3, ));
+
+                # assign updated tensors and update MPO environments
+                finiteMPS[siteIdx + 0] = U;
+                finiteMPS[siteIdx + 1] = V;
+
+                # update mpoEnvL
+                mpoEnvL[siteIdx + 1] = update_MPOEnvL(mpoEnvL[siteIdx], finiteMPS[siteIdx], finiteMPO[siteIdx], finiteMPS[siteIdx]);
+
+                # shift orthogonality center of previoMPS to the right
+                for orthIdx = eachindex(previoMPS)
+                    (Q, R) = leftorth(previoMPS[orthIdx][siteIdx], (1, 2), (3, ), alg = QRpos());
+                    previoMPS[orthIdx][siteIdx + 0] = permute(Q, (1, 2), (3, ));
+                    previoMPS[orthIdx][siteIdx + 1] = permute(R * permute(previoMPS[orthIdx][siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, ));
+                end
+
+                # update projEnvsL
+                for orthIdx = eachindex(previoMPS)
+                    projEnvsL[orthIdx][siteIdx + 1] = update_MPSEnvL(projEnvsL[orthIdx][siteIdx], finiteMPS[siteIdx], previoMPS[orthIdx][siteIdx]);
+                end
+
+            end
+
+            # sweep L <--- R
+            for siteIdx = (length(finiteMPS) - 1) : -1 : 1
+
+                # construct initial theta
+                thetaN = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, 4));
+
+                # construct thetas for orthStates
+                thetasO = Vector{TensorMap}(undef, length(previoMPS))
+                for orthMPO = eachindex(previoMPS)
+                    thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] * permute(previoMPS[orthMPO][siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, 4));
+                end
+
+                # optimize wave function to get newAC
+                eigenVal, eigenVec = 
+                    eigsolve(thetaN, 1, :SR, KrylovKit.Lanczos(tol = alg.eigsTol, maxiter = alg.maxIterations)) do x
+                        applyH2_X(x, siteIdx, mpoEnvL, finiteMPO, mpoEnvR, projEnvsL, thetasO, projEnvsR, penaltyWeights)
+                    end
+                # eigVal = eigenVal[1];
+                newTheta = eigenVec[1];
+
+                # ------------------------------------------------------------
+                # perform local basis optimization to reduce entanglement
+
+                if mod(siteIdx, 2) == 0 && loopCounter >= alg.startOptimization
+            
+                    # get physVecSpaces for squeezing operator
+                    PL = space(finiteMPS[siteIdx + 0], 2);
+                    PR = space(finiteMPS[siteIdx + 1], 2);
+                    nMax = Int(0.5 * (dim(PL) - 1 + dim(PR) - 1));
+
+                    # set kL and kR
+                    kL = -1 * Int(siteIdx / 2);
+                    kR = +1 * Int(siteIdx / 2);
+                    # display([kL  kR])
+
+                    # compute cost function pre optimization
+                    costFuncPre = computeRenyiEntropy(newTheta);
+                    vNEntropyPre = computeEntropy(newTheta);
+
+                    # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
+                    if alg.verbosePrint == 2
+                        
+                        listOfXiValues = collect(-0.6 : 0.05 : +0.6);
+                        storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
+                        storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
+                        for (idx, ξ) in enumerate(listOfXiValues)
+                            sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR);
+                            storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp, newTheta));
+                            storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta);
+                        end
+                        
+                        titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR);
+                        titleString = latexstring(titleString);
+                        renyiEntropyPlot = plot(listOfXiValues, storeEntanglementEntropy,
+                            linewidth = 2.0,
+                            xlabel = L"\xi", 
+                            ylabel = L"S", 
+                            label = L"S(\xi)", 
+                            frame = :box, 
+                            title = titleString, 
+                        )
+                        plot!(renyiEntropyPlot, listOfXiValues, storeAnalyticGradient, 
+                            linewidth = 2.0, 
+                            label = L"\partial S(\xi)/\partial \xi", 
+                        )
+                        display(renyiEntropyPlot)
+
+                    end
+
+                    # find optimimal ξ by roots of gradient
+                    # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.5, +0.5);
+                    optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), 0.0);
+                    alg.verbosePrint > 0 && @show optimalXi
+                    
+                    # # optimize twoSiteUnitary
+                    # optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
+                    #     scale! = _scale!, 
+                    #     add! = _add!, 
+                    # );
+                    # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
+
+                    if any(abs.(optimalXi) .> 1e-3)
+
+                        # check acceptance of optimalXi
+                        newCostFunction = zeros(Float64, length(optimalXi));
+                        for (idx, ξ) in enumerate(optimalXi)
+
+                            # transform newTheta with optimalS
+                            optimalS = squeezingOp(ξ, nMax, kL, kR, PL, PR);
+                            optimizedTheta = applyTwoModeTransformation(optimalS, newTheta);
+
+                            # compute cost function post optimiization
+                            costFuncPost = computeRenyiEntropy(optimizedTheta);
+                            vNEntropyPost = computeEntropy(optimizedTheta);
+                            # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
+                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                            # println()
+
+                            newCostFunction[idx] = costFuncPost;
+
+                        end
+
+                        # select optimalXi corresponding to lowest costFuncPost
+                        costFuncPost, minIdx = findmin(newCostFunction);
+                        optimalXi = optimalXi[minIdx];
+                        # @show optimalXi
+
+                        # decompose optimizedTheta
+                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
+
+                            # update two site tensor
+                            optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR);
+                            newTheta = applyTwoModeTransformation(optimalS, newTheta);
+                            println("new optimal ξ = ", optimalXi)
+
+                            # update QFTModel with new bogParameters
+                            # bogParameters[kR] = -optimalXi;
+                            bogParameters[kR] -= optimalXi;
+                            QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
+                            alg.verbosePrint > 0 && println(bogParameters, "\n")
+
+                            # recreate modified MPO
+                            finiteMPO = mpoHandle(QFTModel);
+
+                        end
+
+                    end
+                    
+                end
+
+                # ------------------------------------------------------------
+
+                #  perform SVD and truncate to desired bond dimension
+                U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr), alg = TensorKit.SVD());
+                S /= norm(S);
+                U = permute(U * S, (1, 2), (3, ));
+                V = permute(V, (1, 2), (3, ));
+
+                # assign updated tensors and update MPO environments
+                finiteMPS[siteIdx + 0] = U;
+                finiteMPS[siteIdx + 1] = V;
+
+                # update mpoEnvR
+                mpoEnvR[siteIdx + 0] = update_MPOEnvR(mpoEnvR[siteIdx + 1], finiteMPS[siteIdx + 1], finiteMPO[siteIdx + 1], finiteMPS[siteIdx + 1]);
+
+                # shift orthogonality center of previoMPS to the right
+                for orthIdx = eachindex(previoMPS)
+                    (L, Q) = rightorth(previoMPS[orthIdx][siteIdx + 1], (1, ), (2, 3), alg = LQpos());
+                    previoMPS[orthIdx][siteIdx + 0] = permute(permute(previoMPS[orthIdx][siteIdx + 0], (1, 2), (3, )) * L, (1, 2), (3, ));
+                    previoMPS[orthIdx][siteIdx + 1] = permute(Q, (1, 2), (3, ));
+                end
+
+                # update projEnvsR
+                for orthIdx = eachindex(previoMPS)
+                    projEnvsR[orthIdx][siteIdx + 0] = update_MPSEnvR(projEnvsR[orthIdx][siteIdx + 1], finiteMPS[siteIdx + 1], previoMPS[orthIdx][siteIdx + 1]);
+                end
+                
+            end
+
+            # store bogParameters
+            storeBogoliubovParameters = vcat(storeBogoliubovParameters, reshape(bogParameters, 1, length(bogParameters)));
+
+            # compute MPO expectation value
+            mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO);
+            if imag(mpoExpVal) < 1e-12
+                mpoExpVal = real(mpoExpVal);
+            else
+                ErrorException("the Hamiltonian is not Hermitian, complex eigenvalue found.")
+            end
+            mpsEnergy = vcat(mpsEnergy, mpoExpVal);
+
+            # check convergence of ground state energy
+            energyConvergence = abs(mpsEnergy[end - 1] - mpsEnergy[end]);
+            alg.verbosePrint > 0 && @printf("DMRG step %d - energy, convergence = %0.8f, %0.8e\n", loopCounter, mpoExpVal, energyConvergence);
+            if energyConvergence < alg.convTolE
+                runOptimizationDMRG = false;
+            end
+
+            # increase loopCounter
+            loopCounter += 1;
+
+        end
+
+        display(bogParameters)
+
+        # compute energy variance ⟨(H - E)^2⟩
+        energyVariance = variance_mpo(finiteMPS, finiteMPO);
+        @printf("Energy variance ⟨ψ|(H - E)^2|ψ⟩ = %0.4e\n", energyVariance);
+
+        # re-randomize finiteMPS if non-eigenstate was found
+        if energyVariance > 1e-1
+            if optimizationLoopCounter < maxOptimSteps
+                @printf("\nre-randomizing MPS...\n")
+                for idxMPS = eachindex(finiteMPS)
+                    finiteMPS[idxMPS] += 0.1 * TensorMap(randn, codomain(finiteMPS[idxMPS]), domain(finiteMPS[idxMPS]));
+                end
+                finiteMPS = normalizeMPS(finiteMPS);
+                finiteMPS = applyMPO(finiteMPO, finiteMPS, truncErr = 1e-3, compressionAlg = "zipUp");
+            else
+                runOptimization = false;
+            end
+        else
+            runOptimization = false;
+        end
+
+        # increase optimizationLoopCounter
+        optimizationLoopCounter += 1;
+
+    end
+
+    # return optimized finiteMPS
+    finalEnergy = mpsEnergy[end];
+    return finiteMPS, finalEnergy, storeBogoliubovParameters
+
+end
+
 function find_excitedstate(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMPS::Vector{SparseMPS}, alg::DMRG2)
     return find_excitedstate!(copy(finiteMPS), finiteMPO, previoMPS, alg)
+end
+
+function find_excitedstate(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS::Vector{SparseMPS}, QFTModel::AbstractQFTModel, alg::DMRG2BO)
+    return find_excitedstate!(copy(finiteMPS), mpoHandle, previoMPS, QFTModel, alg)
 end

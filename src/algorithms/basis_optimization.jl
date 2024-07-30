@@ -29,11 +29,11 @@ end
 function squeezingOp(ξ::Union{Int64, Float64, ComplexF64}, nMax::Int64, kL::Int64, kR::Int64, PL::ElementarySpace, PR::ElementarySpace)
 
     # construct two-site operators
-    CrCr = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL), localCreationOp(kR, PR)]);
-    AnAn = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL), localAnnihilationOp(kR, PR)]);
-    IdId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)]);
-    NuId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)]);
-    IdNu = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)]);
+    CrCr = convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL), localCreationOp(kR, PR)]);
+    AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL), localAnnihilationOp(kR, PR)]);
+    IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)]);
+    NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)]);
+    IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)]);
 
     # compute μ and ν
     # μ = cosh(abs(ξ));
@@ -81,15 +81,15 @@ function findDisentanglingRotation(ξ::Union{Int64, Float64, ComplexF64}, nMax::
     return costFunction;
 end
 
-function value_and_gradient(ξ::Union{Int64, Float64, ComplexF64}, nMax::Int64, kL::Int64, kR::Int64, PL::ElementarySpace, PR::ElementarySpace, twoSiteTensor::TensorMap)
-    fval = findDisentanglingRotation(ξ, nMax, kL, kR, PL, PR, twoSiteTensor);
-    gval = Zygote.gradient(x -> findDisentanglingRotation(x, nMax, kL, kR, PL, PR, twoSiteTensor), ξ)[1];
-    return real(fval), gval;
-end
+# function value_and_gradient(ξ::Union{Int64, Float64, ComplexF64}, nMax::Int64, kL::Int64, kR::Int64, PL::ElementarySpace, PR::ElementarySpace, twoSiteTensor::TensorMap)
+#     fval = findDisentanglingRotation(ξ, nMax, kL, kR, PL, PR, twoSiteTensor);
+#     gval = Zygote.gradient(x -> findDisentanglingRotation(x, nMax, kL, kR, PL, PR, twoSiteTensor), ξ)[1];
+#     return real(fval), gval;
+# end
 
-# OptimKit functions for optimization of Float64 values
-_scale!(v, α) = v * α;
-_add!(vdst, vsrc, α) = vdst += vsrc * α;
+# # OptimKit functions for optimization of Float64 values
+# _scale!(v, α) = v * α;
+# _add!(vdst, vsrc, α) = vdst += vsrc * α;
 
 
 
@@ -117,11 +117,11 @@ dν(ξ) = cosh(abs(ξ));
 function gradient_squeezing_operator(ξ::Union{Int64, Float64, ComplexF64}, nMax::Int64, kL::Int64, kR::Int64, PL::ElementarySpace, PR::ElementarySpace)
 
     # construct two-site operators
-    CrCr = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL), localCreationOp(kR, PR)]);
-    AnAn = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL), localAnnihilationOp(kR, PR)]);
-    IdId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)]);
-    NuId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)]);
-    IdNu = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)]);
+    CrCr = convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL), localCreationOp(kR, PR)]);
+    AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL), localAnnihilationOp(kR, PR)]);
+    IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)]);
+    NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)]);
+    IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)]);
 
     # compute μ and ν
     μ = cosh(ξ);
