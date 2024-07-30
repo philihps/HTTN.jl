@@ -60,6 +60,7 @@ module HTTN
 
     # export utility functions
     export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
+    export diag
     export save_to_file, load_from_file
 
 

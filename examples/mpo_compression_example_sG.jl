@@ -23,9 +23,10 @@ kMax = 6;
 nMax = 1;
 nMaxZM = 20;
 modeOrdering = 1;
-bogoliubovR = 0;
-bogParameters = [1.24, 1.15, 1.00, 1.02, 0.90, 0.82, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13, 0.12, 0.11, 0.10, 0.10];
+bogoliubovR = 1;
 
+# set Bogoliubov rotation parameters
+bogParameters = [1.1392177414024305, 0.7996105297696293, 0.6064367217222117, 0.48030611206315665, 0.39039125843460976, 0.32251603639744303];
 
 # set model parameters
 βFF = sqrt(4 * π);
@@ -122,13 +123,13 @@ for (idxB, β) in enumerate(betaList)
         label = "compressed MPO", 
     )
 
+    # plot decay of singular values
     svdPlot = plot(
-    xlab = "Rank", 
-    ylab = L"\log_{10}(\lambda)", 
-    frame = :box, 
+        xlab = "Rank", 
+        ylab = L"\log_{10}(\lambda)", 
+        frame = :box, 
     )
     for (idxS, S) in enumerate(Ss)
-
         res = Float64[]
         for (k, v) in S.data
             append!(res, diag(v))

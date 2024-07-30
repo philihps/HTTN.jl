@@ -24,18 +24,26 @@ nMax = 1;
 nMaxZM = 20;
 modeOrdering = 1;
 bogoliubovR = 0;
+
+# set Bogoliubov rotation parameters
 bogParameters = [1.24, 1.15, 1.00, 1.02, 0.90, 0.82, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13, 0.12, 0.11, 0.10, 0.10];
+
+# set model parameters
+θ = 1.0 * π;
+e = 1.0;
+M = e / sqrt(π);
+L = 100.0;
 
 
 # set model parameters
-θFF = pi/6
-m = 1
 M = 1.
 L = 25.0;
-# R = sqrt(4 * π) / β;
 
-# set list of betas
-thetaList = θFF * collect(1.0 : 0.2 : 1.0);
+# set list of θ
+thetaList = π * collect(1.0 : 0.2 : 1.0);
+
+# set list of fermion masses m
+fermionMasses = [0.10];
 
 # flags to compute ground state with DMRG
 runDMRG = 0;
@@ -67,7 +75,7 @@ mpoBondDimensionPlot = plot(
 )
 
 # loop over Hamiltonian parameters
-for (idxT, θ) in enumerate(thetaList)
+for (idxT, θ) in enumerate(thetaList), (idxM, m) in enumerate(fermionMasses)
 
     # create NamedTuple for truncation parameters and model parameters
     truncationParameters = (kMax = kMax, nMax = nMax, nMaxZM = nMaxZM, truncMethod = truncMethod, modeOrdering = modeOrdering, bogoliubovR = bogoliubovR, bogParameters = bogParameters);
@@ -81,7 +89,7 @@ for (idxT, θ) in enumerate(thetaList)
     boundarySpaceL = U1Space(0 => 1);
     boundarySpaceR = U1Space(0 => 1);
     physSpaces = mS.physSpaces;
-    virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
+    virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
 
     # construct massive Schwinger MPO
     hamMPO = generate_MPO_mS(mS);
@@ -120,13 +128,13 @@ for (idxT, θ) in enumerate(thetaList)
         label = "compressed MPO", 
     )
 
+    # plot decay of singular values
     svdPlot = plot(
-    xlab = "Rank", 
-    ylab = L"\log_{10}(\lambda)", 
-    frame = :box, 
+        xlab = "Rank", 
+        ylab = L"\log_{10}(\lambda)", 
+        frame = :box, 
     )
     for (idxS, S) in enumerate(Ss)
-
         res = Float64[]
         for (k, v) in S.data
             append!(res, diag(v))

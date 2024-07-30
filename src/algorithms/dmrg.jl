@@ -342,8 +342,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     end
 
                     # find optimimal ξ by roots of gradient
-                    # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.5, +0.5);
-                    optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), 0.0);
+                    optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.2, +0.2);
+                    # optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), 0.0);
                     @show optimalXi
                     
                     # # optimize twoSiteUnitary
@@ -494,8 +494,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     end
 
                     # find optimimal ξ by roots of gradient
-                    # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.5, +0.5);
-                    optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), 0.0);
+                    optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.2, +0.2);
+                    # optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), 0.0);
                     @show optimalXi
                     
                     # # optimize twoSiteUnitary
