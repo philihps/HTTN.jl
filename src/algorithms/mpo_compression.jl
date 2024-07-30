@@ -310,15 +310,14 @@ function left_canonicalize(matrixMPO; rightEnvironment = undef, truncation::Bool
 
         # check dimensions of tensors before the decomposition and use RQ or QR
         tensorDimensions = dim.([space(fused_tensor, idx) for idx = 1 : 4]);
-        if prod(tensorDimensions[1 : 3]) > tensorDimensions[4]
-            # println("QR decomposition of T")
+        if prod(tensorDimensions[1 : 3]) >= tensorDimensions[4]
             Q, R = leftorth(fused_tensor, (1, 2, 4), (3, ), alg = QRpos());
-            Q = Q * sqrt(localDim); # proper normalization
-            R = R / sqrt(localDim);
-            Q = permute(Q, (1, 2), (3, 4));
         else
-            @error "not yet implemented"
+            Q, R = leftorth(fused_tensor, (1, 2, 4), (3, ), alg = QLpos());
         end
+        Q = Q * sqrt(localDim); # proper normalization
+        R = R / sqrt(localDim);
+        Q = permute(Q, (1, 2), (4, 3));
 
         if norm(R) <= 1e-12
             if verbose > 0
@@ -333,9 +332,6 @@ function left_canonicalize(matrixMPO; rightEnvironment = undef, truncation::Bool
             @tensor Q[-1 -2; -3 -4] := Q[-1, -2, 3, -4] * U[3, -3];
             R = S * V;
         end
-        
-        # reshape Q to restore the index order
-        Q = permute(Q, (1, 2), (4, 3));
 
         # split again the fused_tensor into af and Wf
         @tensor af[-1 -2; -3 -4] := proj_at'[-1, 1] * Q[1, -2, -3, -4];
@@ -489,31 +485,24 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
         W = matMPO[siteIndex][2, 2];
         rightSpace_bt = bt.dom[1];
         rightSpace_W  = W.dom[1];
-        proj_bt, proj_W = generate_projectors(rightSpace_bt, rightSpace_W);
-        @tensor fused_tensor[-1 -2; -3 -4] := bt[-1, -2, 3, -4] * proj_bt'[3, -3] + W[-1, -2, 3, -4] * proj_W'[3, -3];
-        # proj_W, proj_bt = generate_projectors(rightSpace_W, rightSpace_bt);
-        # @tensor fused_tensor[-1 -2; -3 -4] := W[-1, -2, 3, -4] * proj_W'[3, -3] + bt[-1, -2, 3, -4] * proj_bt'[3, -3];
+        proj_W, proj_bt = generate_projectors(rightSpace_W, rightSpace_bt);
+        @tensor fused_tensor[-1 -2; -3 -4] := W[-1, -2, 3, -4] * proj_W'[3, -3] + bt[-1, -2, 3, -4] * proj_bt'[3, -3];
 
         # # we then do a simple RQ and reproject
         # R, Q = rightorth(fused_tensor, (1, ), (2, 3, 4), alg = RQpos());
         # Q = Q * sqrt(localDim); # proper normalization
         # R = R / sqrt(localDim);
 
-        # check dimensions of tensors before the decomposition and use RQ or QR
+        # check dimensions of tensors before the decomposition and use RQ or LQ
         tensorDimensions = dim.([space(fused_tensor, idx) for idx = 1 : 4]);
-        if tensorDimensions[1] < prod(tensorDimensions[2 : 4])
-            # println("RQ decomposition of T")
+        if tensorDimensions[1] <= prod(tensorDimensions[2 : 4])
             R, Q = rightorth(fused_tensor, (1, ), (2, 3, 4), alg = RQpos());
-            Q = Q * sqrt(localDim); # proper normalization
-            R = R / sqrt(localDim);
-            Q = permute(Q, (1, 2), (3, 4));
         else
-            # println("QR decomposition of T'")
-            Q, R = leftorth(fused_tensor', (1, 2, 4), (3, ), alg = QRpos());
-            Q = Q' * sqrt(localDim); # proper normalization
-            R = R' / sqrt(localDim);
-            Q = permute(Q, (1, 4), (2, 3));
+            R, Q = rightorth(fused_tensor, (1, ), (2, 3, 4), alg = LQpos());
         end
+        Q = Q * sqrt(localDim); # proper normalization
+        R = R / sqrt(localDim);
+        Q = permute(Q, (1, 2), (3, 4));
 
         if norm(R) <= 1e-12
            if verbose > 0
@@ -530,10 +519,8 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
         end
 
         # split again the fused_tensor into bf and Wf
-        @tensor bf[-1 -2; -3 -4] := Q[-1, -2, 3, -4] * proj_bt[3, -3];
         @tensor Wf[-1 -2; -3 -4] := Q[-1, -2, 3, -4] * proj_W[3, -3];
-        # @tensor Wf[-1 -2; -3 -4] := Q[-1, -2, 3, -4] * proj_W[3, -3];
-        # @tensor bf[-1 -2; -3 -4] := Q[-1, -2, 3, -4] * proj_bt[3, -3];
+        @tensor bf[-1 -2; -3 -4] := Q[-1, -2, 3, -4] * proj_bt[3, -3];
 
         # assign updated matrices to matMPO
         newLeftSpace = Q.codom[1];
