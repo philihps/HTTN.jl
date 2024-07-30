@@ -17,7 +17,7 @@ using TensorKit
 
 
 # set truncation parameters
-modelName = "sineGordon";
+modelName = "massiveSchwinger";
 truncMethod = 2;
 kMax = 6;
 nMax = 1;
@@ -28,13 +28,14 @@ bogParameters = [1.24, 1.15, 1.00, 1.02, 0.90, 0.82, 0.71, 0.60, 0.55, 0.45, 0.3
 
 
 # set model parameters
-βFF = sqrt(4 * π);
-λ = 1.0;
+θFF = pi/6
+m = 1
+M = 1.
 L = 25.0;
 # R = sqrt(4 * π) / β;
 
 # set list of betas
-betaList = βFF * collect(1.0 : 0.2 : 1.0);
+thetaList = θFF * collect(1.0 : 0.2 : 1.0);
 
 # flags to compute ground state with DMRG
 runDMRG = 0;
@@ -66,27 +67,24 @@ mpoBondDimensionPlot = plot(
 )
 
 # loop over Hamiltonian parameters
-for (idxB, β) in enumerate(betaList)
-
-    # compute compactification radius
-    R = sqrt(4 * π) / β;
+for (idxT, θ) in enumerate(thetaList)
 
     # create NamedTuple for truncation parameters and model parameters
     truncationParameters = (kMax = kMax, nMax = nMax, nMaxZM = nMaxZM, truncMethod = truncMethod, modeOrdering = modeOrdering, bogoliubovR = bogoliubovR, bogParameters = bogParameters);
-    hamiltonianParameters = (β = β, R = R, λ = λ, L = L);
+    hamiltonianParameters = (θ = θ, m = m, M = M, L = L);
 
-    # construct Sine-Gordon model (with MPO)
-    sG = SineGordonModel(truncationParameters, hamiltonianParameters);
-    display(sG.modeOccupations)
+    # construct massive Schwinger model (with MPO)
+    mS = MassiveSchwingerModel(truncationParameters, hamiltonianParameters);
+    display(mS.modeOccupations)
 
     # construct physical and virtual vector spaces for the MPS
     boundarySpaceL = U1Space(0 => 1);
     boundarySpaceR = U1Space(0 => 1);
-    physSpaces = sG.physSpaces;
+    physSpaces = mS.physSpaces;
     virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
 
-    # construct sineGordon MPO
-    hamMPO = generate_MPO_sG(sG);
+    # construct massive Schwinger MPO
+    hamMPO = generate_MPO_mS(mS);
     mpoBondDims = getLinkDimsMPO(hamMPO);
     println(mpoBondDims)
 
@@ -100,8 +98,8 @@ for (idxB, β) in enumerate(betaList)
 
         # initialize vacuum MPS
         # initialMPS = initializeVacuumMPS(sG, modeOrdering = modeOrdering);
-        vacuumMPS = initializeVacuumMPS(sG, modeOrdering = modeOrdering);
-        initialMPS = initializeMPS(sG, vacuumMPS, modeOrdering = modeOrdering);
+        vacuumMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+        initialMPS = initializeMPS(mS, vacuumMPS, modeOrdering = modeOrdering);
 
         # run DMRG for ground state
         @time begin
@@ -142,8 +140,8 @@ for (idxB, β) in enumerate(betaList)
 
         # initialize vacuum MPS
         # initialMPS = initializeVacuumMPS(sG, modeOrdering = modeOrdering);
-        vacuumMPS = initializeVacuumMPS(sG, modeOrdering = modeOrdering);
-        initialMPS = initializeMPS(sG, vacuumMPS, modeOrdering = modeOrdering);
+        vacuumMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+        initialMPS = initializeMPS(mS, vacuumMPS, modeOrdering = modeOrdering);
 
         # run DMRG for ground state
         @time begin

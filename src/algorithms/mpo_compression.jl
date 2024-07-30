@@ -4,10 +4,10 @@
 
     Function to compress an MPO with truncError the singular values
 """
-function compress_MPO(vecTensor::SparseMPO; truncError::Float64 = 1e-14)
+function compress_MPO(vecTensor::SparseMPO; truncError::Float64 = 1e-14, verbose::Int64 = 0)
     matMPO = convert_MPO_33block(vecTensor);
-    matMPO, Le, Re = compress_MPO(matMPO, truncError = truncError);
-    return convert_33block_MPO(matMPO, leftEnvironment = Le, rightEnvironment = Re);
+    matMPO, Le, Re, Ss = compress_MPO(matMPO ; truncError = truncError, verbose);
+    return convert_33block_MPO(matMPO, leftEnvironment = Le, rightEnvironment = Re), Ss;
 end
 
 
@@ -17,18 +17,18 @@ end
     Example function for the optimization of the MPO.
     We assume a representation as a set of 3x3 matrix of tensors
 """
-function compress_MPO(vecTensor::Vector{Array{TensorMap}}; truncError::Float64 = 1e-14)
+function compress_MPO(vecTensor::Vector{Array{TensorMap}}; truncError::Float64 = 1e-14, verbose::Int64 = 0)
     
     # bring the MPO in a well-defined canonical form
-    vecTensor, rightEnv = left_canonicalize(vecTensor);
-    vecTensor, leftEnv = right_canonicalize(vecTensor);
+    vecTensor, rightEnv = left_canonicalize(vecTensor; verbose);
+    vecTensor, leftEnv = right_canonicalize(vecTensor; verbose);
     
     # perform actual truncation of the MPO
-    vecTensor, rightEnv = left_canonicalize(vecTensor; rightEnvironment = rightEnv, truncation = true, truncError);
-    vecTensor, leftEnv = right_canonicalize(vecTensor; leftEnvironment = leftEnv, truncation = true, truncError);
+    vecTensor, rightEnv = left_canonicalize(vecTensor; rightEnvironment = rightEnv, truncation = true, truncError, verbose);
+    vecTensor, leftEnv, Ss = right_canonicalize(vecTensor; leftEnvironment = leftEnv, truncation = true, truncError, verbose);
     
     # note it can be useful to repeat once or twice this truncation step for _very_ large MPO
-    return vecTensor, leftEnv, rightEnv;
+    return vecTensor, leftEnv, rightEnv, Ss;
 end
 
 
@@ -250,10 +250,11 @@ function left_canonicalize(matrixMPO; rightEnvironment = undef, truncation::Bool
     
     matMPO = deepcopy(matrixMPO)
     L = length(matMPO)
+    Ss = TensorMap[]
 
     # if undef, we introduce the right boundary tensor (0, 0, 1)
     if rightEnvironment == undef
-        if verbose > 0
+        if verbose > 1
             println("Building the right environment")
         end
         rightEnvironment = Vector{eltype(matrixMPO[1])}(undef, 3);
@@ -270,7 +271,7 @@ function left_canonicalize(matrixMPO; rightEnvironment = undef, truncation::Bool
     # sweep from left --> right
     for siteIndex in 1 : L
         
-        if verbose > 0
+        if verbose > 1
             println("Canonicalizing site $siteIndex")
         end
         
@@ -320,7 +321,7 @@ function left_canonicalize(matrixMPO; rightEnvironment = undef, truncation::Bool
         Q = permute(Q, (1, 2), (4, 3));
 
         if norm(R) <= 1e-12
-            if verbose > 0
+            if verbose > 1
                 println("Dirty fix, need to think about it a bit")
             end
             Q = Q * 0;
@@ -328,9 +329,13 @@ function left_canonicalize(matrixMPO; rightEnvironment = undef, truncation::Bool
 
         if truncation && norm(R) > 1e-12
             norm(t) > tol && println("The form is not perfectly canonical")
-            U, S, V = tsvd(R, trunc = truncerr(truncError));
+            U, S, V, err = tsvd(R, trunc = truncerr(truncError));
             @tensor Q[-1 -2; -3 -4] := Q[-1, -2, 3, -4] * U[3, -3];
             R = S * V;
+            append!(Ss, [S])
+            if verbose > 0
+                println("Position $siteIndex : truncation error $err for norm $(norm(S))")
+            end
         end
 
         # split again the fused_tensor into af and Wf
@@ -354,7 +359,7 @@ function left_canonicalize(matrixMPO; rightEnvironment = undef, truncation::Bool
         # 0  0  1     0 0 1     0     0         1
         if siteIndex != L
 
-            if verbose > 0
+            if verbose > 1
                 println("Moving (R, t) to the right")
             end
 
@@ -385,7 +390,7 @@ function left_canonicalize(matrixMPO; rightEnvironment = undef, truncation::Bool
 
         else
 
-            if verbose > 0
+            if verbose > 1
                 println("Updating the right environment")
             end
 
@@ -405,7 +410,7 @@ function left_canonicalize(matrixMPO; rightEnvironment = undef, truncation::Bool
 
         end
     end
-    return matMPO, rightEnvironment
+    return matMPO, rightEnvironment, Ss
 
 end
 
@@ -435,10 +440,11 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
     
     matMPO = deepcopy(matrixMPO)
     L = length(matMPO)
+    Ss = TensorMap[]
     
     # if undef, we introduce the left boundary tensor (1, 0, 0)
     if leftEnvironment == undef
-        if verbose > 0
+        if verbose > 1
             println("Building the left environment")
         end
         leftEnvironment = Vector{eltype(matrixMPO[1])}(undef, 3);
@@ -455,7 +461,7 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
     # sweep from right --> left
     for siteIndex in reverse(1 : L)
         
-        if verbose > 0
+        if verbose > 1
             println("Canonicalizing site $siteIndex")
         end
 
@@ -505,7 +511,7 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
         Q = permute(Q, (1, 2), (3, 4));
 
         if norm(R) <= 1e-12
-           if verbose > 0
+           if verbose > 1
                println("Dirty fix, need to think about it a bit")
            end
            Q = Q * 0;
@@ -513,9 +519,13 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
 
         if truncation && norm(R) > 1e-12
             norm(t) > tol && println("The form is not perfectly canonical")
-            U, S, V = tsvd(R, trunc = truncerr(truncError));
+            U, S, V, err = tsvd(R, trunc = truncerr(truncError));
             R = U * S;
             @tensor Q[-1 -2; -3 -4] := V[-1, 1] * Q[1, -2, -3, -4];
+            append!(Ss, [S])
+            if verbose > 0
+                println("Position $siteIndex : truncation error $err for norm $(norm(S))")
+            end
         end
 
         # split again the fused_tensor into bf and Wf
@@ -534,7 +544,7 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
         # 0  0  1     0 0 1     0     0          1
         if siteIndex != 1
 
-            if verbose > 0
+            if verbose > 1
                 println("Moving (R, t) to the left")
             end
 
@@ -565,7 +575,7 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
 
         else
 
-            if verbose > 0
+            if verbose > 1
                 println("Updating the right environment")
             end
 
@@ -585,6 +595,6 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
 
         end
     end
-    return matMPO, leftEnvironment
+    return matMPO, leftEnvironment, Ss
 
 end
