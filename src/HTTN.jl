@@ -38,7 +38,7 @@ module HTTN
     export getMomentumModes
     export initializeVacuumMPS, initializeMPS
     export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG
-    export updateBogoliubovPrameters
+    export updateBogoliubovParameters
     export local_number_operators
     export pairing_operators
 

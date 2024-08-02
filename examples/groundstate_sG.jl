@@ -18,45 +18,45 @@ using TensorKit
 
 # set truncation parameters
 modelName = "sineGordon";
-truncMethod = 3;
-kMax = 20;
-nMax = 2;
+truncMethod = 5;
+kMax = 1;
+nMax = 10;
 nMaxZM = 20;
 modeOrdering = 1;
-bogoliubovR = 1;
-bogParameters = [1.24, 1.15, 1.00, 1.02, 0.90, 0.82, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13, 0.12, 0.11, 0.10, 0.10];
-bogParameters = bogParameters[1 : kMax];
-
-# numerically obtained 
+bogoliubovR = 0;
+ 
 # truncMethod = 3
-# nMax = 3, nMaxZM = 20
-bogParameters = [1.15, 0.81, 0.61, 0.49, 0.40, 0.33, 0.28];
-bogParameters = [1.16, 0.83, 0.63, 0.50, 0.41, 0.34, 0.29, 0.25];
-bogParameters = [1.18, 0.84, 0.65, 0.52, 0.43, 0.35, 0.30, 0.26, 0.23];
+# nMax = 2, nMaxZM = 20
+optimalBogParameters = [
+    [0.8826048683738424], 
+    [0.9828021791747763, 0.6491902344524971], 
+    [1.044626054859938, 0.7083610403948314, 0.5226475079764566], 
+    [1.0864793212772548, 0.747793190933278, 0.561024939327877, 0.4365535698356723], 
+    [1.1167481237210954, 0.7765059016219192, 0.5874806631594979, 0.46245394976334214, 0.3725019267150249], 
+    [1.1392177414024305, 0.7996105297696293, 0.6064367217222117, 0.48030611206315665, 0.39039125843460976, 0.32251603639744303], 
+    [1.1558472437952432, 0.8161322683819685, 0.6214373360865272, 0.4930055858509503, 0.4026399385554361, 0.33496731102922384, 0.28191646142112725], 
+    [1.168313945446149, 0.828516288649089, 0.6335752562582665, 0.4930055858509503, 0.4026399385554361, 0.33496731102922384, 0.2907932559537785, 0.24875574737005915], 
+    [], 
+    [], 
+    [], 
+    [], 
+    [], 
+    [], 
+    [], 
+    [], 
+    [], 
+    [], 
+    [], 
+    [1.2154420098990029, 0.8741046214248941, 0.6850565405410879, 0.5555723860457121, 0.46204441091204673, 0.39140940910303207, 0.3343609068000002, 0.2870721376453025, 0.2506922636472108, 0.22253401068003634, 0.1973623119556844, 0.17389025874470296, 0.1556768567075738, 0.1402171933641977, 0.1285253169833322, 0.1162135859624253, 0.10552888433599983, 0.0968451306154898, 0.09113985045696667], 
+    [1.2225193774020136, 0.8803716914769047, 0.6879418108574467, 0.5577988583316977, 0.46376124715920797, 0.39367291936296134, 0.3376604157816094, 0.29218912736293856, 0.2539510721792752, 0.22253401068003634, 0.1973623119556844, 0.17715719756721635, 0.15848590999260423, 0.14259836529178319, 0.1285253169833322, 0.1162135859624253, 0.10820656279034487, 0.09925461079534144, 0.09113985045696667, 0.08391637833943519], 
+];
+bogParameters = convert.(Float64, optimalBogParameters[kMax]);
 
-bogParameters = [1.18, 0.84, 0.65, 0.52, 0.43, 0.35, 0.30, 0.26, 0.23, 0.19];  # kMax = 10
-bogParameters = [1.20, 0.87, 0.68, 0.55, 0.46, 0.38, 0.33, 0.28, 0.24, 0.21, 0.19, 0.17, 0.15, 0.14, 0.12];  # kMax = 15
-bogParameters = [1.20, 0.87, 0.68, 0.55, 0.46, 0.38, 0.33, 0.28, 0.24, 0.21, 0.19, 0.17, 0.14, 0.13, 0.12, 0.11, 0.10, 0.09, 0.08, 0.07];  # kMax = 20
-bogParameters = [1.2225193774020136, 0.8861846962608062, 0.6925623073197208, 0.5633939189799125, 0.4714697031066677, 0.39834443882585535, 0.3416479610923725, 0.2945033616457639, 0.2559054327657836, 0.22450595402426426, 0.19920223145866825, 0.17715719756721635, 0.15848590999260423, 0.14259836529178319, 0.1285253169833322, 0.11841659837952458, 0.10820656279034487, 0.09925461079534144, 0.09113985045696667, 0.08391637833943519];
-
-# # nMax = 20, nMaxZM = 20
-# bogParameters = [0.98, 0.64];
-# bogParameters = [1.04, 0.71, 0.52];
-# bogParameters = [1.08, 0.74, 0.55, 0.43];
-# bogParameters = [1.11, 0.77, 0.58, 0.46, 0.37];
-# bogParameters = [1.13, 0.79, 0.60, 0.48, 0.39, 0.32];
-# bogParameters = [1.13, 0.79, 0.60, 0.48, 0.39, 0.32, 0.25];
-
-
-# bogParameters = [0.981051191908355];
-
-# bogParameterInitial(kMax::Union{Int64, Float64}) = 1.5882 - 0.5014 * kMax + 0.0727 * kMax^2 - 0.0038 * kMax^3 + 0.05 * rand();
-# bogParameters = bogParameterInitial.(collect(1 : kMax));
-
+bogParameters = [0.23, 0.11];
 
 # set model parameters
 βFF = sqrt(4 * π);
-λ = 1.0;
+λ = 0.0;
 L = 25.0;
 # R = sqrt(4 * π) / β;
 
@@ -64,19 +64,20 @@ L = 25.0;
 betaList = βFF * collect(1.0 : 0.2 : 1.0);
 
 # set DMRG parameters
-bondDim = 256;
+bondDim = 1024;
 truncErr = 1e-4;
-subspaceExpansion = true;
+subspaceExpansion = false;
 
 # use numerical basis optimization
-useBasisOptimization = bogoliubovR;
+useBasisOptimization = 0;
 
 # initialize or load previous simulation
 initMethod = 0;
-loadModeOrdering = 0;
-loadBogoliubovR = 0;
-loadL = 15.0;
-loadBondDim = 2000;
+load_kMax = 19;
+load_modeOrdering = 1;
+load_bogoliubovR = 1;
+load_L = 25.0;
+load_bondDim = 256;
 
 # plot entanglement entropy
 xLimits = (0, 2 * kMax);
@@ -129,8 +130,8 @@ for (idxB, β) in enumerate(betaList)
         
         # initialize vacuum MPS
         initialMPS = initializeVacuumMPS(sG, modeOrdering = modeOrdering);
-        vacuumMPS = initializeVacuumMPS(sG, modeOrdering = modeOrdering);
-        initialMPS = initializeMPS(sG, vacuumMPS, modeOrdering = modeOrdering);
+        # vacuumMPS = initializeVacuumMPS(sG, modeOrdering = modeOrdering);
+        # initialMPS = initializeMPS(sG, vacuumMPS, modeOrdering = modeOrdering);
         # initialMPS = SparseMPS(randn, ComplexF64, physSpaces, virtSpaces);
 
         # set startOptimization after first DMRG sweep
@@ -139,66 +140,27 @@ for (idxB, β) in enumerate(betaList)
     elseif initMethod == 1
 
         # construct fileString
-        loadFolderStringMPS = "numFiles/" * modelName * "/modeOrdering_" * string(loadModeOrdering) * "/bogoliubovRot_" * string(loadBogoliubovR) * "/truncMethod_" * string(truncMethod) * "/MPS/kMax_" * string(kMax);
+        loadFolderStringMPS = "numFiles/" * modelName * "/modeOrdering_" * string(load_modeOrdering) * "/bogoliubovRot_" * string(load_bogoliubovR) * "/truncMethod_" * string(truncMethod) * "/MPS/kMax_" * string(load_kMax);
 
         # construct fileString
-        fileStringMPS = @sprintf("%s/mps_kMax_%d_nMax_%d_nMaxZM_%d_L_%0.2f_beta_%0.3f_bondDim_%d.jld", loadFolderStringMPS, kMax, nMax, nMaxZM, loadL, β, loadBondDim);
-        # fileStringMPS = @sprintf("%s/mps_kMax_%d_nMax_%d_nMaxZM_%d_L_%0.2f_beta_%0.3f_bondDim_%d_0.jld", loadFolderStringMPS, kMax, nMax, nMaxZM, loadL, β, loadBondDim);
+        # fileStringMPS = @sprintf("%s/mps_kMax_%d_nMax_%d_nMaxZM_%d_L_%0.2f_beta_%0.3f_bondDim_%d.jld", loadFolderStringMPS, load_kMax, nMax, nMaxZM, load_L, β, load_bondDim);
+        fileStringMPS = @sprintf("%s/mps_kMax_%d_nMax_%d_nMaxZM_%d_L_%0.2f_beta_%0.3f_bondDim_%d_0.jld", loadFolderStringMPS, load_kMax, nMax, nMaxZM, load_L, β, load_bondDim);
         println(fileStringMPS)
 
+        # # load groundStateMPS
+        # initialMPS = load(fileStringMPS, "groundState_fM");
+        # initialMPS = SparseMPS(convert.(TensorMap, initialMPS));
+ 
         # load groundStateMPS
-        # initialMPS = load(fileStringMPS, "groundStateMPS");
-        initialMPS = load(fileStringMPS, "groundState_fM");
-        initialMPS = SparseMPS(convert.(TensorMap, initialMPS));
+        initialMPS = load(fileStringMPS, "groundStateMPS");
+        initialMPS = SparseMPS(convert.(TensorMap, initialMPS[1 : (2 * kMax + 1)]));
+        projVirtSpaceR = TensorMap(ones, space(initialMPS[end], 3)', U1Space(0 => 1));
+        @tensor initialMPS[end][-1 -2; -3] := initialMPS[end][-1, -2, 3] * projVirtSpaceR[3, -3];
 
         # set startOptimization after first DMRG sweep
         startOptimization = 0;
 
-        # compute entanglement entropies
-        mpsEntanglementEntropies = compute_entanglement_entropies(initialMPS);
-        println(mpsEntanglementEntropies)
-
     end
-
-
-    # println("Comparison of the bond dimensions")
-    # for j in 1:length(compressedMPO)
-    #     mat = nonCompressedMPO[j]
-    #     println("Position $j")
-    #     println("Original size: $((dim(mat.codom[2]), dim(mat.dom[1])) )")
-    #     mat = compressedMPO[j]
-    #     println("After compression: $((dim(mat.codom[2]), dim(mat.dom[1])) )")
-    # end
-
-    # cM = compressedMPO[1]; uCM = nonCompressedMPO[1];
-    # localDim = dim(cM.codom[1])
-    # @tensor temp[1; 2] := conj(cM[-1 -2; 1 -3]) * uCM[-1 -2; 2 -3] / localDim
-    # for j in 2:length(compressedMPO)
-    #     cM = compressedMPO[j]; uCM = nonCompressedMPO[j];
-    #     localDim = dim(cM.codom[1])
-    #     @tensor temp[1; 2] := temp[-1; -2] * conj(cM[-3 -1; 1 -4]) * uCM[-3 -2; 2 -4] / localDim
-    # end
-    # display("( comMPO, nonCompMPO ) : $temp")
-
-    # cM = compressedMPO[1]; uCM = compressedMPO[1];
-    # localDim = dim(cM.codom[1])
-    # @tensor temp[1; 2] := conj(cM[-1 -2; 1 -3]) * uCM[-1 -2; 2 -3] / localDim
-    # for j in 2:length(compressedMPO)
-    #     cM = compressedMPO[j]; uCM = compressedMPO[j];
-    #     localDim = dim(cM.codom[1])
-    #     @tensor temp[1; 2] := temp[-1; -2] * conj(cM[-3 -1; 1 -4]) * uCM[-3 -2; 2 -4] / localDim
-    # end
-    # display("( comMPO, comMPO ) : $temp")
-
-
-    # # construct sineGordon MPO
-    # hamMPO = generate_MPO_sG(sG);
-    # println(getLinkDimsMPO(hamMPO))
-
-    # # convert to blockMPO
-    # blockMPO = convert_MPO_33block(hamMPO);
-
-    # display(blockMPO[2])
 
     storeBogoliubovParameters = [];
     if useBasisOptimization == 0
@@ -208,7 +170,7 @@ for (idxB, β) in enumerate(betaList)
         println(getLinkDimsMPO(hamMPO))
 
         # run DMRG for ground state
-        groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, verbosePrint = true));
+        groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, verbosePrint = 1));
         @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
 
         # # run DMRG for excited state
@@ -218,15 +180,71 @@ for (idxB, β) in enumerate(betaList)
 
     elseif useBasisOptimization == 1
 
+        # ------------------------------------------------------
+        # ground state with mode optimization
+
         # run DMRG for ground state
-        groundStateMPS, groundStateEnergy, storeBogoliubovParameters, truncErrors = find_groundstate(initialMPS, generate_MPO_sG, sG, DMRG2BO(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, startOptimization = startOptimization, verbosePrint = true));
+        groundStateMPS, groundStateEnergy, storeBogoliubovParameters, truncErrors = find_groundstate(initialMPS, generate_MPO_sG, sG, DMRG2BO(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, startOptimization = startOptimization, verbosePrint = 1));
         @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
+
+        # compute and plot entanglement entropy
+        mpsEntanglementEntropies = compute_entanglement_entropies(groundStateMPS);
+        println(mpsEntanglementEntropies)
+        
+        labelString = @sprintf("\\beta = %0.1f \\cdot \\beta_{\\textrm{FF}}", β/βFF);
+        labelString = latexstring(labelString);
+        plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
+            linewidth = 2.0, 
+            label = labelString, 
+        );
+
+
+        # # ------------------------------------------------------
+        # # excited state without mode optimization
+
+        # # construct sineGordon MPO
+        # hamMPO = generate_MPO_sG(sG);
+        # println(getLinkDimsMPO(hamMPO))
+
+        # # run DMRG for excited state
+        # lowEnergyStates = Vector{SparseMPS}([groundStateMPS]);
+        # excitedStateMPS, excitedStateEnergy = find_excitedstate(groundStateMPS, hamMPO, lowEnergyStates, DMRG2(bondDim = bondDim, truncErr = truncErr, verbosePrint = 2));
+        # @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
+
+        # # compute entanglement entropy
+        # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
+        # println(mpsEntanglementEntropies)
+
+        # labelString = @sprintf("\\beta = %0.1f \\cdot \\beta_{\\textrm{FF}}", β/βFF);
+        # labelString = latexstring(labelString);
+        # plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
+        #     linewidth = 2.0, 
+        #     label = labelString, 
+        # );
+
+        # # ------------------------------------------------------
+        # # excited state with mode optimization
+
+        # # run DMRG for excited state
+        # excitedStateMPS, excitedStateEnergy, storeBogoliubovParameters = find_excitedstate(groundStateMPS, generate_MPO_sG, lowEnergyStates, sG, DMRG2BO(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, startOptimization = startOptimization, verbosePrint = 1));
+        # @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
+
+        # # compute entanglement entropy
+        # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
+        # println(mpsEntanglementEntropies)
+
+        # labelString = @sprintf("\\beta = %0.1f \\cdot \\beta_{\\textrm{FF}}", β/βFF);
+        # labelString = latexstring(labelString);
+        # plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
+        #     linewidth = 2.0, 
+        #     label = labelString, 
+        # );
 
     end
 
     # get MPS linkDims
     println(getLinkDimsMPS(groundStateMPS))
-    # println(getLinkDimsMPS(excitedStateMPS))
+    println(getLinkDimsMPS(excitedStateMPS))
 
     # construct main directory path to store simulation files
     mainDirPath = "numFiles/" * modelName * "/modeOrdering_" * string(modeOrdering) * "/bogoliubovRot_" * string(bogoliubovR) * "/truncMethod_" * string(truncMethod);
@@ -236,26 +254,35 @@ for (idxB, β) in enumerate(betaList)
     ~isdir(folderStringMPS) && mkpath(folderStringMPS)
 
     # construct fileString
-    fileStringMPS = @sprintf("%s/mps_kMax_%d_nMax_%d_nMaxZM_%d_L_%0.2f_beta_%0.3f_bondDim_%d_0.jld", folderStringMPS, kMax, nMax, nMaxZM, L, β, bondDim);
+    fileStringMPS_0 = @sprintf("%s/mps_kMax_%d_nMax_%d_nMaxZM_%d_L_%0.2f_beta_%0.3f_bondDim_%d_0.jld", folderStringMPS, kMax, nMax, nMaxZM, L, β, bondDim);
+    fileStringMPS_1 = @sprintf("%s/mps_kMax_%d_nMax_%d_nMaxZM_%d_L_%0.2f_beta_%0.3f_bondDim_%d_1.jld", folderStringMPS, kMax, nMax, nMaxZM, L, β, bondDim);
 
     # store MPS states and energies
     if useBasisOptimization == 0
-        save(fileStringMPS, 
+        save(fileStringMPS_0, 
             "sG", sG, 
             "groundStateMPS", convert.(Dict, groundStateMPS), 
             "truncErrors", truncErrors, 
             "groundStateEnergy", groundStateEnergy
         );
     elseif useBasisOptimization == 1
-        save(fileStringMPS, 
+        save(fileStringMPS_0, 
             "sG", sG, 
             "groundStateMPS", convert.(Dict, groundStateMPS), 
             "groundStateEnergy", groundStateEnergy, 
             "truncErrors", truncErrors, 
             "storeBogoliubovParameters", storeBogoliubovParameters
         );
+        save(fileStringMPS_1, 
+            "sG", sG, 
+            "excitedStateMPS", convert.(Dict, excitedStateMPS), 
+            "excitedStateEnergy", excitedStateEnergy, 
+            "truncErrors", truncErrors, 
+            "storeBogoliubovParameters", storeBogoliubovParameters
+        );
     end
-    display(fileStringMPS)
+    display(fileStringMPS_0)
+    display(fileStringMPS_1)
 
     #     # # plot bogParameters
     #     # bogParametersPlot = plot(frame = :box);
@@ -274,7 +301,7 @@ for (idxB, β) in enumerate(betaList)
 
     #     # construct rotated sineGordon MPO
     #     finalBogParameters = storeBogoliubovParameters[end, :];
-    #     sG = updateBogoliubovPrameters(sG, finalBogParameters);
+    #     sG = updateBogoliubovParameters(sG, finalBogParameters);
     #     hamMPO = generate_MPO_sG(sG);
 
     #     # # run DMRG for excited state
@@ -283,23 +310,6 @@ for (idxB, β) in enumerate(betaList)
     #     # @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
 
     # end
-
-    # compute entanglement entropies
-    mpsEntanglementEntropies = compute_entanglement_entropies(groundStateMPS);
-    println(mpsEntanglementEntropies)
-
-    # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
-    # println(mpsEntanglementEntropies)
-
-
-    # plot entanglement entropy
-    labelString = @sprintf("\\beta = %0.1f \\cdot \\beta_{\\textrm{FF}}", β/βFF);
-    labelString = latexstring(labelString);
-    plot!(entanglementEntropyPlot, collect(0.5 : 1 : (2 * kMax)), mpsEntanglementEntropies, 
-        linewidth = 2.0, 
-        label = labelString, 
-    );
-
 
     # # compute mutual information between all pairs of modes [k, k']
     # momentumModes = getMomentumModes(sG);
@@ -330,6 +340,8 @@ for (idxB, β) in enumerate(betaList)
     #     frame = :box, 
     # );
     # display(mutualInformationPlot)
+
+    @printf("energy gap Δ = %0.4f\n", excitedStateEnergy - groundStateEnergy)
 
 end
 display(entanglementEntropyPlot)

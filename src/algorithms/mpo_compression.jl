@@ -499,16 +499,22 @@ function right_canonicalize(matrixMPO; leftEnvironment = undef, truncation = fal
         # Q = Q * sqrt(localDim); # proper normalization
         # R = R / sqrt(localDim);
 
-        # check dimensions of tensors before the decomposition and use RQ or LQ
-        tensorDimensions = dim.([space(fused_tensor, idx) for idx = 1 : 4]);
-        if tensorDimensions[1] <= prod(tensorDimensions[2 : 4])
-            R, Q = rightorth(fused_tensor, (1, ), (2, 3, 4), alg = RQpos());
-        else
-            R, Q = rightorth(fused_tensor, (1, ), (2, 3, 4), alg = LQpos());
-        end
+        # we then do a simple LQ and reproject
+        R, Q = rightorth(fused_tensor, (1, ), (2, 3, 4), alg = LQpos());
         Q = Q * sqrt(localDim); # proper normalization
         R = R / sqrt(localDim);
-        Q = permute(Q, (1, 2), (3, 4));
+
+        # # check dimensions of tensors before the decomposition and use RQ or LQ
+        # tensorDimensions = dim.([space(fused_tensor, idx) for idx = 1 : 4]);
+        # display(tensorDimensions)
+        # if tensorDimensions[1] <= prod(tensorDimensions[2 : 4])
+        #     R, Q = rightorth(fused_tensor, (1, ), (2, 3, 4), alg = RQpos());
+        # else
+        #     R, Q = rightorth(fused_tensor, (1, ), (2, 3, 4), alg = LQpos());
+        # end
+        # Q = Q * sqrt(localDim); # proper normalization
+        # R = R / sqrt(localDim);
+        # Q = permute(Q, (1, 2), (3, 4));
 
         if norm(R) <= 1e-12
            if verbose > 1

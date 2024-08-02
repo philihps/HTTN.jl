@@ -18,32 +18,26 @@ using TensorKit
 
 # set truncation parameters
 modelName = "massiveSchwinger";
-truncMethod = 5;
-kMax = 6;
-nMax = 8;
-nMaxZM = 12;
-modeOrdering = 0;
-bogoliubovR = 0;
-bogParameters = 0.4 .+ 0.1 * reverse(collect(1 : kMax));
-# bogParameters = [1.25, 0.7658787726053576, 0.5916149758233501, 0.46691233917615466, 0.37809892346039614, 0.31132850050333677];
-bogParameters = [1.0730311449195271, 0.7349048939229015, 0.5492985081346116, 0.42663356984035494, 0.3, 0.2];
-bogParameters = [ 1.13, 0.80, 0.61, 0.48, 0.39, 0.32, 0.27, 0.22];
-bogParameters = [1.07, 0.64, 0.55, 0.43];
-# bogParameters = [0.974, 0.642, 0.4];
-# bogParameters = [0.974, 0.642];
-# bogParameters = rand(kMax);
-bogParameters = [0.96, 0.52, 0.54, 0.44];
+truncMethod = 3;
+kMax = 1;
+nMax = 40;
+nMaxZM = 20;
+modeOrdering = 1;
+bogoliubovR = 1;
+
+# truncMethod = 3, nMax = 3
+bogParameters = [0.01];
+bogParameters = bogParameters[1 : kMax];
 
 # set model parameters
 θ = 1.0 * π;
 e = 1.0;
 M = e / sqrt(π);
-m = 0.3;
 L = 100.0;
 
 # set fermion mass
 fermionMasses = collect(0.100 : 0.10 : 0.100);
-fermionMasses = [0.10, 0.30, 0.50];
+fermionMasses = [0.00001];
 # fermionMasses = collect(0.20 : 0.05 : 0.35);
 
 # set DMRG parameters
@@ -52,7 +46,7 @@ truncErr = 1e-6;
 subspaceExpansion = true;
 
 # use numerical basis optimization
-useBasisOptimization = bogoliubovR;
+useBasisOptimization = 0;
 
 # plot entanglement entropy
 xLimits = (0, 2 * kMax);
@@ -94,10 +88,9 @@ for (idxM, m) in enumerate(fermionMasses)
     virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
 
     # initialize vacuum MPS
-    # initialMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+    initialMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
     vacuumMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
     initialMPS = initializeMPS(mS, vacuumMPS, modeOrdering = modeOrdering);
-    # initialMPS = SparseMPS(randn, ComplexF64, physSpaces, virtSpaces);
 
     storeBogoliubovParameters = [];
     if useBasisOptimization == 0
@@ -108,7 +101,7 @@ for (idxM, m) in enumerate(fermionMasses)
         # display(hamMPO)
 
         # run DMRG for ground state
-        groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, verbosePrint = true));
+        groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, verbosePrint = 1));
         @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
 
         # # run DMRG for excited state
@@ -119,7 +112,7 @@ for (idxM, m) in enumerate(fermionMasses)
     elseif useBasisOptimization == 1
 
         # run DMRG for ground state
-        groundStateMPS, groundStateEnergy, storeBogoliubovParameters, truncErrors = find_groundstate(initialMPS, generate_MPO_mS, mS, DMRG2BO(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion,  verbosePrint = true));
+        groundStateMPS, groundStateEnergy, storeBogoliubovParameters, truncErrors = find_groundstate(initialMPS, generate_MPO_mS, mS, DMRG2BO(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion,  verbosePrint = 2));
         @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
 
         # # plot bogParameters
@@ -139,7 +132,7 @@ for (idxM, m) in enumerate(fermionMasses)
 
         # construct rotated sineGordon MPO
         finalBogParameters = storeBogoliubovParameters[end, :];
-        mS = updateBogoliubovPrameters(mS, finalBogParameters);
+        mS = updateBogoliubovParameters(mS, finalBogParameters);
         hamMPO = generate_MPO_mS(mS);
 
         # # run DMRG for excited state
@@ -292,19 +285,19 @@ for (idxM, m) in enumerate(fermionMasses)
     # println(real.(expVals_AnAn))
     # # println(real.(expVals_CrCr))
 
+    # compute local occupation numbers
+    numberOperators = local_number_operators(mS);
+    localOccupations = expectation_values(groundStateMPS, numberOperators);
+    println(localOccupations)
+
 end
-display(entanglementEntropyPlot)
+# display(entanglementEntropyPlot)
 
 # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
 # println(mpsEntanglementEntropies)
 
-# # compute local occupation numbers
-# numberOperators = local_number_operators(mS);
-# localOccupations = expectation_values(groundStateMPS, numberOperators);
+# localOccupations = expectation_values(excitedStateMPS, numberOperators);
 # println(localOccupations)
-
-# # localOccupations = expectation_values(excitedStateMPS, numberOperators);
-# # println(localOccupations)
 
 
 # # compute ⟨a(-k) a(+k)⟩

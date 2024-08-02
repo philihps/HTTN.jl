@@ -314,7 +314,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
                     if alg.verbosePrint == 2
 
-                        listOfXiValues = collect(-0.6 : 0.05 : +0.6);
+                        listOfXiValues = collect(-0.4 : 0.02 : +0.4);
                         storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
                         storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
                         for (idx, ξ) in enumerate(listOfXiValues)
@@ -390,7 +390,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] = -optimalXi;
                             bogParameters[kR] -= optimalXi;
-                            QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
+                            QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
@@ -466,7 +466,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
                     if alg.verbosePrint == 2
                         
-                        listOfXiValues = collect(-0.6 : 0.05 : +0.6);
+                        listOfXiValues = collect(-0.4 : 0.02 : +0.4);
                         storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
                         storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
                         for (idx, ξ) in enumerate(listOfXiValues)
@@ -542,7 +542,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] = -optimalXi;
                             bogParameters[kR] -= optimalXi;
-                            QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
+                            QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
@@ -886,7 +886,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0 && loopCounter > alg.startOptimization
+                if mod(siteIdx, 2) == 0 && loopCounter >= alg.startOptimization
             
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2);
@@ -905,7 +905,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                     # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
                     if alg.verbosePrint == 2
 
-                        listOfXiValues = collect(-0.6 : 0.05 : +0.6);
+                        listOfXiValues = collect(-0.4 : 0.02 : +0.4);
                         storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
                         storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
                         for (idx, ξ) in enumerate(listOfXiValues)
@@ -981,7 +981,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] = -optimalXi;
                             bogParameters[kR] -= optimalXi;
-                            QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
+                            QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
@@ -1045,7 +1045,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0 && loopCounter >= alg.startOptimization
+                if mod(siteIdx, 2) == 0 && loopCounter > alg.startOptimization
             
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2);
@@ -1064,7 +1064,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                     # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
                     if alg.verbosePrint == 2
                         
-                        listOfXiValues = collect(-0.6 : 0.05 : +0.6);
+                        listOfXiValues = collect(-0.4 : 0.02 : +0.4);
                         storeEntanglementEntropy = zeros(Float64, length(listOfXiValues));
                         storeAnalyticGradient = zeros(Float64, length(listOfXiValues));
                         for (idx, ξ) in enumerate(listOfXiValues)
@@ -1140,7 +1140,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] = -optimalXi;
                             bogParameters[kR] -= optimalXi;
-                            QFTModel = updateBogoliubovPrameters(QFTModel, bogParameters);
+                            QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             alg.verbosePrint > 0 && println(bogParameters, "\n")
 
                             # recreate modified MPO

@@ -64,7 +64,7 @@ function SineGordonModel(truncationParameters::NamedTuple, hamiltonianParameters
 
 end
 
-function updateBogoliubovPrameters(sGModel::SineGordonModel, bogParameters::Union{Vector{Int64}, Vector{Float64}, Vector{ComplexF64}})
+function updateBogoliubovParameters(sGModel::SineGordonModel, bogParameters::Union{Vector{Int64}, Vector{Float64}, Vector{ComplexF64}})
 
     # update truncationParameters
     truncationParameters = sGModel.modelParameters.truncationParameters;
@@ -368,11 +368,11 @@ function generate_H0_Part_A(modelParameters::SineGordonParameters, modeOccupatio
                 # set modeFactor
                 modeFactor = energyMomentum_sG(momentumVal);
 
-                # get Bogoliubov rotation parameters (this is not checked for complex ξ)
+                # get Bogoliubov rotation parameters
                 if bogoliubovR == 1
                     ξ = bogParameters[abs(momentumVal)]
                     μ = real(cosh(abs(ξ)));
-                    ν = real(exp(1im * angle(ξ)) * sinh(abs(ξ)));
+                    ν = real(sinh(abs(ξ)));
                     modeFactor *= (μ^2 + ν^2);
                 end
                 
@@ -456,7 +456,7 @@ function generate_H0_Part_B(modelParameters::SineGordonParameters, modeOccupatio
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal)]
         μ = real(cosh(abs(ξ)));
-        ν = real(exp(1im * angle(ξ)) * sinh(abs(ξ)));
+        ν = real(sinh(abs(ξ)));
         mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sG(kVal) * (-2 * μ * ν);
         mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sG(kVal) * (-2 * μ * ν);
 
@@ -507,7 +507,7 @@ function generate_H0_Part_C(modelParameters::SineGordonParameters, modeOccupatio
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal)]
         μ = real(cosh(abs(ξ)));
-        ν = real(exp(1im * angle(ξ)) * sinh(abs(ξ)));
+        ν = real(sinh(abs(ξ)));
         mpoIdId[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sG(kVal) * 2 * ν^2;
 
         # store MPO
@@ -597,7 +597,7 @@ function localVertexOp_sG(momentumVal::Int64, physSpace::Union{ElementarySpace, 
 
         # get Bogoliubov coefficients
         μ = real(cosh(abs(ξ)));
-        ν = real(exp(1im * angle(ξ)) * sinh(abs(ξ))); # not valid for complex ξ
+        ν = real(sinh(abs(ξ)));
         
         # fill interactionTensor
         interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dimAuxVecSpace);
@@ -614,7 +614,10 @@ function localVertexOp_sG(momentumVal::Int64, physSpace::Union{ElementarySpace, 
 
         # add factor for the Bogoliubov rotation
         if bogoliubovR == 1
-            interactionTensor *= exp(alpha^2 / abs(momentumVal) * (μ - ν) * ν);
+            z = alpha / sqrt(2 * energyMomentum_sG(momentumVal));
+            interactionTensor *= exp(2 * z^2 * (μ - ν) * ν);
+            # interactionTensor *= exp(alpha^2 / abs(momentumVal) * (μ - ν) * ν);
+            
         end
 
     end
