@@ -125,7 +125,7 @@ function generate_MPO_mS(mSModel::MassiveSchwingerModel)
         mpo_mS = mpo_H0 + convFactor * mpo_H1;
 
     end
-    return mpo_mS, mpo_H0, mpo_H1;
+    return mpo_mS
 
 end
 
