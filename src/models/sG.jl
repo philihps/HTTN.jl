@@ -138,12 +138,12 @@ function initializeMPS(sG::SineGordonModel, initMPS::SparseMPS; modeOrdering::In
         initTensor = 1e-0 * convert(Array, initMPS[siteIdx]);
         siteTensor = TensorMap(randn, Float64, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
         if siteIdx == zeroSitePos
-            siteTensor = 1e-2 * convert(Array, siteTensor);
+            siteTensor = 1e-1 * convert(Array, siteTensor);
         else
             siteTensor = 1e-1 * convert(Array, siteTensor);
         end
         minTensorDim = min(size(initTensor), size(siteTensor));
-        siteTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]] = initTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]];
+        siteTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]] += initTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]];
         mpsTensors[siteIdx] = TensorMap(siteTensor, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
     end
     return SparseMPS(mpsTensors, normalizeMPS = true);
@@ -179,7 +179,7 @@ function generate_MPO_sG(sGModel::SineGordonModel)
     mpo_H1 = generate_H1(sGModel.modelParameters, modeOccupations, physSpaces);
     
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
-    if λ == 0.0
+    if λ == 0
         mpo_sG = 2 * π / L * mpo_H0;
     else        
         p = 1.0 / R;
@@ -370,7 +370,8 @@ function generate_H0_Part_A(modelParameters::SineGordonParameters, modeOccupatio
 
                 # get Bogoliubov rotation parameters
                 if bogoliubovR == 1
-                    ξ = bogParameters[abs(momentumVal)]
+                    kIdx = abs(momentumVal);
+                    ξ = bogParameters[kIdx];
                     μ = real(cosh(abs(ξ)));
                     ν = real(sinh(abs(ξ)));
                     modeFactor *= (μ^2 + ν^2);
@@ -454,7 +455,7 @@ function generate_H0_Part_B(modelParameters::SineGordonParameters, modeOccupatio
         mpoCrCr = convertLocalOperatorsToMPO(localOperators);
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
-        ξ = bogParameters[abs(kVal)]
+        ξ = bogParameters[abs(kVal)];
         μ = real(cosh(abs(ξ)));
         ν = real(sinh(abs(ξ)));
         mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sG(kVal) * (-2 * μ * ν);
@@ -617,7 +618,6 @@ function localVertexOp_sG(momentumVal::Int64, physSpace::Union{ElementarySpace, 
             z = alpha / sqrt(2 * energyMomentum_sG(momentumVal));
             interactionTensor *= exp(2 * z^2 * (μ - ν) * ν);
             # interactionTensor *= exp(alpha^2 / abs(momentumVal) * (μ - ν) * ν);
-            
         end
 
     end

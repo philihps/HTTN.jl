@@ -121,14 +121,11 @@ function generate_MPO_mS(mSModel::MassiveSchwingerModel)
     else
 
         # use infinite size prefactor for H1
-        convFactor = - L * m * M / (4 * pi) * exp(0.5772156649);
-        mpo_H1 *= convFactor;
-
-        # sum up H0 and H1 with corresponding prefactors
-        mpo_mS = mpo_H0 + mpo_H1;
+        convFactor = - 1 * L * m * M / (4 * pi) * exp(0.5772156649);
+        mpo_mS = mpo_H0 + convFactor * mpo_H1;
 
     end
-    return mpo_mS;
+    return mpo_mS, mpo_H0, mpo_H1;
 
 end
 
@@ -225,11 +222,6 @@ function initializeVacuumMPS(mS::MassiveSchwingerModel; modeOrdering::Int64 = 1)
 
     # initialize vacuum MPS
     mpsTensors = Vector{TensorMap}(undef, numSites);
-    # if modeOrdering == 0
-    #     zeroSitePos = Int((numSites - 1) / 2 + 1);
-    # elseif modeOrdering == 1
-    #     zeroSitePos = 1;
-    # end
     for siteIdx = 1 : numSites
         mpsTensor = zeros(Float64, dim(virtSpaces[siteIdx]), dim(physSpaces[siteIdx]), dim(virtSpaces[siteIdx + 1]));
         mpsTensor[1, 1, 1] = 1.0;
@@ -261,10 +253,10 @@ function initializeMPS(mS::MassiveSchwingerModel, initMPS::SparseMPS; modeOrderi
         if siteIdx == zeroSitePos
             siteTensor = 1e-2 * convert(Array, siteTensor);
         else
-            siteTensor = 1e-1 * convert(Array, siteTensor);
+            siteTensor = 1e-2 * convert(Array, siteTensor);
         end
         minTensorDim = min(size(initTensor), size(siteTensor));
-        siteTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]] = initTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]];
+        siteTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]] += initTensor[1 : minTensorDim[1], 1 : minTensorDim[2], 1 : minTensorDim[3]];
         mpsTensors[siteIdx] = TensorMap(siteTensor, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
     end
     return SparseMPS(mpsTensors, normalizeMPS = true);
@@ -276,7 +268,9 @@ function generate_H0_Part_A(modelParameters::MassiveSchwingerParameters, modeOcc
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters;
     bogoliubovR = truncationParameters[:bogoliubovR];
-    bogParameters = truncationParameters[:bogParameters];
+    if bogoliubovR == 1
+        bogParameters = truncationParameters[:bogParameters];
+    end
 
     # get hamiltonianParameters
     hamiltonianParameters = modelParameters.hamiltonianParameters;
@@ -303,7 +297,6 @@ function generate_H0_Part_A(modelParameters::MassiveSchwingerParameters, modeOcc
 
                 # set modeFactor
                 modeFactor = M;
-
                 mpoBlock = zeros(Float64, 1, dimHS, 1, dimHS);
                 mpoBlock[1, :, 1, :] = modeFactor * getNumberOperator(dimHS - 1);
 
@@ -396,7 +389,9 @@ function generate_H0_Part_B(modelParameters::MassiveSchwingerParameters, modeOcc
     truncationParameters = modelParameters.truncationParameters;
     kMax = truncationParameters[:kMax];
     bogoliubovR = truncationParameters[:bogoliubovR];
-    bogParameters = truncationParameters[:bogParameters];
+    if bogoliubovR == 1
+        bogParameters = truncationParameters[:bogParameters];
+    end
 
     # get hamiltonianParameters
     hamiltonianParameters = modelParameters.hamiltonianParameters;
@@ -441,8 +436,8 @@ function generate_H0_Part_B(modelParameters::MassiveSchwingerParameters, modeOcc
         ξ = bogParameters[abs(kVal)];
         μ = real(cosh(abs(ξ)));
         ν = real(sinh(abs(ξ)));
-        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * (-2 * μ * ν);
-        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * (-2 * μ * ν);
+        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * (2 * μ * ν);
+        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * (2 * μ * ν);
 
         # store sum of MPOs
         storeIndividualMPOs[kIdx] = mpoAnAn + mpoCrCr;
@@ -464,7 +459,9 @@ function generate_H0_Part_C(modelParameters::MassiveSchwingerParameters, modeOcc
     truncationParameters = modelParameters.truncationParameters;
     kMax = truncationParameters[:kMax];
     bogoliubovR = truncationParameters[:bogoliubovR];
-    bogParameters = truncationParameters[:bogParameters];
+    if bogoliubovR == 1
+        bogParameters = truncationParameters[:bogParameters];
+    end
 
     # get hamiltonianParameters
     hamiltonianParameters = modelParameters.hamiltonianParameters;
@@ -523,12 +520,6 @@ function generate_H0(modelParameters::MassiveSchwingerParameters, modeOccupation
         mpo_H0 += generate_H0_Part_B(modelParameters, modeOccupations, physSpaces);
         mpo_H0 += generate_H0_Part_C(modelParameters, modeOccupations, physSpaces);
     end
-    
-    # # remove constant contribution of -2πL/12
-    # vacVecSpace = Rep[U₁](0 => 1);
-    # idMPO = constructIdentiyMPO(physSpaces, vacVecSpace);
-    # idMPO[chainCenter] *= -2π * L /12;
-    # mpo_H0 = addMPOs(mpo_H0, idMPO);
     return mpo_H0;
 
 end
@@ -552,11 +543,6 @@ function localVertexOp_mS(momentumVal::Int64, physVecSpace::Union{ElementarySpac
 
     # compute vertex operator coefficient α
     alpha = a * sqrt(4 * pi);
-    # if bogoliubovR == 0
-    #     alpha = a * sqrt(4 * pi);
-    # elseif bogoliubovR == 1
-    #     alpha = a;
-    # end
 
     # get Bogoliubov coefficients
     μ = real(cosh(abs(ξ)));
@@ -588,20 +574,21 @@ function localVertexOp_mS(momentumVal::Int64, physVecSpace::Union{ElementarySpac
             if bogoliubovR == 0
                 interactionTensor[braIndPos, ketIndPos, auxIndPos] = convert(Float64, sum([F_mS(nBra, nKet, j, momentumVal, alpha, L, M) for j = max(0, nBra - nKet) : nBra]));
             elseif bogoliubovR == 1
-                interactionTensor[braIndPos, ketIndPos, auxIndPos] = convert(Float64, sum([F_mS(nBra, nKet, j, momentumVal, alpha * (μ - ν), L, M) for j = max(0, nBra - nKet) : nBra]));
+                # interactionTensor[braIndPos, ketIndPos, auxIndPos] = convert(Float64, sum([F_mS(nBra, nKet, j, momentumVal, alpha * (μ - ν), L, M) for j = max(0, nBra - nKet) : nBra]));
+                interactionTensor[braIndPos, ketIndPos, auxIndPos] = convert(Float64, sum([F_mS(nBra, nKet, j, momentumVal, alpha * exp(ξ), L, M) for j = max(0, nBra - nKet) : nBra]));
             end
         end
 
         # # add factor for the Bogoliubov rotation
         # if bogoliubovR == 1
-        #     interactionTensor *= exp(1 / abs(momentumVal) * (1 - Pk_sW(momentumVal, L) / Ek_sW(momentumVal, L, M)));
+        #     z = alpha / sqrt(2 * energyMomentum_sW_massive(momentumVal, L, M) * L / 2);
+        #     interactionTensor *= exp(2 * z^2 * (μ - ν) * ν);
         # end
 
         # add factor for the Bogoliubov rotation
         if bogoliubovR == 1
-            z = alpha / sqrt(2 * energyMomentum_sW_massive(momentumVal, L, M));
-            interactionTensor *= exp(2 * z^2 * (μ - ν) * ν);
-            # interactionTensor *= exp(alpha^2 / abs(momentumVal) * (μ - ν) * ν);
+            factorBCH = alpha^2 * (exp(2 * ξ) - 1) / (4 * L * energyMomentum_sW_massive(momentumVal, L, M));
+            interactionTensor *= exp(-factorBCH);
         end
 
     end
@@ -622,7 +609,9 @@ function generate_H1(modelParameters::MassiveSchwingerParameters, modeOccupation
     truncMethod = truncationParameters[:truncMethod];
     modeOrdering = truncationParameters[:modeOrdering];
     bogoliubovR = truncationParameters[:bogoliubovR];
-    bogParameters = truncationParameters[:bogParameters];
+    if bogoliubovR == 1
+        bogParameters = truncationParameters[:bogParameters];
+    end
 
     # get hamiltonianParameters
     hamiltonianParameters = modelParameters.hamiltonianParameters;
@@ -636,14 +625,18 @@ function generate_H1(modelParameters::MassiveSchwingerParameters, modeOccupation
 
     # get number of momentum modes
     numSites = length(momentumModes);
-    chainCenter = Int((numSites - 1) / 2 + 1);
+    # chainCenter = Int((numSites - 1) / 2 + 1);
 
     # construct local vertex operators V_{-1, 0}(0, 0) and V_{+1, 0}(0, 0)
     localOperators_neg = Vector{TensorMap}(undef, numSites);
     localOperators_pos = Vector{TensorMap}(undef, numSites);
     for (siteIdx, momentumVal) in enumerate(momentumModes)
         physVecSpace = physSpaces[siteIdx];
-        momentumVal == 0 ? bogParameter = 0.0 : bogParameter = bogParameters[abs(momentumVal)];
+        if bogoliubovR == 0
+            bogParameter = 0.0;
+        elseif bogoliubovR == 1
+            momentumVal == 0 ? bogParameter = 0.0 : bogParameter = bogParameters[abs(momentumVal)];
+        end
         localOperators_neg[siteIdx] = localVertexOp_mS(momentumVal, physVecSpace, -1.0, M, L, bogoliubovR, bogParameter);
         localOperators_pos[siteIdx] = localVertexOp_mS(momentumVal, physVecSpace, +1.0, M, L, bogoliubovR, bogParameter);
     end
@@ -664,41 +657,10 @@ function generate_H1(modelParameters::MassiveSchwingerParameters, modeOccupation
 
     # construct mpo_H1
     mpo_H1 = V_neg + V_pos;
-    if (θ == 0) || (θ == π)
-        mpo_H1 = real.(mpo_H1);
-    end
-
-    # # add correct factor to convert between massive and massless basis
-    # kMax = momentumModes[end];
-    # if bogoliubovR == 0
-
-    #     # # convertion factor k → ∞ and for L → ∞
-    #     # gamma = 0.5772156649;
-    #     # convFactor = - m * M / (4*pi) * exp(gamma);
-        
-    #     # # convertion factor k → ∞ and for finite L
-    #     # sumTerms = Float64[];
-    #     # for kVal = 1 : kMax
-    #     #     sumTerms = vcat(sumTerms, 1 / kVal * (1 - Pk_sW(kVal, L) / Ek_sW(kVal, L, M)));
-    #     # end
-    #     # convFactor = - m * exp(sum(sumTerms));
-
-    #     # convertion factor k → ∞ and for finite L
-    #     kVal = 1;
-    #     sumTerms = [1 / kVal * (1 - Pk_sW(kVal, L) / Ek_sW(kVal, L, M))];
-    #     while abs(sumTerms[end]) > 1e-8
-    #         kVal += 1;
-    #         sumTerms = vcat(sumTerms, 1 / kVal * (1 - Pk_sW(kVal, L) / Ek_sW(kVal, L, M)));
-    #     end
-    #     convFactor = - m * exp(sum(sumTerms));
-
-    #     # multiply H1
-    #     mpo_H1[chainCenter] *= convFactor;
-
-    # elseif bogoliubovR == 1
-    #     # convFactor = exp(sum([1 / k * (1 - Pk_sW(k, L) / Ek_sW(k, L, M)) for k = (0 + 1) : 100]));
-    #     mpo_H1[chainCenter] *= convFactor;
+    # if (θ == 0) || (θ == π)
+    #     mpo_H1 = real(mpo_H1);
     # end
+    
     return mpo_H1;
 
 end
