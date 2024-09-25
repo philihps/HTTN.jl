@@ -348,8 +348,8 @@ function generate_H0_Part_A(modelParameters::MassiveSchwingerParameters, modeOcc
                 if bogoliubovR == 1
                     kIdx = abs(momentumVal);
                     ξ = bogParameters[kIdx];
-                    μ = real(cosh(abs(ξ)));
-                    ν = real(sinh(abs(ξ)));
+                    μ = cosh(ξ);
+                    ν = sinh(ξ);
                     modeFactor *= (μ^2 + ν^2);
                 end
                 
@@ -434,10 +434,12 @@ function generate_H0_Part_B(modelParameters::MassiveSchwingerParameters, modeOcc
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal)];
-        μ = real(cosh(abs(ξ)));
-        ν = real(sinh(abs(ξ)));
-        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * (2 * μ * ν);
-        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * (2 * μ * ν);
+        # μ = real(cosh(abs(ξ)));
+        # ν = real(sinh(abs(ξ)));
+        # mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * (2 * μ * ν);
+        # mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * (2 * μ * ν);
+        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * sinh(2 * ξ);
+        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * sinh(2 * ξ);
 
         # store sum of MPOs
         storeIndividualMPOs[kIdx] = mpoAnAn + mpoCrCr;
@@ -487,8 +489,8 @@ function generate_H0_Part_C(modelParameters::MassiveSchwingerParameters, modeOcc
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal)];
-        μ = real(cosh(abs(ξ)));
-        ν = real(sinh(abs(ξ)));
+        μ = cosh(ξ);
+        ν = sinh(ξ);
         mpoIdId[1 + 2 * (kIdx - 1) + 1] *= energyMomentum_sW_massive(kVal, L, M) * 2 * ν^2;
 
         # store MPO
@@ -545,8 +547,10 @@ function localVertexOp_mS(momentumVal::Int64, physVecSpace::Union{ElementarySpac
     alpha = a * sqrt(4 * pi);
 
     # get Bogoliubov coefficients
-    μ = real(cosh(abs(ξ)));
-    ν = real(sinh(abs(ξ)));
+    # μ = real(cosh(abs(ξ)));
+    # ν = real(sinh(abs(ξ)));
+    μ = cosh(ξ);
+    ν = sinh(ξ);
 
     # construct local interaction for k = 0 or k ≂̸ 0
     if momentumVal == 0
