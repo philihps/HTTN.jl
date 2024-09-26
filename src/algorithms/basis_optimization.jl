@@ -39,13 +39,19 @@ function squeezingOp(ξ::Union{Int64, Float64, ComplexF64}, nMax::Int64, kL::Int
     # μ = cosh(abs(ξ));
     # ν = exp(1im * angle(ξ)) * sinh(abs(ξ));
     # compute μ and ν
-    μ = cosh(abs(ξ));
-    ν = sign(ξ) * sinh(abs(ξ));
+    # μ = cosh(abs(ξ));
+    # ν = sign(ξ) * sinh(abs(ξ));
+    # μ = cosh(ξ);
+    # ν = sinh(ξ);
 
-    # construct K0, K1 and K2
-    K0 = -log(μ) * (NuId + IdNu + IdId);
-    K1 = conj(ν)/μ * AnAn;
-    K2 = -ν/μ * CrCr;
+    # # construct K0, K1 and K2
+    # K0 = -log(μ) * (NuId + IdNu + IdId);
+    # K1 = conj(ν)/μ * AnAn;
+    # K2 = -ν/μ * CrCr;
+    K0 = -1 * log(cosh(ξ)) * (NuId + IdNu + IdId); 
+    K1 = +1 * tanh(ξ) * AnAn; 
+    K2 = -1 * tanh(ξ) * CrCr;
+
     # K0 = -log(μ) * (NuId + IdNu + IdId);
     # K1 = tanh(ξ) * AnAn;
     # K2 = -tanh(ξ) * CrCr;
@@ -111,8 +117,10 @@ function gradient_singular_value_matrix(U::TensorMap, dAdXi::TensorMap, V::Tenso
     return 0.5 * (U' * dAdXi * V' + V * dAdXi' * U);
 end
 
-dμ(ξ) = sign(ξ) * sinh(abs(ξ));
-dν(ξ) = cosh(abs(ξ));
+# dμ(ξ) = sign(ξ) * sinh(abs(ξ));
+# dν(ξ) = cosh(abs(ξ));
+dμ(ξ) = sinh(ξ);
+dν(ξ) = cosh(ξ);
 
 function gradient_squeezing_operator(ξ::Union{Int64, Float64, ComplexF64}, nMax::Int64, kL::Int64, kR::Int64, PL::ElementarySpace, PR::ElementarySpace)
 
@@ -139,13 +147,15 @@ function gradient_squeezing_operator(ξ::Union{Int64, Float64, ComplexF64}, nMax
     A = exp(K2);
     B = exp(K0);
     C = exp(K1);
-    # S = exp(K2) * exp(K0) * exp(K1);
+    S = exp(K2) * exp(K0) * exp(K1);
 
     # construct derivative of squeezing operator
     dA = -1 * CrCr * (dν(ξ)/μ - ν * dμ(ξ)/μ^2);
     dB = -1 * (NuId + IdNu + IdId) * dμ(ξ)/μ;
     dC = +1 * AnAn * (dν(ξ)/μ - ν * dμ(ξ)/μ^2);
-    dSdXi = A * dA * B * C + A * B * dB * C + A * B * C * dC;
+    # dSdXi = A * dA * B * C + A * B * dB * C + A * B * C * dC;
+    # dSdXi = S * AnAn - CrCr * S;
+    dSdXi = S * (AnAn - CrCr);
     return dSdXi;
 
 end

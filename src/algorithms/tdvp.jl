@@ -509,7 +509,7 @@ function perform_timestep!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
     end
 
     # return optimized finiteMPS
-    return finiteMPS, mpoEnvL, mpoEnvR, bogParameters, maximum(truncationErrors);
+    return finiteMPS, mpoEnvL, mpoEnvR, bogParameters, maximum(truncationErrors), finiteMPO;
 
 end
 

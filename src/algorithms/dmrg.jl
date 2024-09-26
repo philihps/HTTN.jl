@@ -60,8 +60,8 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
     # initialize mpsEnergy
     mpsEnergy = Float64[1.0];
 
-    # initialize array to store truncation errors
-    ϵs = zeros(Float64, length(finiteMPS) - 1);
+    # store vector of truncation errors
+    ϵs = ones(Float64, length(finiteMPS) - 1);
 
     # run DMRG until the energy variance is sufficiently close to 0
     optimizationLoopCounter = 1;
@@ -77,7 +77,6 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 
         # store vector of truncation errors
         ϵs = ones(Float64, length(finiteMPS) - 1);
-        ϵ = maximum(ϵs);
 
         # main DMRG loop
         loopCounter = 1;
@@ -219,7 +218,7 @@ end
 
 # function to check acceptance of new basis
 function checkAcceptance(oldVal::Float64, newVal::Float64, oldXi::Float64, newXi::Float64)
-    if (oldVal - newVal > 1e-3)
+    if (oldVal - newVal > 1e-6)
         return true;
     else
         return false;
@@ -265,7 +264,6 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
         # store vector of truncation errors
         ϵs = ones(Float64, length(finiteMPS) - 1);
-        ϵ = maximum(ϵs);
 
         # main DMRG loop
         loopCounter = 1;
@@ -342,7 +340,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     end
 
                     # find optimimal ξ by roots of gradient
-                    optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.2, +0.2);
+                    optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.3, +0.3);
                     # optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), 0.0);
                     @show optimalXi
                     
@@ -381,15 +379,15 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
 
                         # decompose optimizedTheta
                         if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
-
+                            
                             # update two site tensor
                             optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR);
                             newTheta = applyTwoModeTransformation(optimalS, newTheta);
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            # bogParameters[kR] = -optimalXi;
                             bogParameters[kR] -= optimalXi;
+                            # bogParameters[kR] += optimalXi;
                             QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             println(bogParameters, "\n")
 
@@ -447,7 +445,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0 && loopCounter >= alg.startOptimization
+                if mod(siteIdx, 2) == 0 && loopCounter > alg.startOptimization
             
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2);
@@ -494,7 +492,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                     end
 
                     # find optimimal ξ by roots of gradient
-                    optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.2, +0.2);
+                    optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), -0.3, +0.3);
                     # optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newTheta), 0.0);
                     @show optimalXi
                     
@@ -540,8 +538,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            # bogParameters[kR] = -optimalXi;
-                            bogParameters[kR] -= optimalXi;
+                            bogParameters[kR] -= optimalXi; # sG
+                            # bogParameters[kR] += optimalXi; # mS
                             QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             println(bogParameters, "\n")
 
@@ -658,6 +656,9 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
     # initialize mpsEnergy
     mpsEnergy = Float64[1.0];
 
+    # store vector of truncation errors
+    ϵs = ones(Float64, length(finiteMPS) - 1);
+
     # run DMRG until the energy variance is sufficiently close to 0
     optimizationLoopCounter = 1;
     maxOptimSteps = 1;
@@ -669,6 +670,9 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
 
         # initialize projector environments
         projEnvsL, projEnvsR = initializePROEnvironments(finiteMPS, previoMPS);
+
+        # store vector of truncation errors
+        ϵs = ones(Float64, length(finiteMPS) - 1);
 
         # main DMRG loop
         loopCounter = 1;
@@ -700,6 +704,11 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
                 S /= norm(S);
                 U = permute(U, (1, 2), (3, ));
                 V = permute(S * V, (1, 2), (3, ));
+
+                # compute error
+                v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                ϵs[siteIdx] = abs(1 - abs(v));
 
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
@@ -747,6 +756,11 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
                 S /= norm(S);
                 U = permute(U * S, (1, 2), (3, ));
                 V = permute(V, (1, 2), (3, ));
+
+                # compute error
+                v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                ϵs[siteIdx] = abs(1 - abs(v));
 
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
@@ -817,7 +831,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, previoMP
 
     # return optimized finiteMPS
     finalEnergy = mpsEnergy[end];
-    return finiteMPS, finalEnergy;
+    return finiteMPS, finalEnergy, ϵs;
 
 end
 
@@ -846,6 +860,9 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
     # initialize mpsEnergy
     mpsEnergy = Float64[1.0];
 
+    # store vector of truncation errors
+    ϵs = ones(Float64, length(finiteMPS) - 1);
+
     # run DMRG until the energy variance is sufficiently close to 0
     optimizationLoopCounter = 1;
     maxOptimSteps = 1;
@@ -857,6 +874,9 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
 
         # initialize projector environments
         projEnvsL, projEnvsR = initializePROEnvironments(finiteMPS, previoMPS);
+
+        # store vector of truncation errors
+        ϵs = ones(Float64, length(finiteMPS) - 1);
 
         # main DMRG loop
         loopCounter = 1;
@@ -979,8 +999,8 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                             alg.verbosePrint > 0 && println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            # bogParameters[kR] = -optimalXi;
                             bogParameters[kR] -= optimalXi;
+                            # bogParameters[kR] += optimalXi;
                             QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             println(bogParameters, "\n")
 
@@ -1000,6 +1020,11 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                 S /= norm(S);
                 U = permute(U, (1, 2), (3, ));
                 V = permute(S * V, (1, 2), (3, ));
+
+                # compute error
+                v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                ϵs[siteIdx] = abs(1 - abs(v));
 
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
@@ -1138,8 +1163,8 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            # bogParameters[kR] = -optimalXi;
                             bogParameters[kR] -= optimalXi;
+                            # bogParameters[kR] += optimalXi;
                             QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             alg.verbosePrint > 0 && println(bogParameters, "\n")
 
@@ -1159,6 +1184,11 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                 S /= norm(S);
                 U = permute(U * S, (1, 2), (3, ));
                 V = permute(V, (1, 2), (3, ));
+
+                # compute error
+                v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4]);
+                # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
+                ϵs[siteIdx] = abs(1 - abs(v));
 
                 # assign updated tensors and update MPO environments
                 finiteMPS[siteIdx + 0] = U;
@@ -1234,7 +1264,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
 
     # return optimized finiteMPS
     finalEnergy = mpsEnergy[end];
-    return finiteMPS, finalEnergy, storeBogoliubovParameters
+    return finiteMPS, finalEnergy, storeBogoliubovParameters, ϵs
 
 end
 
