@@ -285,98 +285,72 @@ function generate_H0_Part_A(modelParameters::MassiveSchwingerParameters, modeOcc
 
     # construct H0 Part A
     mpo_H0_Part_A = Vector{TensorMap}(undef, numSites);
-    if numSites == 1
+    for (siteIdx, momentumVal) in enumerate(momentumModes)
 
-        for (siteIdx, momentumVal) in enumerate(momentumModes)
+        # get physical vector space
+        physVecSpace = physSpaces[siteIdx];
+        dimHS = dim(physVecSpace);
 
-            # get physical vector space
-            physVecSpace = physSpaces[siteIdx];
-            dimHS = dim(physVecSpace);
+        if momentumVal == 0
 
-            if momentumVal == 0
+            # set modeFactor
+            modeFactor = M;
 
-                # set modeFactor
-                modeFactor = M;
-                mpoBlock = zeros(Float64, 1, dimHS, 1, dimHS);
+            if siteIdx == 1
+                mpoBlock = zeros(Float64, 1, dimHS, 2, dimHS);
+                mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
+                mpoBlock[1, :, 2, :] = modeFactor * getNumberOperator(dimHS - 1);
+            elseif siteIdx == numSites
+                mpoBlock = zeros(Float64, 2, dimHS, 1, dimHS);
                 mpoBlock[1, :, 1, :] = modeFactor * getNumberOperator(dimHS - 1);
-
+                mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS);
+            else
+                mpoBlock = zeros(Float64, 2, dimHS, 2, dimHS);
+                mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
+                mpoBlock[1, :, 2, :] = modeFactor * getNumberOperator(dimHS - 1);
+                mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS);
             end
 
-            # convert mpoBlock to TensorMap
-            mpo_H0_Part_A[siteIdx] = TensorMap(mpoBlock, U1Space(0 => size(mpoBlock, 1)), physSpaces[siteIdx], U1Space(0 => size(mpoBlock, 3)) ⊗ physSpaces[siteIdx]);
+        else
 
-        end
+            # get ordering of QNs in physVecSpace
+            qnSectors = physVecSpace.dims;
+            phyVecSpaceOrdering = [productSector.charge for productSector in keys(qnSectors)];
 
-    else
+            # set modeFactor
+            modeFactor = energyMomentum_sW_massive(momentumVal, L, M);
 
-        for (siteIdx, momentumVal) in enumerate(momentumModes)
-
-            # get physical vector space
-            physVecSpace = physSpaces[siteIdx];
-            dimHS = dim(physVecSpace);
-
-            if momentumVal == 0
-
-                # set modeFactor
-                modeFactor = M;
-
-                if siteIdx == 1
-                    mpoBlock = zeros(Float64, 1, dimHS, 2, dimHS);
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
-                    mpoBlock[1, :, 2, :] = modeFactor * getNumberOperator(dimHS - 1);
-                elseif siteIdx == numSites
-                    mpoBlock = zeros(Float64, 2, dimHS, 1, dimHS);
-                    mpoBlock[1, :, 1, :] = modeFactor * getNumberOperator(dimHS - 1);
-                    mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS);
-                else
-                    mpoBlock = zeros(Float64, 2, dimHS, 2, dimHS);
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
-                    mpoBlock[1, :, 2, :] = modeFactor * getNumberOperator(dimHS - 1);
-                    mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS);
-                end
-
-            else
-
-                # get ordering of QNs in physVecSpace
-                qnSectors = physVecSpace.dims;
-                phyVecSpaceOrdering = [productSector.charge for productSector in keys(qnSectors)];
-
-                # set modeFactor
-                modeFactor = energyMomentum_sW_massive(momentumVal, L, M);
-
-                # get Bogoliubov rotation parameters
-                if bogoliubovR == 1
-                    kIdx = abs(momentumVal);
-                    ξ = bogParameters[kIdx];
-                    μ = cosh(ξ);
-                    ν = sinh(ξ);
-                    modeFactor *= (μ^2 + ν^2);
-                end
-                
-                if siteIdx == 1
-                    mpoBlock = zeros(Float64, 1, dimHS, 2, dimHS);
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
-                    numberOperator = diagm(abs.(phyVecSpaceOrdering ./ momentumVal));
-                    mpoBlock[1, :, 2, :] = modeFactor * numberOperator;
-                elseif siteIdx == numSites
-                    mpoBlock = zeros(Float64, 2, dimHS, 1, dimHS);
-                    numberOperator = diagm(abs.(phyVecSpaceOrdering ./ momentumVal));
-                    mpoBlock[1, :, 1, :] = modeFactor * numberOperator;
-                    mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS);
-                else
-                    mpoBlock = zeros(Float64, 2, dimHS, 2, dimHS);
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
-                    numberOperator = diagm(abs.(phyVecSpaceOrdering ./ momentumVal));
-                    mpoBlock[1, :, 2, :] = modeFactor * numberOperator;
-                    mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS);
-                end
-
+            # get Bogoliubov rotation parameters
+            if bogoliubovR == 1
+                kIdx = abs(momentumVal);
+                ξ = bogParameters[kIdx];
+                μ = cosh(ξ);
+                ν = sinh(ξ);
+                modeFactor *= (μ^2 + ν^2);
             end
             
-            # convert mpoBlock to TensorMap
-            mpo_H0_Part_A[siteIdx] = TensorMap(mpoBlock, U1Space(0 => size(mpoBlock, 1)) ⊗ physSpaces[siteIdx], U1Space(0 => size(mpoBlock, 3)) ⊗ physSpaces[siteIdx]);
+            if siteIdx == 1
+                mpoBlock = zeros(Float64, 1, dimHS, 2, dimHS);
+                mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
+                numberOperator = diagm(abs.(phyVecSpaceOrdering ./ momentumVal));
+                mpoBlock[1, :, 2, :] = modeFactor * numberOperator;
+            elseif siteIdx == numSites
+                mpoBlock = zeros(Float64, 2, dimHS, 1, dimHS);
+                numberOperator = diagm(abs.(phyVecSpaceOrdering ./ momentumVal));
+                mpoBlock[1, :, 1, :] = modeFactor * numberOperator;
+                mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS);
+            else
+                mpoBlock = zeros(Float64, 2, dimHS, 2, dimHS);
+                mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
+                numberOperator = diagm(abs.(phyVecSpaceOrdering ./ momentumVal));
+                mpoBlock[1, :, 2, :] = modeFactor * numberOperator;
+                mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS);
+            end
 
         end
+        
+        # convert mpoBlock to TensorMap
+        mpo_H0_Part_A[siteIdx] = TensorMap(mpoBlock, U1Space(0 => size(mpoBlock, 1)) ⊗ physSpaces[siteIdx], U1Space(0 => size(mpoBlock, 3)) ⊗ physSpaces[siteIdx]);
 
     end
     return SparseMPO(mpo_H0_Part_A);
@@ -545,6 +519,7 @@ function localVertexOp_mS(momentumVal::Int64, physVecSpace::Union{ElementarySpac
 
     # compute vertex operator coefficient α
     alpha = a * sqrt(4 * pi);
+    βFF = a * sqrt(4 * pi);
 
     # get Bogoliubov coefficients
     # μ = real(cosh(abs(ξ)));
