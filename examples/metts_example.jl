@@ -18,9 +18,9 @@ using TensorKit
 modelName = "sineGordon"
 
 # set truncation parameters
-truncMethod = 5;
+truncMethod = 3;
 kMax = 2;
-nMax = 2;
+nMax = 3;
 nMaxZM = 10;
 modeOrdering = 1;
 bogoliubovR = 0;
@@ -28,7 +28,7 @@ bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.1
 bogParameters = bogParameters[1 : kMax];
 
 # set model parameters
-β = sqrt(4 * π);
+β = 0.4 * sqrt(4 * π);
 λ = 1.0;
 L = 25.0;
 R = sqrt(4 * π) / β;
@@ -95,8 +95,10 @@ for siteIdx = eachindex(physSpaces)
         initialTensor = rand(Float64, 1, dim(physSpace), 1);
         initialTensors[siteIdx] = TensorMap(initialTensor, U1Space(0 => 1) ⊗ physSpace, U1Space(0 => 1));
     elseif mod(siteIdx, 2) == 0
-        physSpaceL = space(finiteMPS[siteIdx + 0], 2);
-        physSpaceR = space(finiteMPS[siteIdx + 1], 2);
+        # physSpaceL = space(finiteMPS[siteIdx + 0], 2);
+        # physSpaceR = space(finiteMPS[siteIdx + 1], 2);
+        physSpaceL = physSpaces[siteIdx + 0];
+        physSpaceR = physSpaces[siteIdx + 1];
         productSpace = fuse(U1Space(0 => 1), physSpaceL);
         initialTensorL = zeros(Float64, 1, dim(physSpaceL), dim(productSpace));
         initialTensorR = zeros(Float64, dim(productSpace), dim(physSpaceR), 1);
@@ -116,7 +118,7 @@ hamMPO = generate_MPO_sG(sG);
 
 deltaTau = 1e-1;
 finalBeta = 2.0;
-energies = metts(initialMPS, hamMPO, deltaTau, finalBeta, METTS2(numMETTS = 100, doBasisExtend = false));
+energies = metts(randomMPS, hamMPO, deltaTau, finalBeta, METTS2(numMETTS = 100, doBasisExtend = false));
 
 plotSamples = plot(energies[:, 1], linewidth = 2.0, frame = :box, xlabel = "METTS sample", ylabel = L"E_{\mathrm{thermal}}", label = "");
 plot!(plotSamples, energies[:, 2], color = :black, linewidth = 1.5, label = "");
