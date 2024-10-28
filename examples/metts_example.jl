@@ -78,7 +78,6 @@ boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
 virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
-# virtSpaces = fill(U1Space(0 => 1), length(physSpaces) + 1);
 
 # initialize random MPS
 initialTensors = Vector{TensorMap}(undef, length(physSpaces));
