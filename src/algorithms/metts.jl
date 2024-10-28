@@ -36,32 +36,37 @@ function avg_err(v::Vector)
   return avg, sqrt(abs((avg2 - avg^2)) / N)
 end
 
-function removeQNsMPS(finiteMPS::SparseMPS)
+# function removeQNsMPS(finiteMPS::SparseMPS)
 
-    # remove QN and convert to ComplexSpace
-    newFiniteMPS = Vector{TensorMap}(undef, length(finiteMPS));
-    for siteIdx = 1 : length(finiteMPS)
-        tensorDims = [dim(space(finiteMPS[siteIdx], tensorIdx)) for tensorIdx = 1 : 3];
-        newFiniteMPS[siteIdx] = TensorMap(convert(Array, finiteMPS[siteIdx]), ComplexSpace(tensorDims[1]) ⊗ ComplexSpace(tensorDims[2]), ComplexSpace(tensorDims[3]));
-    end
-    return SparseMPS(newFiniteMPS);
+#     # remove QN and convert to ComplexSpace
+#     newFiniteMPS = Vector{TensorMap}(undef, length(finiteMPS));
+#     for siteIdx = 1 : length(finiteMPS)
+#         tensorDims = [dim(space(finiteMPS[siteIdx], tensorIdx)) for tensorIdx = 1 : 3];
+#         newFiniteMPS[siteIdx] = TensorMap(convert(Array, finiteMPS[siteIdx]), ComplexSpace(tensorDims[1]) ⊗ ComplexSpace(tensorDims[2]), ComplexSpace(tensorDims[3]));
+#     end
+#     return SparseMPS(newFiniteMPS);
 
-end
+# end
 
 function sample_from_MPS(finiteMPS::SparseMPS)
     """ Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents """
 
     # initialize sampleResult
     sampleResult = zeros(Int64, length(finiteMPS));
+    sampleMomentum = zeros(Int64, length(finiteMPS));
 
-    # compute MPS sample for negative momenutum modes
+    # sample from probability distribution given by finiteMPS
     for siteIdx in eachindex(finiteMPS)
 
-        if siteIdx == 1
+        # get physical vector space
+        physSpace = space(finiteMPS[siteIdx], 2);
+        dimPhysSpace = dim(physSpace);
 
-            # get physical vector space
-            physSpace = space(finiteMPS[siteIdx], 2);
-            dimPhysSpace = dim(physSpace);
+        # get ordering of QNs in physSpace
+        physSpaceQNs = physSpace.dims;
+        phyVecSpaceOrdering = [productSector.charge for productSector in keys(physSpaceQNs)];
+
+        if siteIdx == 1
 
             # compute the probability of each state one-by-one and stop when the random number r is below the total prob so far
             pDisc = 0.0;
@@ -70,64 +75,138 @@ function sample_from_MPS(finiteMPS::SparseMPS)
             An = similar(finiteMPS[siteIdx]);
             pn = 0.0;
             while n <= dimPhysSpace
-                projVector = zeros(Float64, dimPhysSpace);
-                projVector[n] = 1.0;
-                projVector = TensorMap(projVector, one(physSpace), physSpace);
-                @tensor An[-1; -2] := projVector[2] * finiteMPS[siteIdx][-1, 2, -2];
+                targetQN = U1Space(phyVecSpaceOrdering[1] => 1);
+                projVector = zeros(Float64, 1, dimPhysSpace);
+                projVector[1, n] = 1.0;
+                projVector = TensorMap(projVector, targetQN, physSpace);
+                @tensor An[-1 -2; -3] := projVector[-2, 2] * finiteMPS[siteIdx][-1, 2, -3];
                 pn = real(tr(An' * An));
                 pDisc += pn;
+                # display([pn pDisc])
                 (randNum < pDisc) && break;
                 n += 1;
             end
             sampleResult[siteIdx] = n;
+            sampleMomentum[siteIdx] = phyVecSpaceOrdering[1];
 
-            if siteIdx < length(finiteMPS)
-                @tensor A[-1 -2; -3] := An[-1, 1] * finiteMPS[siteIdx + 1][1, -2, -3];
-                A *= (1.0 / sqrt(pn));
-            end
-
-        elseif mod(siteIdx, 2) == 0
-
-            # get physical vector spaces
-            physSpaceL = space(finiteMPS[siteIdx + 0], 2);
-            physSpaceR = space(finiteMPS[siteIdx + 1], 2);
-            dimPhysSpaceL = dim(physSpaceL);
-            dimPhysSpaceR = dim(physSpaceR);
-            @assert dimPhysSpaceL == dimPhysSpaceR
+        else
 
             # compute the probability of each state one-by-one and stop when the random number r is below the total prob so far
             pDisc = 0.0;
             randNum = rand();
-            n = 1;
             An = similar(finiteMPS[siteIdx]);
+            n = 1;
             pn = 0.0;
-            while n <= dimPhysSpaceL && n <= dimPhysSpaceR
-                projVectorL = zeros(Float64, dimPhysSpaceL);
-                projVectorR = zeros(Float64, dimPhysSpaceR);
-                projVectorL[n] = 1.0;
-                projVectorR[n] = 1.0;
-                projVector = TensorMap(projVectorL * projVectorR', one(physSpaceL) ⊗ one(physSpaceR), physSpaceL ⊗ physSpaceR);
-                @tensor An[-1; -2] := projVector[2, 3] * finiteMPS[siteIdx + 0][-1, 2, 1] * finiteMPS[siteIdx + 1][1, 3, -2];
+            while n <= dimPhysSpace
+                targetQN = U1Space(phyVecSpaceOrdering[n] => 1);
+                projVector = TensorMap(ones, targetQN, physSpace);
+                @tensor An[-1 -2; -3] := projVector[-2, 2] * finiteMPS[siteIdx][-1, 2, -3];
                 pn = real(tr(An' * An));
                 pDisc += pn;
+                # display([pn pDisc])
                 (randNum < pDisc) && break;
                 n += 1;
             end
-            sampleResult[siteIdx + 0] = n;
-            sampleResult[siteIdx + 1] = n;
-
-            if siteIdx < length(finiteMPS) - 1
-                @tensor A[-1 -2; -3] := An[-1, 1] * finiteMPS[siteIdx + 2][1, -2, -3];
-                A *= (1.0 / sqrt(pn));
-                finiteMPS[siteIdx + 2] = A;
-            end
+            sampleResult[siteIdx] = n;
+            sampleMomentum[siteIdx] = phyVecSpaceOrdering[n];
 
         end
 
+        # fuse left virtual index and (fixed) physical index to transfer information about sample outcome on one site to the next site
+        fusionIsometry = isometry(fuse(space(An, 1), space(An, 2)), space(An, 1) ⊗ space(An, 2));
+        if siteIdx < length(finiteMPS)
+            @tensor A[-1 -2; -3] := fusionIsometry[-1, 1, 2] * An[1, 2, 3] * finiteMPS[siteIdx + 1][3, -2, -3];
+            A *= (1.0 / sqrt(pn));
+            finiteMPS[siteIdx + 1] = A;
+        end
+
     end
-    return sampleResult;
+
+    # function return
+    return sampleResult, sampleMomentum;
 
 end
+
+# function sample_from_MPS(finiteMPS::SparseMPS)
+#     """ Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents """
+
+#     # initialize sampleResult
+#     sampleResult = zeros(Int64, length(finiteMPS));
+
+#     # compute MPS sample for negative momenutum modes
+#     for siteIdx in eachindex(finiteMPS)
+
+#         if siteIdx == 1
+
+#             # get physical vector space
+#             physSpace = space(finiteMPS[siteIdx], 2);
+#             dimPhysSpace = dim(physSpace);
+
+#             # compute the probability of each state one-by-one and stop when the random number r is below the total prob so far
+#             pDisc = 0.0;
+#             randNum = rand();
+#             n = 1;
+#             An = similar(finiteMPS[siteIdx]);
+#             pn = 0.0;
+#             while n <= dimPhysSpace
+#                 projVector = zeros(Float64, dimPhysSpace);
+#                 projVector[n] = 1.0;
+#                 projVector = TensorMap(projVector, one(physSpace), physSpace);
+#                 @tensor An[-1; -2] := projVector[2] * finiteMPS[siteIdx][-1, 2, -2];
+#                 pn = real(tr(An' * An));
+#                 pDisc += pn;
+#                 (randNum < pDisc) && break;
+#                 n += 1;
+#             end
+#             sampleResult[siteIdx] = n;
+
+#             if siteIdx < length(finiteMPS)
+#                 @tensor A[-1 -2; -3] := An[-1, 1] * finiteMPS[siteIdx + 1][1, -2, -3];
+#                 A *= (1.0 / sqrt(pn));
+#             end
+
+#         elseif mod(siteIdx, 2) == 0
+
+#             # get physical vector spaces
+#             physSpaceL = space(finiteMPS[siteIdx + 0], 2);
+#             physSpaceR = space(finiteMPS[siteIdx + 1], 2);
+#             dimPhysSpaceL = dim(physSpaceL);
+#             dimPhysSpaceR = dim(physSpaceR);
+#             @assert dimPhysSpaceL == dimPhysSpaceR
+
+#             # compute the probability of each state one-by-one and stop when the random number r is below the total prob so far
+#             pDisc = 0.0;
+#             randNum = rand();
+#             n = 1;
+#             An = similar(finiteMPS[siteIdx]);
+#             pn = 0.0;
+#             while n <= dimPhysSpaceL && n <= dimPhysSpaceR
+#                 projVectorL = zeros(Float64, dimPhysSpaceL);
+#                 projVectorR = zeros(Float64, dimPhysSpaceR);
+#                 projVectorL[n] = 1.0;
+#                 projVectorR[n] = 1.0;
+#                 projVector = TensorMap(projVectorL * projVectorR', one(physSpaceL) ⊗ one(physSpaceR), physSpaceL ⊗ physSpaceR);
+#                 @tensor An[-1; -2] := projVector[2, 3] * finiteMPS[siteIdx + 0][-1, 2, 1] * finiteMPS[siteIdx + 1][1, 3, -2];
+#                 pn = real(tr(An' * An));
+#                 pDisc += pn;
+#                 (randNum < pDisc) && break;
+#                 n += 1;
+#             end
+#             sampleResult[siteIdx + 0] = n;
+#             sampleResult[siteIdx + 1] = n;
+
+#             if siteIdx < length(finiteMPS) - 1
+#                 @tensor A[-1 -2; -3] := An[-1, 1] * finiteMPS[siteIdx + 2][1, -2, -3];
+#                 A *= (1.0 / sqrt(pn));
+#                 finiteMPS[siteIdx + 2] = A;
+#             end
+
+#         end
+
+#     end
+#     return sampleResult;
+
+# end
 
 # function sample_from_MPS(finiteMPS::SparseMPS)
 #     """ Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents """
@@ -217,8 +296,8 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep::Union{Float
                 AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, 4));
 
                 # compute H(n, n + 1) and apply it to AC(n, n + 1) to evolve it with exp(-1im * timeStep/2 * H(n, n + 1))
-                newAC2, convHist = exponentiate(x -> applyAC2(x, finiteMPO[siteIdx + 0], finiteMPO[siteIdx + 1], mpoEnvL[siteIdx + 0], mpoEnvR[siteIdx + 1]), -1im * timeStep / 2, AC2, Lanczos());
-                # newAC2, convHist = exponentiate(x -> applyAC2(x, finiteMPO[siteIdx + 0], finiteMPO[siteIdx + 1], mpoEnvL[siteIdx + 0], mpoEnvR[siteIdx + 1]), -1 * timeStep / 2, AC2, Lanczos());
+                # newAC2, convHist = exponentiate(x -> applyAC2(x, finiteMPO[siteIdx + 0], finiteMPO[siteIdx + 1], mpoEnvL[siteIdx + 0], mpoEnvR[siteIdx + 1]), -1im * timeStep / 2, AC2, Lanczos());
+                newAC2, convHist = exponentiate(x -> applyAC2(x, finiteMPO[siteIdx + 0], finiteMPO[siteIdx + 1], mpoEnvL[siteIdx + 0], mpoEnvR[siteIdx + 1]), -1 * timeStep / 2, AC2, Lanczos());
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newAC2, (1, 2), (3, 4), trunc = truncerr(alg.truncErrT), alg = TensorKit.SVD());

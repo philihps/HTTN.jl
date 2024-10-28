@@ -19,7 +19,7 @@ modelName = "sineGordon"
 
 # set truncation parameters
 truncMethod = 3;
-kMax = 2;
+kMax = 6;
 nMax = 3;
 nMaxZM = 10;
 modeOrdering = 1;
@@ -77,50 +77,58 @@ display(sG.modeOccupations)
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
-virtSpaces = fill(U1Space(0 => 1), length(physSpaces) + 1);
+virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
+# virtSpaces = fill(U1Space(0 => 1), length(physSpaces) + 1);
 
-# # initialize random MPS
-# initialTensors = Vector{TensorMap}(undef, length(physSpaces));
-# for siteIdx = eachindex(physSpaces)
-#     physSpace = physSpaces[siteIdx];
-#     initialTensors[siteIdx] = TensorMap(ones, U1Space(0 => 1) ⊗ physSpace, U1Space(0 => 1));
-# end
-# initialMPS = SparseMPS(initialTensors, normalizeMPS = true);
-
-# initialize random block MPS
+# initialize random MPS
 initialTensors = Vector{TensorMap}(undef, length(physSpaces));
 for siteIdx = eachindex(physSpaces)
     physSpace = physSpaces[siteIdx];
-    if siteIdx == 1
-        initialTensor = rand(Float64, 1, dim(physSpace), 1);
-        initialTensors[siteIdx] = TensorMap(initialTensor, U1Space(0 => 1) ⊗ physSpace, U1Space(0 => 1));
-    elseif mod(siteIdx, 2) == 0
-        # physSpaceL = space(finiteMPS[siteIdx + 0], 2);
-        # physSpaceR = space(finiteMPS[siteIdx + 1], 2);
-        physSpaceL = physSpaces[siteIdx + 0];
-        physSpaceR = physSpaces[siteIdx + 1];
-        productSpace = fuse(U1Space(0 => 1), physSpaceL);
-        initialTensorL = zeros(Float64, 1, dim(physSpaceL), dim(productSpace));
-        initialTensorR = zeros(Float64, dim(productSpace), dim(physSpaceR), 1);
-        randomOccupations = rand(dim(productSpace));
-        for (idxN, occP) in enumerate(randomOccupations)
-            initialTensorL[1, idxN, idxN] = occP;
-            initialTensorR[idxN, idxN, 1] = occP;
-        end
-        initialTensors[siteIdx + 0] = TensorMap(initialTensorL, U1Space(0 => 1) ⊗ physSpaceL, productSpace);
-        initialTensors[siteIdx + 1] = TensorMap(initialTensorR, productSpace ⊗ physSpaceR, U1Space(0 => 1));
-    end
+    initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace, virtSpaces[siteIdx + 1]);
 end
-randomMPS = SparseMPS(initialTensors, normalizeMPS = true);
+initialMPS = SparseMPS(initialTensors, normalizeMPS = true);
+# println("norm of initialMPS = ", normMPS(initialMPS), "\n")
 
-# construct sineGordon MPO
-hamMPO = generate_MPO_sG(sG);
 
-deltaTau = 1e-1;
-finalBeta = 2.0;
-energies = metts(randomMPS, hamMPO, deltaTau, finalBeta, METTS2(numMETTS = 100, doBasisExtend = false));
+# # initialize random block MPS
+# initialTensors = Vector{TensorMap}(undef, length(physSpaces));
+# for siteIdx = eachindex(physSpaces)
+#     physSpace = physSpaces[siteIdx];
+#     if siteIdx == 1
+#         initialTensor = rand(Float64, 1, dim(physSpace), 1);
+#         initialTensors[siteIdx] = TensorMap(initialTensor, U1Space(0 => 1) ⊗ physSpace, U1Space(0 => 1));
+#     elseif mod(siteIdx, 2) == 0
+#         # physSpaceL = space(finiteMPS[siteIdx + 0], 2);
+#         # physSpaceR = space(finiteMPS[siteIdx + 1], 2);
+#         physSpaceL = physSpaces[siteIdx + 0];
+#         physSpaceR = physSpaces[siteIdx + 1];
+#         productSpace = fuse(U1Space(0 => 1), physSpaceL);
+#         initialTensorL = zeros(Float64, 1, dim(physSpaceL), dim(productSpace));
+#         initialTensorR = zeros(Float64, dim(productSpace), dim(physSpaceR), 1);
+#         randomOccupations = rand(dim(productSpace));
+#         for (idxN, occP) in enumerate(randomOccupations)
+#             initialTensorL[1, idxN, idxN] = occP;
+#             initialTensorR[idxN, idxN, 1] = occP;
+#         end
+#         initialTensors[siteIdx + 0] = TensorMap(initialTensorL, U1Space(0 => 1) ⊗ physSpaceL, productSpace);
+#         initialTensors[siteIdx + 1] = TensorMap(initialTensorR, productSpace ⊗ physSpaceR, U1Space(0 => 1));
+#     end
+# end
+# randomMPS = SparseMPS(initialTensors, normalizeMPS = true);
 
-plotSamples = plot(energies[:, 1], linewidth = 2.0, frame = :box, xlabel = "METTS sample", ylabel = L"E_{\mathrm{thermal}}", label = "");
-plot!(plotSamples, energies[:, 2], color = :black, linewidth = 1.5, label = "");
-# plot!(plotSamples, sum(energies)/length(energies) * ones(length(energies)), color = :black, linewidth = 1.5);
-display(plotSamples)
+# # construct sineGordon MPO
+# hamMPO = generate_MPO_sG(sG);
+
+# deltaTau = 1e-1;
+# finalBeta = 2.0;
+# energies = metts(randomMPS, hamMPO, deltaTau, finalBeta, METTS2(numMETTS = 100, doBasisExtend = false));
+
+# plotSamples = plot(energies[:, 1], linewidth = 2.0, frame = :box, xlabel = "METTS sample", ylabel = L"E_{\mathrm{thermal}}", label = "");
+# plot!(plotSamples, energies[:, 2], color = :black, linewidth = 1.5, label = "");
+# # plot!(plotSamples, sum(energies)/length(energies) * ones(length(energies)), color = :black, linewidth = 1.5);
+# display(plotSamples)
+
+sampleResult, sampleMomentum = sample_from_MPS(initialMPS);
+display(reshape(sampleResult, 1, :))
+display(reshape(sampleMomentum, 1, :))
+println("sum of sampled momenta = ", sum(sampleMomentum))

@@ -21,7 +21,7 @@ module HTTN
     # using Zygote
 
     # export states
-    export SparseMPS
+    export SparseMPS, normMPS
 
     # export operators
     export SparseMPO
@@ -61,6 +61,7 @@ module HTTN
     # export utility functions
     export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
     export diag
+    export sample_from_MPS
     export save_to_file, load_from_file
 
 
@@ -70,8 +71,9 @@ module HTTN
     include("environments/utils_environments.jl")
 
     include("models/qft_models.jl")
-    include("models/mS.jl")
-    include("models/sG.jl")
+    # include("models/mS.jl")
+    # include("models/sG.jl")
+    include("models/mS_sG.jl")
     include("models/utils.jl")
 
     include("algorithms/dmrg.jl")
