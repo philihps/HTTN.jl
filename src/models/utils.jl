@@ -1,22 +1,4 @@
 
-Pk_sW(k, L) = 2*pi/L * k;
-Ek_sW(k, L, M) = sqrt(Pk_sW(k, L)^2 + M^2);
-
-function energyMomentum_sW_massive(k::Union{Int64, Float64}, L::Union{Int64, Float64}, M::Union{Int64, Float64})
-    """ Function to compute the energy corresponding to momentum k """
-
-    Ek = sqrt(Pk_sW(k, L)^2 + M^2);
-    return Ek;
-end
-
-function energyMomentum_sW_massless(k::Union{Int64, Float64}, L::Float64, M::Union{Int64, Float64})
-    """ Function to compute the energy corresponding to momentum k """
-
-    # Ek = (2*pi/L * abs(k) + 1/(4*pi) * M * M * L / abs(k));
-    Ek = 2*pi/L * abs(k);
-    return Ek;
-end
-
 function convertLocalOperatorsToMPO(localOperators::Vector{<:AbstractTensorMap}; truncMomentumQNs::Union{Int64, Float64} = Inf)
     """ Generates MPO out of three-index local operators using kroneckerDeltaMPS """
 
@@ -46,7 +28,7 @@ function convertLocalOperatorsToMPO(localOperators::SparseEXP, kroneckerDeltaMPS
 
 end
 
-function constructIdentiyMPO(physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}}, virtVecSpace::Union{ElementarySpace, CompositeSpace{ElementarySpace}})
+function constructIdentityMPO(physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}}, virtVecSpace::Union{ElementarySpace, CompositeSpace{ElementarySpace}})
     """ Constructs the identity MPO with trivial vector space on virtual indices """
 
     # construct identity MPOs

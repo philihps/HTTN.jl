@@ -138,6 +138,7 @@ Base.iterate(M::SparseMPO, args...) = iterate(M.mpoTensors, args...)
 Base.eachindex(M::SparseMPO, args...) = eachindex(M.mpoTensors, args...)
 Base.lastindex(M::SparseMPO) = lastindex(M.mpoTensors)
 Base.copy(M::SparseMPO) = SparseMPO(copy(M.mpoTensors))
+LinearAlgebra.real(M::SparseMPO) = SparseMPO(real.(M.mpoTensors))
 function Base.similar(M::SparseMPO{A}) where {A}
     return SparseMPO{A}(similar(M.mpoTensors))
 end

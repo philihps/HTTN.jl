@@ -18,11 +18,15 @@ struct SparseMPS{A<:AbstractTensorMap} <: AbstractFiniteMPS
     function SparseMPS(mpsTensors::Vector{A}; normalizeMPS = false) where {A<:AbstractTensorMap}
 
         # bring MPS into right canonical form
-        for siteIdx = length(mpsTensors) : -1 : 2
+        for siteIdx = length(mpsTensors) : -1 : 1
             (L, Q) = rightorth(mpsTensors[siteIdx], (1, ), (2, 3), alg = LQpos());
             normalizeMPS && normalize!(L)
-            mpsTensors[siteIdx - 1] = permute(permute(mpsTensors[siteIdx - 1], (1, 2), (3, )) * L, (1, 2), (3, ));
-            mpsTensors[siteIdx - 0] = permute(Q, (1, 2), (3, ));
+            if siteIdx > 1
+                mpsTensors[siteIdx - 1] = permute(permute(mpsTensors[siteIdx - 1], (1, 2), (3, )) * L, (1, 2), (3, ));
+                mpsTensors[siteIdx - 0] = permute(Q, (1, 2), (3, ));
+            else
+                mpsTensors[siteIdx - 0] = permute(L * permute(Q, (1, ), (2, 3)), (1, 2), (3, ));
+            end
         end
 
         return new{A}(mpsTensors)
@@ -122,7 +126,7 @@ end
 #--------------------------------------------------------------
 
 Base.getindex(ψ::SparseMPS, idx) = ψ.mpsTensors[idx];
-Base.setindex!(ψ::SparseMPS, mpsTensor, idx::Int) = (ψ.mpsTensors[idx] = mpsTensor)
+Base.setindex!(ψ::SparseMPS, mpsTensor, idx) = (ψ.mpsTensors[idx] = mpsTensor)
 Base.size(ψ::SparseMPS, args...) = size(ψ.mpsTensors, args...)
 Base.length(ψ::SparseMPS) = length(ψ.mpsTensors)
 Base.eltype(ψ::SparseMPS) = eltype(ψ.mpsTensors)
