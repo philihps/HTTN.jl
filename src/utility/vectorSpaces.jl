@@ -83,7 +83,7 @@ end
 
 function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}}; qnL::ElementarySpace = U1Space(0 => 1), qnR::ElementarySpace = U1Space(0 => 1), removeDegeneracy::Bool = true, degenCutOff::Int64 = 1)
     """ Function to generate global momentum-conserving MPS to be contracted with local vertex operators to generate full interaction """
-
+    
     # get number of momentum modes
     numSites = length(physSpaces);
 

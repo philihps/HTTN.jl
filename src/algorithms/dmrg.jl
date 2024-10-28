@@ -386,8 +386,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            bogParameters[kR] -= optimalXi;
-                            # bogParameters[kR] += optimalXi;
+                            # bogParameters[kR] -= optimalXi;
+                            bogParameters[kR] += optimalXi;
                             QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             println(bogParameters, "\n")
 
@@ -538,8 +538,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function, QFTModel::
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            bogParameters[kR] -= optimalXi; # sG
-                            # bogParameters[kR] += optimalXi; # mS
+                            # bogParameters[kR] -= optimalXi;
+                            bogParameters[kR] += optimalXi;
                             QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             println(bogParameters, "\n")
 
@@ -999,8 +999,8 @@ function find_excitedstate!(finiteMPS::SparseMPS, mpoHandle::Function, previoMPS
                             alg.verbosePrint > 0 && println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            bogParameters[kR] -= optimalXi;
-                            # bogParameters[kR] += optimalXi;
+                            # bogParameters[kR] -= optimalXi;
+                            bogParameters[kR] += optimalXi;
                             QFTModel = updateBogoliubovParameters(QFTModel, bogParameters);
                             println(bogParameters, "\n")
 
