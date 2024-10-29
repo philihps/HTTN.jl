@@ -137,6 +137,10 @@ end
 function perform_timestep!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, timeStep::Union{Float64, ComplexF64}, alg::TDVP2)
     """ 2-site TDVP implementation for finiteMPO with global Krylov subspace expansion """
 
+    if typeof(timeStep) == ComplexF64
+        timeStep = -timeStep # t = -iτ
+    end
+
     # make basis extension to include a number of global Krylov vectors
     if alg.doBasisExtend
         finiteMPS = basisExtend(finiteMPS, finiteMPO, alg);

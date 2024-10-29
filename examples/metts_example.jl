@@ -19,7 +19,7 @@ modelName = "sineGordon"
 
 # set truncation parameters
 truncMethod = 3;
-kMax = 6;
+kMax = 3;
 nMax = 3;
 nMaxZM = 10;
 modeOrdering = 1;
@@ -116,18 +116,19 @@ initialMPS = SparseMPS(initialTensors, normalizeMPS = true);
 # randomMPS = SparseMPS(initialTensors, normalizeMPS = true);
 
 # # construct sineGordon MPO
-# hamMPO = generate_MPO_sG(sG);
+hamMPO = generate_MPO_sG(sG);
 
-# deltaTau = 1e-1;
-# finalBeta = 2.0;
-# energies = metts(randomMPS, hamMPO, deltaTau, finalBeta, METTS2(numMETTS = 100, doBasisExtend = false));
+numTimeStep = 10
+finalBeta = 2.0;
+energies = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(numMETTS = numTimeStep, doBasisExtend = false));
 
-# plotSamples = plot(energies[:, 1], linewidth = 2.0, frame = :box, xlabel = "METTS sample", ylabel = L"E_{\mathrm{thermal}}", label = "");
-# plot!(plotSamples, energies[:, 2], color = :black, linewidth = 1.5, label = "");
-# # plot!(plotSamples, sum(energies)/length(energies) * ones(length(energies)), color = :black, linewidth = 1.5);
-# display(plotSamples)
+plotSamples = plot(energies[:, 1], linewidth = 2.0, frame = :box, xlabel = "METTS sample", ylabel = L"E_{\mathrm{thermal}}", label = "");
+plot!(plotSamples, energies[:, 2], color = :black, linewidth = 1.5, label = "");
+# plot!(plotSamples, sum(energies)/length(energies) * ones(length(energies)), color = :black, linewidth = 1.5);
+display(plotSamples)
+# println("ok")
 
-sampleResult, sampleMomentum = sample_from_MPS(initialMPS);
-display(reshape(sampleResult, 1, :))
-display(reshape(sampleMomentum, 1, :))
-println("sum of sampled momenta = ", sum(sampleMomentum))
+# sampleResult, sampleMomentum = sample_from_MPS!(initialMPS);
+# display(reshape(sampleResult, 1, :))
+# display(reshape(sampleMomentum, 1, :))
+# println("sum of sampled momenta = ", sum(sampleMomentum))
