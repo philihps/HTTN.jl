@@ -22,26 +22,26 @@ function removeDegeneracyQN(vecSpace; degenCutOff::Int64 = 1)
 
 end
 
-function constructPhysSpaces(momentumModes::Vector{Int64}, occPerSite::Vector{Int64})
-    """ Constructs vector spaces for physical bond indices of the MPS """
+# function constructPhysSpaces(momentumModes::Vector{Int64}, occPerSite::Vector{Int64})
+#     """ Constructs vector spaces for physical bond indices of the MPS """
 
-    # get number of momentum modes
-    numSites = length(momentumModes);
+#     # get number of momentum modes
+#     numSites = length(momentumModes);
 
-    # determine physSpaces
-    physSpaces = Vector{typeof(U1Space())}(undef, numSites);
-    for siteIdx = 1 : numSites
-        momentumVal = momentumModes[siteIdx];
-        maxOccupation = occPerSite[siteIdx];
-        if momentumVal == 0
-            physSpaces[siteIdx] = U1Space(0 => (2 * maxOccupation + 1));
-        else
-            physSpaces[siteIdx] = U1Space([momentumVal * occup => 1 for occup = 0 : +maxOccupation]);
-        end
-    end
-    return physSpaces;
+#     # determine physSpaces
+#     physSpaces = Vector{typeof(U1Space())}(undef, numSites);
+#     for siteIdx = 1 : numSites
+#         momentumVal = momentumModes[siteIdx];
+#         maxOccupation = occPerSite[siteIdx];
+#         if momentumVal == 0
+#             physSpaces[siteIdx] = U1Space(0 => (2 * maxOccupation + 1));
+#         else
+#             physSpaces[siteIdx] = U1Space([momentumVal * occup => 1 for occup = 0 : +maxOccupation]);
+#         end
+#     end
+#     return physSpaces;
 
-end
+# end
 
 function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S; removeDegeneracy::Bool = true, degenCutOff::Int64 = 1) where {S<:ElementarySpace}
     """ Constructs vector spaces for virtual bond indices of the MPS """

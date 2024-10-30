@@ -322,7 +322,7 @@ function modelSetup(modelParameters::Union{MassiveSchwingerParameters,SineGordon
 end
 
 
-function constructPhysSpaces(modelParameters::Union{MassiveSchwingerParameters,SineGordonParameters})
+function constructPhysSpaces(modelParameters::Union{MassiveSchwingerParameters, SineGordonParameters})
     ### extend input mS and sG models
     """ Constructs vector spaces for physical bond indices of the MPS """
 

@@ -107,7 +107,6 @@ function sample_from_MPS!(finiteMPS::SparseMPS)
         end
 
     end
-    
 
     # function return
     return sampleResult, sampleMomentum;
@@ -165,54 +164,26 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, f
         end
 
         # sample in harmonic oscillator basis
-        mpsSample = sample_from_MPS!(finiteMPS);
+        mpsSample, momSample = sample_from_MPS!(finiteMPS);
         println(mpsSample)
+        println(momSample)
 
-        # create new block product state from mpsSample
+        # create virtSpaces for classical product state with the sampled momenta
+        virtSpaces = vcat(U1Space(0 => 1), [U1Space(sum(momSample[1 : linkIdx]) => 1) for linkIdx = 1 : (length(momSample) - 1)], U1Space(0 => 1));
+        display(virtSpaces)
+
+        # create new classical product state from mpsSample
         initialTensors = Vector{TensorMap}(undef, length(finiteMPS));
         for siteIdx = eachindex(finiteMPS)
-            if siteIdx == 1
-                physSpace = space(finiteMPS[siteIdx], 2);
-                initialTensor = zeros(Float64, 1, dim(physSpace), 1);
-                initialTensor[mpsSample[siteIdx]] = 1.0;
-                initialTensors[siteIdx] = TensorMap(initialTensor, U1Space(0 => 1) ⊗ physSpace, U1Space(0 => 1));
-            elseif mod(siteIdx, 2) == 0
-                physSpaceL = space(finiteMPS[siteIdx + 0], 2);
-                physSpaceR = space(finiteMPS[siteIdx + 1], 2);
-                productSpace = fuse(U1Space(0 => 1), physSpaceL);
-                initialTensorL = zeros(Float64, 1, dim(physSpaceL), dim(productSpace));
-                initialTensorR = zeros(Float64, dim(productSpace), dim(physSpaceR), 1);                
-                idxNL = mpsSample[siteIdx + 0];
-                idxNR = mpsSample[siteIdx + 1];
-                initialTensorL[1, idxNL, idxNL] = 1.0;
-                initialTensorR[idxNR, idxNR, 1] = 1.0;
-                initialTensors[siteIdx + 0] = TensorMap(initialTensorL, U1Space(0 => 1) ⊗ physSpaceL, productSpace);
-                initialTensors[siteIdx + 1] = TensorMap(initialTensorR, productSpace ⊗ physSpaceR, U1Space(0 => 1));
-            end
+            physSpace = space(finiteMPS[siteIdx], 2);
+            virtSpaceL = virtSpaces[siteIdx + 0];
+            virtSpaceR = virtSpaces[siteIdx + 1];
+            initTensor = zeros(Float64, dim(virtSpaceL), dim(physSpace), dim(virtSpaceR));
+            initTensor[1, mpsSample[siteIdx], 1] = 1.0;
+            initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpace, virtSpaceR);
         end
-        finiteMPS = SparseMPS(initialTensors, normalizeMPS = true);
+        finiteMPS = SparseMPS(initialTensors);
 
-        # # create new block product state from mpsSample
-        # initialTensors = Vector{TensorMap}(undef, length(finiteMPS));
-        # for siteIdx = eachindex(finiteMPS)
-        #     physSpace = space(finiteMPS[siteIdx], 2);
-        #     initTensor = zeros(Float64, 1, dim(physSpace), 1);
-        #     initTensor[1, mpsSample[siteIdx], 1] = 1.0;
-        #     initialTensors[siteIdx] = TensorMap(initTensor, U1Space(0 => 1) ⊗ physSpace, U1Space(0 => 1));
-        # end
-        # finiteMPS = SparseMPS(initialTensors);
-
-        # # Measure in X or Z basis on alternating steps
-        # if step % 2 == 1
-        #     psi = apply(Ry_gates, psi)
-        #     samp = sample_from_MPS(psi)
-        #     new_state = [samp[j] == 1 ? "X+" : "X-" for j in 1:N]
-        # else
-        #     samp = sample_from_MPS(psi)
-        #     new_state = [samp[j] == 1 ? "Z+" : "Z-" for j in 1:N]
-        # end
-        # psi = MPS(s, new_state)
-        # end
 
     end
 

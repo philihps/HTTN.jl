@@ -18,14 +18,15 @@ using TensorKit
 
 # set truncation parameters
 modelName = "sineGordon";
-truncMethod = 2;
+truncMethod = 3;
 kMax = 6;
-nMax = 1;
+nMax = 3;
 nMaxZM = 20;
 modeOrdering = 1;
-bogoliubovR = 1;
+bogoliubovR = 0;
 
 # set Bogoliubov rotation parameters
+bogParameters = [1.0864793212772548, 0.747793190933278, 0.561024939327877, 0.4365535698356723];
 bogParameters = [1.1392177414024305, 0.7996105297696293, 0.6064367217222117, 0.48030611206315665, 0.39039125843460976, 0.32251603639744303];
 
 # set model parameters
@@ -39,7 +40,7 @@ betaList = βFF * collect(1.0 : 0.2 : 1.0);
 
 # flags to compute ground state with DMRG
 runDMRG = 0;
-verbosity = 1;
+verbosity = 0;
 
 # set DMRG parameters
 bondDim = 256;
@@ -63,6 +64,7 @@ mpoBondDimensionPlot = plot(
     xticks = xTicks, 
     xlab = L"k", 
     ylab = L"m_{\textrm{MPO}}(k_L,k_R)", 
+    ylims = (0, 260), 
     frame = :box, 
 )
 
@@ -113,7 +115,7 @@ for (idxB, β) in enumerate(betaList)
     end
 
     # compress hamMPO
-    compressedMPO, Ss = compress_MPO(hamMPO, truncError = 1e-14, verbose = 1);
+    compressedMPO, Ss = compress_MPO(hamMPO, truncError = 1e-14, verbose = 0);
     mpoBondDims = getLinkDimsMPO(compressedMPO);
     println(mpoBondDims)
 
@@ -123,21 +125,21 @@ for (idxB, β) in enumerate(betaList)
         label = "compressed MPO", 
     )
 
-    # plot decay of singular values
-    svdPlot = plot(
-        xlab = "Rank", 
-        ylab = L"\log_{10}(\lambda)", 
-        frame = :box, 
-    )
-    for (idxS, S) in enumerate(Ss)
-        res = Float64[]
-        for (k, v) in S.data
-            append!(res, diag(v))
-        end
-        sort!(res, rev = true)
-    	plot!(svdPlot, (1:length(res)), log.(res)/log(10), markers = :circle, label = "Cut $(length(compressedMPO)-idxS)")
-    end
-    display(svdPlot)
+    # # plot decay of singular values
+    # svdPlot = plot(
+    #     xlab = "Rank", 
+    #     ylab = L"\log_{10}(\lambda)", 
+    #     frame = :box, 
+    # )
+    # for (idxS, S) in enumerate(Ss)
+    #     res = Float64[]
+    #     for (k, v) in S.data
+    #         append!(res, diag(v))
+    #     end
+    #     sort!(res, rev = true)
+    # 	plot!(svdPlot, (1:length(res)), log.(res)/log(10), markers = :circle, label = "Cut $(length(compressedMPO)-idxS)")
+    # end
+    # display(svdPlot)
     
     if runDMRG == 1
 

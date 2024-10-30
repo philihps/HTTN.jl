@@ -18,9 +18,9 @@ using TensorKit
 
 # set truncation parameters
 modelName = "massiveSchwinger";
-truncMethod = 2;
-kMax = 6;
-nMax = 1;
+truncMethod = 3;
+kMax = 4;
+nMax = 3;
 nMaxZM = 20;
 modeOrdering = 1;
 bogoliubovR = 0;
@@ -46,7 +46,7 @@ thetaList = π * collect(1.0 : 0.2 : 1.0);
 fermionMasses = [0.10];
 
 # flags to compute ground state with DMRG
-runDMRG = 0;
+runDMRG = 1;
 verbosity = 1;
 
 # set DMRG parameters
@@ -118,7 +118,7 @@ for (idxT, θ) in enumerate(thetaList), (idxM, m) in enumerate(fermionMasses)
     end
 
     # compress hamMPO
-    compressedMPO, Ss = compress_MPO(hamMPO, truncError = 1e-14, verbose = 1);
+    compressedMPO, Ss = compress_MPO(hamMPO, truncError = 1e-14, verbose = 0);
     mpoBondDims = getLinkDimsMPO(compressedMPO);
     println(mpoBondDims)
 
@@ -128,21 +128,21 @@ for (idxT, θ) in enumerate(thetaList), (idxM, m) in enumerate(fermionMasses)
         label = "compressed MPO", 
     )
 
-    # plot decay of singular values
-    svdPlot = plot(
-        xlab = "Rank", 
-        ylab = L"\log_{10}(\lambda)", 
-        frame = :box, 
-    )
-    for (idxS, S) in enumerate(Ss)
-        res = Float64[]
-        for (k, v) in S.data
-            append!(res, diag(v))
-        end
-        sort!(res, rev = true)
-    	plot!(svdPlot, (1:length(res)), log.(res)/log(10), markers = :circle, label = "Cut $(length(compressedMPO)-idxS)")
-    end
-    display(svdPlot)
+    # # plot decay of singular values
+    # svdPlot = plot(
+    #     xlab = "Rank", 
+    #     ylab = L"\log_{10}(\lambda)", 
+    #     frame = :box, 
+    # )
+    # for (idxS, S) in enumerate(Ss)
+    #     res = Float64[]
+    #     for (k, v) in S.data
+    #         append!(res, diag(v))
+    #     end
+    #     sort!(res, rev = true)
+    # 	plot!(svdPlot, (1:length(res)), log.(res)/log(10), markers = :circle, label = "Cut $(length(compressedMPO)-idxS)")
+    # end
+    # display(svdPlot)
     
     if runDMRG == 1
 

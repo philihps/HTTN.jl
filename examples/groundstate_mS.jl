@@ -10,6 +10,7 @@ using Revise
 using DelimitedFiles
 using HTTN
 using JLD
+using KrylovKit
 using LaTeXStrings
 using Plots
 using Printf
@@ -18,16 +19,30 @@ using TensorKit
 
 # set truncation parameters
 modelName = "massiveSchwinger";
-truncMethod = 3;
-kMax = 1;
-nMax = 40;
+truncMethod = 5;
+kMax = 2;
+nMax = 10;
 nMaxZM = 20;
 modeOrdering = 1;
-bogoliubovR = 1;
+bogoliubovR = 0;
+useBasisOptimization = 0;
 
-# truncMethod = 3, nMax = 3
-bogParameters = [0.01];
-bogParameters = bogParameters[1 : kMax];
+# # truncMethod = 5, nMax = 10
+# bogParameters = [0.21, 0.18];
+# # bogParameters = [-0.3384];
+# # bogParameters = bogParameters[1 : kMax];
+# bogParameters = rand(kMax);
+# bogParameters = [0.00];
+
+# m = 0.1, L = 100.0
+# truncMethod = 5
+# nMax = 10, nMaxZM = 20
+optimalBogParameters = [
+    [0.21300345504641333], 
+    [0.21300345504641333, 0.16], 
+];
+bogParameters = convert.(Float64, optimalBogParameters[kMax]);
+# bogParameters = randn(kMax);
 
 # set model parameters
 θ = 1.0 * π;
@@ -37,16 +52,13 @@ L = 100.0;
 
 # set fermion mass
 fermionMasses = collect(0.100 : 0.10 : 0.100);
-fermionMasses = [0.00001];
+fermionMasses = [0.1];
 # fermionMasses = collect(0.20 : 0.05 : 0.35);
 
 # set DMRG parameters
-bondDim = 256;
+bondDim = 1024;
 truncErr = 1e-6;
 subspaceExpansion = true;
-
-# use numerical basis optimization
-useBasisOptimization = 0;
 
 # plot entanglement entropy
 xLimits = (0, 2 * kMax);
@@ -70,8 +82,10 @@ entanglementEntropyPlot = plot(
     frame = :box
 );
 
+
 # loop over Hamiltonian parameters
 for (idxM, m) in enumerate(fermionMasses)
+
 
     # create NamedTuple for truncation parameters and model parameters
     truncationParameters = (kMax = kMax, nMax = nMax, nMaxZM = nMaxZM, truncMethod = truncMethod, modeOrdering = modeOrdering, bogoliubovR = bogoliubovR, bogParameters = bogParameters);
@@ -87,11 +101,6 @@ for (idxM, m) in enumerate(fermionMasses)
     physSpaces = mS.physSpaces;
     virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
 
-    # initialize vacuum MPS
-    initialMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
-    vacuumMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
-    initialMPS = initializeMPS(mS, vacuumMPS, modeOrdering = modeOrdering);
-
     storeBogoliubovParameters = [];
     if useBasisOptimization == 0
 
@@ -100,16 +109,33 @@ for (idxM, m) in enumerate(fermionMasses)
         println(getLinkDimsMPO(hamMPO))
         # display(hamMPO)
 
+        
+        # initialize ground state
+        # initialMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+        vacuumMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+        initialMPS = initializeMPS(mS, vacuumMPS, modeOrdering = modeOrdering);
+
         # run DMRG for ground state
         groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, verbosePrint = 1));
         @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
 
-        # # run DMRG for excited state
-        # lowEnergyStates = Vector{SparseMPS}([groundStateMPS]);
-        # excitedStateMPS, excitedStateEnergy = find_excitedstate(groundStateMPS, hamMPO, lowEnergyStates, DMRG2(bondDim = bondDim, truncErr = truncErr, verbosePrint = true));
-        # @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
+
+        # initialize excited state
+        # initialMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+        vacuumMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+        initialMPS = initializeMPS(mS, vacuumMPS, modeOrdering = modeOrdering);
+
+        # run DMRG for excited state
+        lowEnergyStates = Vector{SparseMPS}([groundStateMPS]);
+        excitedStateMPS, excitedStateEnergy = find_excitedstate(initialMPS, hamMPO, lowEnergyStates, DMRG2(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion, verbosePrint = true));
+        @printf("excited state energy E1 = %0.8f\n\n", excitedStateEnergy)
 
     elseif useBasisOptimization == 1
+
+        # initialize ground state
+        # initialMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+        vacuumMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+        initialMPS = initializeMPS(mS, vacuumMPS, modeOrdering = modeOrdering);
 
         # run DMRG for ground state
         groundStateMPS, groundStateEnergy, storeBogoliubovParameters, truncErrors = find_groundstate(initialMPS, generate_MPO_mS, mS, DMRG2BO(bondDim = bondDim, truncErr = truncErr, subspaceExpansion = subspaceExpansion,  verbosePrint = 2));
@@ -285,10 +311,12 @@ for (idxM, m) in enumerate(fermionMasses)
     # println(real.(expVals_AnAn))
     # # println(real.(expVals_CrCr))
 
-    # compute local occupation numbers
-    numberOperators = local_number_operators(mS);
-    localOccupations = expectation_values(groundStateMPS, numberOperators);
-    println(localOccupations)
+    # # compute local occupation numbers
+    # numberOperators = local_number_operators(mS);
+    # localOccupations = expectation_values(groundStateMPS, numberOperators);
+    # println(localOccupations)
+
+    @printf("energy gap Δ = %0.8f\n", excitedStateEnergy - groundStateEnergy)
 
 end
 # display(entanglementEntropyPlot)

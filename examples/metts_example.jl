@@ -6,7 +6,7 @@ Base.run(`clear`)
 using Pkg
 using Revise
 
-# Pkg.activate(".")
+Pkg.activate(".")
 using JLD
 using HTTN
 using LaTeXStrings
@@ -19,18 +19,18 @@ modelName = "sineGordon"
 
 # set truncation parameters
 truncMethod = 3;
-kMax = 3;
+kMax = 2;
 nMax = 3;
 nMaxZM = 10;
 modeOrdering = 1;
 bogoliubovR = 0;
 bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13];
-bogParameters = bogParameters[1 : kMax];
+bogParameters = bogParameters[1:kMax];
 
 # set model parameters
-β = 0.4 * sqrt(4 * π);
+β = 0.25 * sqrt(4 * π);
 λ = 1.0;
-L = 25.0;
+L = 15.0;
 R = sqrt(4 * π) / β;
 
 # set DMRG parameters
@@ -66,7 +66,15 @@ truncErr = 1e-6;
 R = sqrt(4 * π) / β;
 
 # create NamedTuple for truncation parameters and model parameters
-truncationParameters = (kMax = kMax, nMax = nMax, nMaxZM = nMaxZM, truncMethod = truncMethod, modeOrdering = modeOrdering, bogoliubovR = bogoliubovR, bogParameters = bogParameters);
+truncationParameters = (
+    kMax = kMax,
+    nMax = nMax,
+    nMaxZM = nMaxZM,
+    truncMethod = truncMethod,
+    modeOrdering = modeOrdering,
+    bogoliubovR = bogoliubovR,
+    bogParameters = bogParameters,
+);
 hamiltonianParameters = (β = β, R = R, λ = λ, L = L);
 
 # construct Sine-Gordon model (with MPO)
@@ -77,24 +85,49 @@ display(sG.modeOccupations)
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
-virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR, removeDegeneracy = true);
+virtSpaces = constructVirtSpaces(
+    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = true
+);
+# virtSpaces = fill(U1Space(0 => 1), length(physSpaces) + 1);
+
+# # initialize vacuum MPS
+# initialTensors = Vector{TensorMap}(undef, length(physSpaces));
+# for siteIdx in eachindex(physSpaces)
+#     physSpace = physSpaces[siteIdx]
+#     if siteIdx == 1
+#         initialTensor = zeros(Float64, 1, dim(physSpace), 1)
+#         initialTensor[1, Int((dim(physSpace) + 1) / 2), 1] = 1.0
+#         initialTensors[siteIdx] = TensorMap(
+#             initialTensor, U1Space(0 => 1) ⊗ physSpace, U1Space(0 => 1)
+#         )
+#     else
+#         initialTensor = zeros(Float64, 1, dim(physSpace), 1)
+#         initialTensor[1, 1, 1] = 1.0
+#         initialTensors[siteIdx] = TensorMap(
+#             randn, virtSpaces[siteIdx] ⊗ physSpace, virtSpaces[siteIdx + 1]
+#         )
+#     end
+# end
+# initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
+# println("norm of initialMPS = ", normMPS(initialMPS), "\n")
 
 # initialize random MPS
 initialTensors = Vector{TensorMap}(undef, length(physSpaces));
-for siteIdx = eachindex(physSpaces)
-    physSpace = physSpaces[siteIdx];
-    initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace, virtSpaces[siteIdx + 1]);
+for siteIdx in eachindex(physSpaces)
+    physSpace = physSpaces[siteIdx]
+    initialTensors[siteIdx] = TensorMap(
+        randn, virtSpaces[siteIdx] ⊗ physSpace, virtSpaces[siteIdx + 1]
+    )
 end
-initialMPS = SparseMPS(initialTensors, normalizeMPS = true);
+initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 # println("norm of initialMPS = ", normMPS(initialMPS), "\n")
-
 
 # # initialize random block MPS
 # initialTensors = Vector{TensorMap}(undef, length(physSpaces));
 # for siteIdx = eachindex(physSpaces)
 #     physSpace = physSpaces[siteIdx];
 #     if siteIdx == 1
-#         initialTensor = rand(Float64, 1, dim(physSpace), 1);
+#         initialTensor = randn(Float64, 1, dim(physSpace), 1);
 #         initialTensors[siteIdx] = TensorMap(initialTensor, U1Space(0 => 1) ⊗ physSpace, U1Space(0 => 1));
 #     elseif mod(siteIdx, 2) == 0
 #         # physSpaceL = space(finiteMPS[siteIdx + 0], 2);
@@ -104,7 +137,7 @@ initialMPS = SparseMPS(initialTensors, normalizeMPS = true);
 #         productSpace = fuse(U1Space(0 => 1), physSpaceL);
 #         initialTensorL = zeros(Float64, 1, dim(physSpaceL), dim(productSpace));
 #         initialTensorR = zeros(Float64, dim(productSpace), dim(physSpaceR), 1);
-#         randomOccupations = rand(dim(productSpace));
+#         randomOccupations = randn(dim(productSpace));
 #         for (idxN, occP) in enumerate(randomOccupations)
 #             initialTensorL[1, idxN, idxN] = occP;
 #             initialTensorR[idxN, idxN, 1] = occP;
@@ -113,7 +146,8 @@ initialMPS = SparseMPS(initialTensors, normalizeMPS = true);
 #         initialTensors[siteIdx + 1] = TensorMap(initialTensorR, productSpace ⊗ physSpaceR, U1Space(0 => 1));
 #     end
 # end
-# randomMPS = SparseMPS(initialTensors, normalizeMPS = true);
+# initialMPS = SparseMPS(initialTensors, normalizeMPS = true);
+# println("norm of initialMPS = ", normMPS(initialMPS), "\n")
 
 # # construct sineGordon MPO
 hamMPO = generate_MPO_sG(sG);
