@@ -72,8 +72,34 @@ function sample(localMPS, index::Int64, physSpace, phyVecSpaceOrdering)
     return n, pn, An
 end
 
+function sample_to_CPS(mpsSample, momSample, finiteMPS)
+    virtSpaces = vcat(U1Space(0 => 1), [U1Space(sum(momSample[1 : linkIdx]) => 1) for linkIdx = 1 : (length(momSample) - 1)], U1Space(0 => 1));
+
+    # create new classical product state from mpsSample
+    initialTensors = Vector{TensorMap}(undef, length(finiteMPS));
+    for siteIdx = eachindex(finiteMPS)
+        physSpace = space(finiteMPS[siteIdx], 2);
+        virtSpaceL = virtSpaces[siteIdx + 0];
+        virtSpaceR = virtSpaces[siteIdx + 1];
+        initTensor = zeros(Float64, dim(virtSpaceL), dim(physSpace), dim(virtSpaceR));
+
+        initTensor[1, mpsSample[siteIdx], 1] = 1.0;
+        initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpace, virtSpaceR);
+    end
+    
+    finiteCPS = SparseMPS(initialTensors);
+
+    return finiteCPS
+end
+
 function sample_from_MPS!(finiteMPS::SparseMPS)
-    """ Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents """
+    """ 
+    Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents 
+    
+    Returns:
+    - sampleResult: vector contains index of basis state for each site
+    - sampleMomentum: vector contains momentum mode    
+    """
 
     # initialize sampleResult
     sampleResult = zeros(Int64, length(finiteMPS));
@@ -138,11 +164,6 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, f
             truncErrs[step] = truncErr
         end
 
-        # get MPS linkDims
-        # println(getLinkDimsMPS(finiteMPS))
-
-        #-----------------------------------------------------------------
-
         # measure properties after >= alg.numWarmUp METTS have been made
         if step > alg.numWarmUp
             mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO);
@@ -165,24 +186,11 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, f
 
         # sample in harmonic oscillator basis
         mpsSample, momSample = sample_from_MPS!(finiteMPS);
-        println(mpsSample)
-        println(momSample)
+        println("Sample of basis states (index): $(mpsSample)")
+        println("Sample of basis states (k-mode): $(momSample)")
 
-        # create virtSpaces for classical product state with the sampled momenta
-        virtSpaces = vcat(U1Space(0 => 1), [U1Space(sum(momSample[1 : linkIdx]) => 1) for linkIdx = 1 : (length(momSample) - 1)], U1Space(0 => 1));
-        display(virtSpaces)
-
-        # create new classical product state from mpsSample
-        initialTensors = Vector{TensorMap}(undef, length(finiteMPS));
-        for siteIdx = eachindex(finiteMPS)
-            physSpace = space(finiteMPS[siteIdx], 2);
-            virtSpaceL = virtSpaces[siteIdx + 0];
-            virtSpaceR = virtSpaces[siteIdx + 1];
-            initTensor = zeros(Float64, dim(virtSpaceL), dim(physSpace), dim(virtSpaceR));
-            initTensor[1, mpsSample[siteIdx], 1] = 1.0;
-            initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpace, virtSpaceR);
-        end
-        finiteMPS = SparseMPS(initialTensors);
+        # 
+        finiteMPS = sample_to_CPS(mpsSample, momSample, finiteMPS)
 
 
     end

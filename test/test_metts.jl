@@ -1,18 +1,4 @@
-#!/usr/bin/env julia
 
-# clear console
-Base.run(`clear`)
-
-using Pkg
-using Revise
-
-Pkg.activate(".")
-using JLD
-using HTTN
-using LaTeXStrings
-using Plots
-using Printf
-using TensorKit
 
 # set modelName
 modelName = "sineGordon"
@@ -65,6 +51,7 @@ physSpaces = sG.physSpaces;
 virtSpaces = constructVirtSpaces(
     sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = false
 );
+######################################################################
 
 # initialize random MPS
 initialTensors = Vector{TensorMap}(undef, length(physSpaces));
@@ -74,24 +61,14 @@ for siteIdx in eachindex(physSpaces)
         randn, virtSpaces[siteIdx] ⊗ physSpace, virtSpaces[siteIdx + 1]
     );
 end
-
 initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 
-# construct sineGordon MPO
-hamMPO = generate_MPO_sG(sG);
 
-numTimeStep = 100
-finalBeta = 2.0;
-energies = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(numMETTS = numTimeStep, doBasisExtend = false));
+# test sample_to_CPS
+mpsSample = [15, 2, 4, 4, 3]
+momSample = [0, -1, 3, -6, 4]
 
-plotSamples = plot(energies[:, 1], linewidth = 2.0, frame = :box, xlabel = "METTS sample", ylabel = L"E_{\mathrm{thermal}}", label = "");
-plot!(plotSamples, energies[:, 2], color = :black, linewidth = 1.5, label = "");
-# plot!(plotSamples, sum(energies)/length(energies) * ones(length(energies)), color = :black, linewidth = 1.5);
-display(plotSamples)
+finiteMPS = sample_to_CPS(mpsSample, momSample, initialMPS)
 
-# sampleResult, sampleMomentum = sample_from_MPS!(initialMPS);
-# display(reshape(sampleResult, 1, :))
-# display(reshape(sampleMomentum, 1, :))
-# println("sum of sampled momenta = ", sum(sampleMomentum))
 
 nothing

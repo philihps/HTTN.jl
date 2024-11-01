@@ -61,8 +61,9 @@ module HTTN
     # export utility functions
     export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
     export diag
-    export sample_from_MPS
+    export sample_from_MPS!, sample_to_CPS
     export save_to_file, load_from_file
+    export printSpacesMPS
 
 
     # include source files
@@ -71,8 +72,6 @@ module HTTN
     include("environments/utils_environments.jl")
 
     include("models/qft_models.jl")
-    # include("models/mS.jl")
-    # include("models/sG.jl")
     include("models/mS_sG.jl")
     include("models/utils.jl")
 
@@ -88,5 +87,6 @@ module HTTN
 
     include("utility/bosonOperators.jl")
     include("utility/vectorSpaces.jl")
+    include("utility/printing.jl")
 
 end
