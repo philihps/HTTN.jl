@@ -87,9 +87,7 @@ function sample_to_CPS(mpsSample, momSample, finiteMPS)
         initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpace, virtSpaceR);
     end
     
-    finiteCPS = SparseMPS(initialTensors);
-
-    return finiteCPS
+    return SparseMPS(initialTensors);
 end
 
 function sample_from_MPS!(finiteMPS::SparseMPS)
@@ -141,7 +139,8 @@ end
 
 function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, finalBeta::Union{Int64, Float64}, alg::METTS2)
     """
-
+    Returns:
+    - energies: energies[:, 1] -> energy at time step i && energies[:, 2] -> average energy up to time step i
     """
     timeRanges = range(0, stop=finalBeta / 2, length=numTimeStep+1)
     timeStep = 1im*(timeRanges[2] - timeRanges[1])
