@@ -45,7 +45,7 @@ module HTTN
     # export algorithms
     export find_groundstate, find_excitedstate
     export DMRG2, DMRG2BO
-    export perform_timestep
+    export perform_timestep!
     export TDVP2, TDVP2BO
     export metts
     export METTS2

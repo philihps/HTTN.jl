@@ -74,13 +74,17 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
     momSample = [0, -1, 3, -6, 4]
 
     finiteCPS = sample_to_CPS(mpsSample, momSample, initialMPS)
-    spacesString = [string(space(finiteCPS[i], 3)) for i in eachindex(finiteCPS)]
+    spacesString = [string(space(finiteCPS[i], 1)) for i in eachindex(finiteCPS)]
+
     @test spacesString[2] == "Rep[U₁](0=>1)"
     @test spacesString[3] == "Rep[U₁](-1=>1)"
     @test spacesString[4] == "Rep[U₁](2=>1)"
     @test spacesString[5] == "Rep[U₁](-4=>1)"
     
 end
+
+
+
 
 
 nothing
