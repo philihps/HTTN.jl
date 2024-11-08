@@ -15,7 +15,7 @@ truncMethod = 3;
 kMax = 2;
 nMax = 3;
 nMaxZM = 10;
-bogoliubovR = 0;
+bogoliubovRot = false;
 bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13];
 bogParameters = bogParameters[1:kMax];
 truncationParameters = (
@@ -24,7 +24,7 @@ truncationParameters = (
     nMaxZM = nMaxZM,
     truncMethod = truncMethod,
     modeOrdering = modeOrdering,
-    bogoliubovR = bogoliubovR,
+    bogoliubovRot = bogoliubovRot,
     bogParameters = bogParameters,
 );
 

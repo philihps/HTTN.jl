@@ -106,7 +106,7 @@ function updateBogoliubovParameters(Model::Union{MassiveSchwingerModel, SineGord
         nMaxZM = truncationParameters[:nMaxZM], 
         truncMethod = truncationParameters[:truncMethod], 
         modeOrdering = truncationParameters[:modeOrdering], 
-        bogoliubovR = truncationParameters[:bogoliubovR], 
+        bogoliubovRot = truncationParameters[:bogoliubovRot], 
         bogParameters = bogParameters
     );
 
@@ -187,7 +187,7 @@ function modelSetup(modelParameters::Union{MassiveSchwingerParameters,SineGordon
     nMaxZM = truncationParameters[:nMaxZM];
     truncMethod = truncationParameters[:truncMethod];
     modeOrdering = truncationParameters[:modeOrdering];
-    bogoliubovR = truncationParameters[:bogoliubovR];
+    bogoliubovRot = truncationParameters[:bogoliubovRot];
 
     # set momentum values
     momentumModes = convert.(Int64, collect(-kMax : 1 : +kMax));
@@ -326,8 +326,8 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,Si
     
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters;
-    bogoliubovR = truncationParameters[:bogoliubovR];
-    if bogoliubovR == 1
+    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    if bogoliubovRot
         bogParameters = truncationParameters[:bogParameters];
     end
 
@@ -420,7 +420,7 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,Si
             modeFactor = sqrt((2*pi/L * momentumVal)^2 + M^2); # E_k
 
             # get Bogoliubov rotation parameters
-            if bogoliubovR == 1
+            if bogoliubovRot
                 kIdx = abs(momentumVal);
                 ξ = bogParameters[kIdx];
                 μ = cosh(ξ);
@@ -461,8 +461,8 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,Si
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters;
     kMax = truncationParameters[:kMax];
-    bogoliubovR = truncationParameters[:bogoliubovR];
-    if bogoliubovR == 1
+    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    if bogoliubovRot
         bogParameters = truncationParameters[:bogParameters];
     end
 
@@ -542,8 +542,8 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,Si
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters;
     kMax = truncationParameters[:kMax];
-    bogoliubovR = truncationParameters[:bogoliubovR];
-    if bogoliubovR == 1
+    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    if bogoliubovRot
         bogParameters = truncationParameters[:bogParameters];
     end
 
@@ -601,13 +601,13 @@ function generate_H0(modelParameters::Union{MassiveSchwingerParameters,SineGordo
 
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters;
-    bogoliubovR = truncationParameters[:bogoliubovR];
+    bogoliubovRot = truncationParameters[:bogoliubovRot];
 
     # get diagonal part of H0 (part A)
     mpo_H0 = generate_H0_Part_A(modelParameters, modeOccupations, physSpaces);
 
     # get additional parts due to the Bogoliubov rotation
-    if bogoliubovR == 1
+    if bogoliubovRot
         mpo_H0 += generate_H0_Part_B(modelParameters, modeOccupations, physSpaces);
         mpo_H0 += generate_H0_Part_C(modelParameters, modeOccupations, physSpaces);
     end
@@ -656,7 +656,7 @@ end
 # end
 
 ### this is the new function 
-function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeSpace{ElementarySpace}}, s::Int64, β::Float64, M::Float64, L::Float64, bogoliubovR::Int64 = 0, ξ::Union{Int64, Float64} = 0.0)
+function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeSpace{ElementarySpace}}, s::Int64, β::Float64, M::Float64, L::Float64, bogoliubovRot::Bool = false, ξ::Union{Int64, Float64} = 0.0)
     """ Construct local vertex operator, to be combined with kroneckerDeltaMPS to form full MPO """
 
     # construct kroneckerDelta space
@@ -726,11 +726,11 @@ function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeS
             braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra));
             ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet));
             auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)));
-            if bogoliubovR == 0
-                interactionTensor[braIndPos, ketIndPos, auxIndPos] = G(nBra, nKet, w);
-            elseif bogoliubovR == 1
+            if bogoliubovRot
                 factorBCH = exp(- α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy));
                 interactionTensor[braIndPos, ketIndPos, auxIndPos] = factorBCH * G(nBra, nKet, w * exp(ξ));
+            else
+                interactionTensor[braIndPos, ketIndPos, auxIndPos] = G(nBra, nKet, w);
             end
         end
 
@@ -752,8 +752,8 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,SineGordo
     nMaxZM = truncationParameters[:nMaxZM];
     truncMethod = truncationParameters[:truncMethod];
     modeOrdering = truncationParameters[:modeOrdering];
-    bogoliubovR = truncationParameters[:bogoliubovR];
-    if bogoliubovR == 1
+    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    if bogoliubovRot
         bogParameters = truncationParameters[:bogParameters];
     end
 
@@ -788,13 +788,13 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,SineGordo
     localOperators_pos = Vector{TensorMap}(undef, numSites);
     for (siteIdx, momentumVal) in enumerate(momentumModes)
         physVecSpace = physSpaces[siteIdx];
-        if bogoliubovR == 0
-            bogParameter = 0.0;
-        elseif bogoliubovR == 1
+        if bogoliubovRot
             momentumVal == 0 ? bogParameter = 0.0 : bogParameter = bogParameters[abs(momentumVal)];
+        else
+            bogParameter = 0.0;
         end
-        localOperators_neg[siteIdx] = localVertexOp(momentumVal, physVecSpace, -1, β, M, L, bogoliubovR, bogParameter);
-        localOperators_pos[siteIdx] = localVertexOp(momentumVal, physVecSpace, +1, β, M, L, bogoliubovR, bogParameter);
+        localOperators_neg[siteIdx] = localVertexOp(momentumVal, physVecSpace, -1, β, M, L, bogoliubovRot, bogParameter);
+        localOperators_pos[siteIdx] = localVertexOp(momentumVal, physVecSpace, +1, β, M, L, bogoliubovRot, bogParameter);
     end
     expOperator_neg = SparseEXP(localOperators_neg);
     expOperator_pos = SparseEXP(localOperators_pos);
