@@ -1,20 +1,3 @@
-### moved and rewrote definitions of moe momentum and energy from utils.jl 
-
-function modeMomentum(k::Int64, L::Union{Int64, Float64})
-    """ Function to compute the momentum corresponding to mode k """
-
-    Pk = 2*pi/L * k;
-    return Pk;
-end
-
-function modeEnergy(k::Int64, L::Union{Int64, Float64}, M::Union{Int64, Float64})
-    """ Function to compute the energy corresponding to mode k """
-
-    Ek = sqrt(modeMomentum(k, L)^2 + M^2);
-    return Ek;
-end
-
-
 struct MassiveSchwingerParameters <: AbstractQFTModelParameters
     
     truncationParameters::NamedTuple
@@ -66,29 +49,9 @@ function SineGordonModel(truncationParameters::NamedTuple, hamiltonianParameters
     β = hamiltonianParameters[:β];
     λ = hamiltonianParameters[:λ];
     L = hamiltonianParameters[:L];
-    # R = hamiltonianParameters[:R];
 
     # construct modeOccupations and physSpaces
     modeOccupations, physSpaces = constructPhysSpaces(modelParameters);
-    # display(modeOccupations)
-    # display(physSpaces)
-
-    # # construct non-interacting MPO
-    # mpo_H0 = generate_H0(modelParameters, modeOccupations, physSpaces);
-
-    # # construct interacting MPO
-    # mpo_H1 = generate_H1(modelParameters, modeOccupations, physSpaces);
-
-    # # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
-    # if λ == 0.0
-    #     mpo_sG = 2 * π / L * mpo_H0;
-    # else        
-    #     p = 1.0 / R;
-    #     convFactor = - λ * 2 * π / L * kappaFunc(p) * (L)^(2 - p^2) / (2 * pi)^(1 - p^2);
-    #     mpo_sG = 2 * π / L * mpo_H0 + convFactor * mpo_H1;
-    # end
-    # return SineGordonModel(modelParameters, modeOccupations, physSpaces, mpo_H0, mpo_H1, mpo_sG);
-
     return SineGordonModel(modelParameters, modeOccupations, physSpaces);
 
 end
@@ -161,25 +124,6 @@ function updateBogoliubovParameters(Model::Union{MassiveSchwingerModel, SineGord
 
 end
 
-function getMomentumModes(Model::Union{MassiveSchwingerModel, SineGordonModel})
-    return Model.modeOccupations[1, :]
-end
-
-function generate_H0(Model::Union{MassiveSchwingerModel, SineGordonModel})
-
-    mpo_H0 = generate_H0(Model.modelParameters, Model.modeOccupations, Model.physSpaces);
-    return mpo_H0;
-
-end
-
-function generate_H1(Model::Union{MassiveSchwingerModel, SineGordonModel})
-
-    modeOccupations, physSpaces = constructPhysSpaces(Model.modelParameters);
-    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces);
-    return mpo_H1;
-
-end
-
 function generate_MPO_mS(Model::MassiveSchwingerModel)
 
     # get hamiltonianParameters
@@ -207,32 +151,6 @@ function generate_MPO_mS(Model::MassiveSchwingerModel)
 
 end
 
-# function generate_MPO_sG(sGModel::SineGordonModel)
-
-#     # get hamiltonianParameters
-#     β = sGModel.modelParameters.hamiltonianParameters[:β];
-#     λ = sGModel.modelParameters.hamiltonianParameters[:λ];
-#     L = sGModel.modelParameters.hamiltonianParameters[:L];
-#     # R = sGModel.modelParameters.hamiltonianParameters[:R];
-#     R = 1.0 / β;
-    
-#     # construct MPOs
-#     modeOccupations, physSpaces = constructPhysSpaces(sGModel.modelParameters);
-#     mpo_H0 = generate_H0(sGModel.modelParameters, modeOccupations, physSpaces);
-#     mpo_H1 = generate_H1(sGModel.modelParameters, modeOccupations, physSpaces);
-    
-#     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
-#     if λ == 0
-#         mpo_sG = 2 * π / L * mpo_H0;
-#     else        
-#         p = 1.0 / R;
-#         convFactor = - λ * 2 * π / L * kappaFunc(p) * (L)^(2 - p^2) / (2 * pi)^(1 - p^2);
-#         mpo_sG = 2 * π / L * mpo_H0 + convFactor * mpo_H1;
-#     end
-#     return mpo_sG;
-
-# end
-
 function generate_MPO_sG(sGModel::SineGordonModel)
 
     # get hamiltonianParameters
@@ -240,9 +158,7 @@ function generate_MPO_sG(sGModel::SineGordonModel)
     λ = sGModel.modelParameters.hamiltonianParameters[:λ];
     L = sGModel.modelParameters.hamiltonianParameters[:L];
     m = 1;  ## this is the soliton mass, which is our unit of energy in the sG model. 
-    # R = sGModel.modelParameters.hamiltonianParameters[:R];
-    # R = 1.0 / β;
-    
+
     # construct MPOs
     modeOccupations, physSpaces = constructPhysSpaces(sGModel.modelParameters);
     mpo_H0 = generate_H0(sGModel.modelParameters, modeOccupations, physSpaces);
@@ -252,16 +168,12 @@ function generate_MPO_sG(sGModel::SineGordonModel)
     if λ == 0
         mpo_sG = mpo_H0;
     else        
-        # p = 1.0 / R;
-        # p = β / sqrt(4 * pi);
-        # convFactor = - λ * 2 * π / L * kappaFunc(p) * (L)^(2 - p^2) / (2 * pi)^(1 - p^2); ## this is correct, I just rewrote it below in a different but equivalent form, which is the same formula as in the paper. 
-        Δ = β^2 / (8 * π);
-        κ = (2 * gamma(Δ)) / (π * gamma(1 - Δ)) * ( (sqrt(π) * gamma(1 / (2 * (1 - Δ)))) / (2 * gamma(Δ / (2 * (1 - Δ)))) )^(2 - 2 * Δ); 
+        Δ = β^2 / (8 * π); # Eq. (A46)
+        κ = (2 * gamma(Δ)) / (π * gamma(1 - Δ)) * ( (sqrt(π) * gamma(1 / (2 * (1 - Δ)))) / (2 * gamma(Δ / (2 * (1 - Δ)))) )^(2 - 2 * Δ); # Eq. (A48)
         convFactor = - λ * L * m^2 * (2 * π / m / L)^(2 * Δ) * κ;
         mpo_sG = mpo_H0 + convFactor * mpo_H1;
     end
 
-    # @printf("factor = %f \n", convFactor / L);
     return mpo_sG;
 
 end 
@@ -408,6 +320,9 @@ function initializeMPS(Model::Union{MassiveSchwingerModel, SineGordonModel}, ini
 end
 
 function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,SineGordonParameters}, modeOccupations::Matrix{Int64}, physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}})
+    """
+    Compute ∑_{k} E_k . [(μ_k^2 + ν_k^2) . b†_k b_k)]
+    """
     
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters;
@@ -425,7 +340,8 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,Si
         M = hamiltonianParameters[:M];
         β = sqrt(4 * pi);    # β = sqrt(4 * pi) for the mS model 
         # R = 1 / sqrt(4 * pi);    # R is the compactification radius R = 1/β which for the mS model is 1/sqrt(4 * pi)
-    elseif modelParameters isa SineGordonParameters
+    end
+    if modelParameters isa SineGordonParameters
         θ = 0.0;    # default value for sG is 0
         m = 1.0;    # m is the fermion mass of the fermionic equivalent model, which for the sG model is the soliton mass with is 1
         M = 0.0;    # M is the boson mass used to define the harmonic mode frequencies, which for the sG model is 0
@@ -467,28 +383,28 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,Si
                     mpoBlock[1, :, 2, :] = modeFactor * getNumberOperator(dimHS - 1);
                     mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS);
                 end
-
-            elseif modelParameters isa SineGordonParameters
+            end
+            if modelParameters isa SineGordonParameters
 
                 # set modeFactor
-                modeFactor = 1 / (2 * L);
+                modeFactor = 1 / (2 * L); # factor in first term in Eq. (A13)
                 R = 1.0 / β;
 
                 # compute occupation per site for the zeroMode
-                occupPerSite = Int(0.5 * (dimHS - 1));
-            
+                nMaxZM = Int(0.5 * (dimHS - 1));
+                # Section 5 Appendix
                 if siteIdx == 1
                     mpoBlock = zeros(Float64, 1, dimHS, 2, dimHS);
                     mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
-                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(occupPerSite, R)^2;
+                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2;
                 elseif siteIdx == numSites
                     mpoBlock = zeros(Float64, 2, dimHS, 1, dimHS);
-                    mpoBlock[1, :, 1, :] = modeFactor * generateOperatorΠ0(occupPerSite, R)^2;
+                    mpoBlock[1, :, 1, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2;
                     mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS);
                 else
                     mpoBlock = zeros(Float64, 2, dimHS, 2, dimHS);
                     mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
-                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(occupPerSite, R)^2;
+                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2;
                     mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS);
                 end
 
@@ -501,7 +417,7 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,Si
             phyVecSpaceOrdering = [productSector.charge for productSector in keys(qnSectors)];
 
             # set modeFactor
-            modeFactor = modeEnergy(momentumVal, L, M);
+            modeFactor = sqrt((2*pi/L * momentumVal)^2 + M^2); # E_k
 
             # get Bogoliubov rotation parameters
             if bogoliubovR == 1
@@ -596,12 +512,14 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,Si
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal)];
+        modeEnergy = sqrt((2*pi/L * kVal)^2 + M^2)
+
         # μ = real(cosh(abs(ξ)));
         # ν = real(sinh(abs(ξ)));
         # mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * (2 * μ * ν);
         # mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * (2 * μ * ν);
-        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * sinh(2 * ξ);
-        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * sinh(2 * ξ);
+        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= modeEnergy * sinh(2 * ξ);
+        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= modeEnergy * sinh(2 * ξ);
         # mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= -1 * modeEnergy(kVal, L, M) * sinh(2 * ξ);
         # mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= -1 * modeEnergy(kVal, L, M) * sinh(2 * ξ);
 
@@ -660,7 +578,9 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,Si
         ξ = bogParameters[abs(kVal)];
         μ = cosh(ξ);
         ν = sinh(ξ);
-        mpoIdId[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * 2 * ν^2;
+        modeEnergy = sqrt((2*pi/L * kVal)^2 + M^2)
+
+        mpoIdId[1 + 2 * (kIdx - 1) + 1] *= modeEnergy * 2 * ν^2;
 
         # store MPO
         storeIndividualMPOs[kIdx] = mpoIdId;
@@ -780,7 +700,8 @@ function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeS
         elseif M != 0.0
 
             # fill interactionTensor for massive zero mode: this is now a harmonic mode (independently of whether it is massless or massive, there is no quantum number constraint for the zero mode, so it should be costructed differently from the nonzero modes) 
-            w = α / sqrt(2 * modeEnergy(k, L, M) * L);
+            modeEnergy = sqrt((2*pi/L * k)^2 + M^2)
+            w = α / sqrt(2 * modeEnergy * L);
             interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dimAuxVecSpace);
             for nBra = 0 : (dimPhyVecSpace - 1), nKet = 0 : (dimPhyVecSpace - 1)
                 ### interactionTensor[nBra + 1, nKet + 1, 1] = convert(Float64, sum([F_mS(nBra, nKet, j, momentumVal, α, L, M) for j = max(0, nBra - nKet) : nBra]));
@@ -798,7 +719,8 @@ function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeS
         auxVecSpaceOrdering = [productSector.charge for productSector in keys(auxQNSectors)];
         
         # fill interactionTensor
-        w = α / sqrt(2 * modeEnergy(k, L, M) * L);
+        modeEnergy = sqrt((2*pi/L * k)^2 + M^2)
+        w = α / sqrt(2 * modeEnergy * L);
         interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dimAuxVecSpace);
         for nBra = 0 : (dimPhyVecSpace - 1), nKet = 0 : (dimPhyVecSpace - 1)
             braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra));
@@ -807,7 +729,7 @@ function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeS
             if bogoliubovR == 0
                 interactionTensor[braIndPos, ketIndPos, auxIndPos] = G(nBra, nKet, w);
             elseif bogoliubovR == 1
-                factorBCH = exp(- α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy(k, L, M)));
+                factorBCH = exp(- α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy));
                 interactionTensor[braIndPos, ketIndPos, auxIndPos] = factorBCH * G(nBra, nKet, w * exp(ξ));
             end
         end

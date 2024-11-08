@@ -22,14 +22,10 @@ bogParameters = bogParameters[1:kMax];
 β = 0.25 * sqrt(4 * π);
 λ = 1.0;
 L = 15.0;
-R = sqrt(4 * π) / β;
 
 # set DMRG parameters
 bondDim = 128;
 truncErr = 1e-6;
-
-# compute compactification radius
-R = sqrt(4 * π) / β;
 
 # create NamedTuple for truncation parameters and model parameters
 truncationParameters = (

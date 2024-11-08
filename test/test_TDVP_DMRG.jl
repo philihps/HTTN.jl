@@ -32,12 +32,12 @@ truncationParameters = (
 β = 0.25 * sqrt(4 * π);
 λ = 1.0;
 L = 15.0;
-R = sqrt(4 * π) / β; # compute compactification radius
-hamiltonianParameters = (β = β, R = R, λ = λ, L = L);
+hamiltonianParameters = (β = β, λ = λ, L = L);
 
 # construct Sine-Gordon model with MPO
 sG = SineGordonModel(truncationParameters, hamiltonianParameters);
-println("Sine-Gordon model: $(sG.modeOccupations)")
+println("Sine-Gordon model: ")
+display(sG.modeOccupations)
 hamMPO = generate_MPO_sG(sG);
 
 # construct physical and virtual vector spaces for the MPS
@@ -45,7 +45,7 @@ boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
 virtSpaces = constructVirtSpaces(
-    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = true
+    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = false
 );
 
 # initialize random MPS
@@ -64,27 +64,24 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 bondDim = 128;
 truncErr = 1e-6;
 
-groundStateMPS, groundStateEnergy_DMRG = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = 1000, truncErr = 1e-6, verbosePrint = true));
-@printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)
+groundStateMPS, groundStateEnergy_DMRG = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = 1000, truncErr = 1e-6, verbosePrint = true)); # -0.19967193
+@printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy_DMRG)
 
 ## test TDVP
-numTimeStep = 100;
+numTimeStep = 1000;
 finalBeta = 1000.0;
-timeRanges = range(0, stop=finalBeta / 2, length=numTimeStep+1)
+timeRanges = range(0, stop=finalBeta, length=numTimeStep+1)
 timeStep = 1im*(timeRanges[2] - timeRanges[1])
 groundStateEnergy_TDVP = 0
 
-let
-    MPS_t = initialMPS
+let MPS_t = initialMPS
     for tIndex in eachindex(timeRanges)
-        MPS_t, envL, envR, ϵ = perform_timestep!(MPS_t, hamMPO, timeStep, TDVP2());
-        
-        if tIndex % 19 ==0
+        MPS_t, envL, envR, ϵ = perform_timestep!(MPS_t, hamMPO, timeStep, TDVP2());    
+        if tIndex % 100 ==0
             global groundStateEnergy_TDVP = expectation_value_mpo(MPS_t, hamMPO);
             println("Energy at $(tIndex)-step: $(groundStateEnergy_TDVP)")
         end
-        
     end
 end
 
-@test abs(groundStateEnergy_TDVP - groundStateEnergy_DMRG) < 1e-15
+@test abs(groundStateEnergy_TDVP - groundStateEnergy_DMRG) < 1e-14

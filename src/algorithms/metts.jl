@@ -144,6 +144,7 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, f
     """
     timeRanges = range(0, stop=finalBeta / 2, length=numTimeStep+1)
     timeStep = 1im*(timeRanges[2] - timeRanges[1])
+    println("Running METTS algorithm for timestep: $(timeStep)")
 
     energies = zeros(Float64, 0, 2);
     truncErrs = zeros(Float64, alg.numWarmUp + alg.numMETTS)
@@ -152,9 +153,9 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, f
     for step in 1 : (alg.numWarmUp + alg.numMETTS)
 
         if step <= alg.numWarmUp
-            println("making warmup METTS number $step")
+            println("Making warmup METTS number $step")
         else
-            println("making actual METTS number $(step - alg.numWarmUp)")
+            println("Making actual METTS number $(step - alg.numWarmUp)")
         end
 
         # perform time step by applying exp(-timeStep * H)
@@ -169,13 +170,13 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, f
             if abs(imag(mpoExpVal)) < 1e-12
                 mpoExpVal = real(mpoExpVal);
             else
-                ErrorException("the Hamiltonian is not Hermitian, complex eigenvalue found.")
+                ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
             end
             a_E, err_E = avg_err(energies[:, 1]);
             energies = vcat(energies, [mpoExpVal a_E]);
-            @printf("energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
+            @printf("Energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
             @printf(
-                "estimated Energy = %0.4f ± %0.4f  /  [%0.4f, %0.4f]\n",
+                "Estimated energy = %0.6f ± %0.6f  /  [%0.6f, %0.6f]\n",
                 a_E,
                 err_E,
                 a_E - err_E,
