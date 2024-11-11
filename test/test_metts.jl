@@ -23,10 +23,6 @@ bogParameters = bogParameters[1:kMax];
 λ = 1.0;
 L = 15.0;
 
-# set DMRG parameters
-bondDim = 128;
-truncErr = 1e-6;
-
 # create NamedTuple for truncation parameters and model parameters
 truncationParameters = (
     kMax = kMax,
@@ -37,7 +33,7 @@ truncationParameters = (
     bogoliubovRot = bogoliubovRot,
     bogParameters = bogParameters,
 );
-hamiltonianParameters = (β = β, R = R, λ = λ, L = L);
+hamiltonianParameters = (β = β, λ = λ, L = L);
 
 # construct Sine-Gordon model (with MPO)
 sG = SineGordonModel(truncationParameters, hamiltonianParameters);
@@ -48,7 +44,7 @@ boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
 virtSpaces = constructVirtSpaces(
-    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = false
+    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = true
 );
 ######################################################################
 
@@ -61,9 +57,6 @@ for siteIdx in eachindex(physSpaces)
     );
 end
 initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
-
-
-# test sample_to_CPS
 
 @testset "Helper functions" begin
     mpsSample = [15, 2, 4, 4, 3]

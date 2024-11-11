@@ -59,10 +59,10 @@ module HTTN
 
     # export utility functions
     export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
+    export infimum_larger_deg
     export diag
     export sample_from_MPS!, sample_to_CPS
     export save_to_file, load_from_file
-    export printSpacesMPS
 
 
     # include source files
@@ -86,6 +86,5 @@ module HTTN
 
     include("utility/bosonOperators.jl")
     include("utility/vectorSpaces.jl")
-    include("utility/printing.jl")
 
 end

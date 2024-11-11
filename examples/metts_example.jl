@@ -14,6 +14,11 @@ using Plots
 using Printf
 using TensorKit
 
+# plot settings
+OUTPUT_PATH = "/home/psireal42/study/HTTN.jl/outputs/"
+default(; fontfamily="Computer Modern")
+colorPal = palette(:tab10)
+
 # set modelName
 modelName = "sineGordon"
 
@@ -34,13 +39,6 @@ bogParameters = bogParameters[1:kMax];
 λ = 1.0;
 L = 15.0;
 
-# set DMRG parameters
-bondDim = 128;
-truncErr = 1e-6;
-
-# compute compactification radius
-R = sqrt(4 * π) / β;
-
 # create NamedTuple for truncation parameters and model parameters
 truncationParameters = (
     kMax = kMax,
@@ -51,7 +49,7 @@ truncationParameters = (
     bogoliubovRot = bogoliubovRot,
     bogParameters = bogParameters,
 );
-hamiltonianParameters = (β = β, R = R, λ = λ, L = L);
+hamiltonianParameters = (β = β, λ = λ, L = L);
 
 # construct Sine-Gordon model (with MPO)
 sG = SineGordonModel(truncationParameters, hamiltonianParameters);
@@ -79,14 +77,24 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 # construct sineGordon MPO
 hamMPO = generate_MPO_sG(sG);
 
-numTimeStep = 1000
-finalBeta = 1000.0;
-energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(numMETTS=100, doBasisExtend = false)); # energies = -0.1997
+numTimeStep = 100;
+timeRanges = range(0, stop=finalBeta / 2, length=numTimeStep+1);
+timeStep = 1im*(timeRanges[2] - timeRanges[1]);
+numMETTS = 100;
+finalBeta = 20.0;
+energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(numMETTS=numMETTS, doBasisExtend = false)); # energies = -0.1997
 
-# plotSamples = plot(energies[:, 1], linewidth = 2.0, frame = :box, xlabel = "METTS sample", ylabel = L"E_{\mathrm{thermal}}", label = "");
-# plot!(plotSamples, energies[:, 2], color = :black, linewidth = 1.5, label = "");
-# # plot!(plotSamples, sum(energies)/length(energies) * ones(length(energies)), color = :black, linewidth = 1.5);
-# display(plotSamples)
+aplot = plot();
+plot!((1:numMETTS),energies[:, 1], label="concurrent");
+plot!((1:numMETTS),energies[:, 2], yerror=energies[:,3], label="average");
+
+plot!(;
+    xlabel="No. of METTS samples",
+    ylabel=L"E_{\mathrm{thermal}}",
+    legend=:topleft,
+    title=L"\beta=%$(finalBeta), \tau=%$timeStep"
+)
+savefig(aplot, OUTPUT_PATH * "low_T_METTS.pdf")
 
 # sampleResult, sampleMomentum = sample_from_MPS!(initialMPS);
 # display(reshape(sampleResult, 1, :))

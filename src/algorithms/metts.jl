@@ -29,7 +29,7 @@ Given a Vector of numbers, returns
 the average and the standard error
 (= the width of distribution of the numbers)
 """
-function avg_err(v::Vector)
+function avg_stderr(v::Vector)
   N = length(v)
   avg = sum(v) / N;
   avg2 = sum(v.^2) / N;
@@ -140,13 +140,16 @@ end
 function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, finalBeta::Union{Int64, Float64}, alg::METTS2)
     """
     Returns:
-    - energies: energies[:, 1] -> energy at time step i && energies[:, 2] -> average energy up to time step i
+    - energies: energies[:, 1] -> energy at time step i
+                energies[:, 2] -> average energy up to time step i
+                energies[:, 3] -> standard error up to time step i
+
     """
     timeRanges = range(0, stop=finalBeta / 2, length=numTimeStep+1)
     timeStep = 1im*(timeRanges[2] - timeRanges[1])
     println("Running METTS algorithm for timestep: $(timeStep)")
 
-    energies = zeros(Float64, 0, 2);
+    energies = zeros(Float64, 0, 3);
     truncErrs = zeros(Float64, alg.numWarmUp + alg.numMETTS)
 
     # main METTS loop
@@ -172,15 +175,15 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, f
             else
                 ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
             end
-            a_E, err_E = avg_err(energies[:, 1]);
-            energies = vcat(energies, [mpoExpVal a_E]);
+            av_E, err_E = avg_stderr(energies[:, 1]);
+            energies = vcat(energies, [mpoExpVal av_E err_E]);
             @printf("Energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
             @printf(
                 "Estimated energy = %0.6f ± %0.6f  /  [%0.6f, %0.6f]\n",
-                a_E,
+                av_E,
                 err_E,
-                a_E - err_E,
-                a_E + err_E
+                av_E - err_E,
+                av_E + err_E
             )
         end
 
@@ -195,6 +198,6 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, f
 
     end
 
-    return energies
+    return energies, truncErrs
 
 end
