@@ -60,7 +60,7 @@ boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
 virtSpaces = constructVirtSpaces(
-    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = false
+    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = true
 );
 
 # initialize random MPS
@@ -76,29 +76,20 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 
 # construct sineGordon MPO
 hamMPO = generate_MPO_sG(sG);
-
 numTimeStep = 100;
-timeRanges = range(0, stop=finalBeta / 2, length=numTimeStep+1);
-timeStep = 1im*(timeRanges[2] - timeRanges[1]);
-numMETTS = 100;
 finalBeta = 20.0;
-energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(numMETTS=numMETTS, doBasisExtend = false)); # energies = -0.1997
+numMETTS = 5;
+energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(numMETTS=numMETTS, doBasisExtend = false, tol = 5.0)); # energies = -0.1997
 
-aplot = plot();
-plot!((1:numMETTS),energies[:, 1], label="concurrent");
-plot!((1:numMETTS),energies[:, 2], yerror=energies[:,3], label="average");
-
-plot!(;
-    xlabel="No. of METTS samples",
-    ylabel=L"E_{\mathrm{thermal}}",
-    legend=:topleft,
-    title=L"\beta=%$(finalBeta), \tau=%$timeStep"
-)
-savefig(aplot, OUTPUT_PATH * "low_T_METTS.pdf")
-
-# sampleResult, sampleMomentum = sample_from_MPS!(initialMPS);
-# display(reshape(sampleResult, 1, :))
-# display(reshape(sampleMomentum, 1, :))
-# println("sum of sampled momenta = ", sum(sampleMomentum))
+# aplot = plot();
+# plot!((1:numMETTS),energies[:, 1], label="concurrent");
+# plot!((1:numMETTS),energies[:, 2], yerror=energies[:,3], label="average");
+# plot!(;
+#     xlabel="No. of METTS samples",
+#     ylabel=L"E_{\mathrm{thermal}}",
+#     legend=:topleft,
+#     title=L"\beta=%$(finalBeta), \tau=%$timeStep"
+# )
+# savefig(aplot, OUTPUT_PATH * "low_T_METTS.pdf")
 
 nothing
