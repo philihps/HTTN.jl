@@ -1,25 +1,10 @@
-#!/usr/bin/env julia
-
-# clear console
-Base.run(`clear`)
-
 using Pkg
-using Revise
 
-Pkg.activate(".")
-using JLD
 using HTTN
-using LaTeXStrings
-using Plots
 using Printf
 using TensorKit
+using Test
 
-# plot settings
-OUTPUT_PATH = "/home/psireal42/study/HTTN.jl/outputs/"
-default(; fontfamily="Computer Modern")
-colorPal = palette(:tab10)
-
-# set modelName
 modelName = "sineGordon"
 
 # set display parameters
@@ -33,13 +18,6 @@ nMaxZM = 10;
 bogoliubovRot = false;
 bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13];
 bogParameters = bogParameters[1:kMax];
-
-# set model parameters
-β = 0.25 * sqrt(4 * π);
-λ = 1.0;
-L = 15.0;
-
-# create NamedTuple for truncation parameters and model parameters
 truncationParameters = (
     kMax = kMax,
     nMax = nMax,
@@ -49,18 +27,25 @@ truncationParameters = (
     bogoliubovRot = bogoliubovRot,
     bogParameters = bogParameters,
 );
+
+# set model parameters
+β = 0.25 * sqrt(4 * π);
+λ = 1.0;
+L = 15.0;
 hamiltonianParameters = (β = β, λ = λ, L = L);
 
-# construct Sine-Gordon model (with MPO)
+# construct Sine-Gordon model with MPO
 sG = SineGordonModel(truncationParameters, hamiltonianParameters);
+println("Sine-Gordon model: ")
 display(sG.modeOccupations)
+hamMPO = generate_MPO_sG(sG);
 
 # construct physical and virtual vector spaces for the MPS
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
 virtSpaces = constructVirtSpaces(
-    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = true
+    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = false
 );
 
 # initialize random MPS
@@ -74,22 +59,29 @@ end
 
 initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 
-# construct sineGordon MPO
-hamMPO = generate_MPO_sG(sG);
-numTimeStep = 100;
-finalBeta = 20.0;
-numMETTS = 5;
-energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(numMETTS=numMETTS, doBasisExtend = false, tol = 5.0)); # energies = -0.1997
+## test DMRG
+# set DMRG parameters
+bondDim = 128;
+truncErr = 1e-6;
 
-# aplot = plot();
-# plot!((1:numMETTS),energies[:, 1], label="concurrent");
-# plot!((1:numMETTS),energies[:, 2], yerror=energies[:,3], label="average");
-# plot!(;
-#     xlabel="No. of METTS samples",
-#     ylabel=L"E_{\mathrm{thermal}}",
-#     legend=:topleft,
-#     title=L"\beta=%$(finalBeta), \tau=%$timeStep"
-# )
-# savefig(aplot, OUTPUT_PATH * "low_T_METTS.pdf")
+groundStateMPS, groundStateEnergy_DMRG = find_groundstate(initialMPS, hamMPO, DMRG2(bondDim = 1000, truncErr = 1e-6, verbosePrint = true)); # -0.19967193
+@printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy_DMRG)
 
-nothing
+## test TDVP
+numTimeStep = 1000;
+finalBeta = 1000.0;
+timeRanges = range(0, stop=finalBeta, length=numTimeStep+1)
+timeStep = 1im*(timeRanges[2] - timeRanges[1])
+groundStateEnergy_TDVP = 0
+
+let MPS_t = initialMPS
+    for tIndex in eachindex(timeRanges)
+        MPS_t, envL, envR, ϵ = perform_timestep!(MPS_t, hamMPO, timeStep, TDVP2());    
+        if tIndex % 100 ==0
+            global groundStateEnergy_TDVP = expectation_value_mpo(MPS_t, hamMPO);
+            println("Energy at $(tIndex)-step: $(groundStateEnergy_TDVP)")
+        end
+    end
+end
+
+@test abs(groundStateEnergy_TDVP - groundStateEnergy_DMRG) < 1e-14

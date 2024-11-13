@@ -35,7 +35,6 @@ module HTTN
     export SineGordonModel
     export MassiveSchwingerParameters
     export MassiveSchwingerModel
-    export getMomentumModes
     export initializeVacuumMPS, initializeMPS
     export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG
     export updateBogoliubovParameters
@@ -45,7 +44,7 @@ module HTTN
     # export algorithms
     export find_groundstate, find_excitedstate
     export DMRG2, DMRG2BO
-    export perform_timestep
+    export perform_timestep!
     export TDVP2, TDVP2BO
     export metts
     export METTS2
@@ -60,8 +59,9 @@ module HTTN
 
     # export utility functions
     export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
+    export infimum_larger_deg
     export diag
-    export sample_from_MPS
+    export sample_from_MPS!, sample_to_CPS
     export save_to_file, load_from_file
 
 
@@ -71,8 +71,6 @@ module HTTN
     include("environments/utils_environments.jl")
 
     include("models/qft_models.jl")
-    # include("models/mS.jl")
-    # include("models/sG.jl")
     include("models/mS_sG.jl")
     include("models/utils.jl")
 

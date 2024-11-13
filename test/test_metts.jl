@@ -1,23 +1,7 @@
-#!/usr/bin/env julia
-
-# clear console
-Base.run(`clear`)
-
-using Pkg
-using Revise
-
-Pkg.activate(".")
-using JLD
 using HTTN
-using LaTeXStrings
-using Plots
 using Printf
 using TensorKit
-
-# plot settings
-OUTPUT_PATH = "/home/psireal42/study/HTTN.jl/outputs/"
-default(; fontfamily="Computer Modern")
-colorPal = palette(:tab10)
+using Test
 
 # set modelName
 modelName = "sineGordon"
@@ -62,6 +46,7 @@ physSpaces = sG.physSpaces;
 virtSpaces = constructVirtSpaces(
     sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = true
 );
+######################################################################
 
 # initialize random MPS
 initialTensors = Vector{TensorMap}(undef, length(physSpaces));
@@ -71,25 +56,24 @@ for siteIdx in eachindex(physSpaces)
         randn, virtSpaces[siteIdx] ⊗ physSpace, virtSpaces[siteIdx + 1]
     );
 end
-
 initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 
-# construct sineGordon MPO
-hamMPO = generate_MPO_sG(sG);
-numTimeStep = 100;
-finalBeta = 20.0;
-numMETTS = 5;
-energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(numMETTS=numMETTS, doBasisExtend = false, tol = 5.0)); # energies = -0.1997
+@testset "Helper functions" begin
+    mpsSample = [15, 2, 4, 4, 3]
+    momSample = [0, -1, 3, -6, 4]
 
-# aplot = plot();
-# plot!((1:numMETTS),energies[:, 1], label="concurrent");
-# plot!((1:numMETTS),energies[:, 2], yerror=energies[:,3], label="average");
-# plot!(;
-#     xlabel="No. of METTS samples",
-#     ylabel=L"E_{\mathrm{thermal}}",
-#     legend=:topleft,
-#     title=L"\beta=%$(finalBeta), \tau=%$timeStep"
-# )
-# savefig(aplot, OUTPUT_PATH * "low_T_METTS.pdf")
+    finiteCPS = sample_to_CPS(mpsSample, momSample, initialMPS)
+    spacesString = [string(space(finiteCPS[i], 1)) for i in eachindex(finiteCPS)]
+
+    @test spacesString[2] == "Rep[U₁](0=>1)"
+    @test spacesString[3] == "Rep[U₁](-1=>1)"
+    @test spacesString[4] == "Rep[U₁](2=>1)"
+    @test spacesString[5] == "Rep[U₁](-4=>1)"
+    
+end
+
+
+
+
 
 nothing
