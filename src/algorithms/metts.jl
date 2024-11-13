@@ -39,22 +39,22 @@ function sample(localMPS, index::Int64, physSpace, phyVecSpaceOrdering)
     - pn: probability of localMPS to be in the n-th basis state
     - An: collapsed localMPS
     """
-    pDisc = 0.0;
-    randNum = rand();
-    n = 1;
-    An = similar(localMPS);
-    pn = 0.0;
+    pDisc = 0.0
+    randNum = rand()
+    n = 1
+    An = similar(localMPS)
+    pn = 0.0
     dimPhysSpace = dim(physSpace)
     while n <= dimPhysSpace
         # create projectors defined by basis state
         if index == 1
             targetQN = U1Space(phyVecSpaceOrdering[1] => 1)
-            projVector = zeros(Float64, 1, dimPhysSpace);
-            projVector[1, n] = 1.0;
-            projVector = TensorMap(projVector, targetQN, physSpace);
+            projVector = zeros(Float64, 1, dimPhysSpace)
+            projVector[1, n] = 1.0
+            projVector = TensorMap(projVector, targetQN, physSpace)
         else
             targetQN = U1Space(phyVecSpaceOrdering[n] => 1)
-            projVector = TensorMap(ones, targetQN, physSpace);
+            projVector = TensorMap(ones, targetQN, physSpace)
         end
         # collapse basis state onto localMPS
         @tensor An[-1 -2; -3] := projVector[-2, 2] * localMPS[-1, 2, -3];
@@ -94,29 +94,35 @@ function sample_from_MPS!(finiteMPS::SparseMPS)
         # get physical vector space
         physSpace = space(finiteMPS[siteIdx], 2);
         # get ordering of QNs in physSpace
-        physSpaceQNs = physSpace.dims;
-        phyVecSpaceOrdering = [productSector.charge for productSector in keys(physSpaceQNs)];
+        physSpaceQNs = physSpace.dims
+        phyVecSpaceOrdering = [productSector.charge for productSector in keys(physSpaceQNs)]
         if siteIdx == 1
             n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
             sampleResult[siteIdx] = n;
             sampleMomentum[siteIdx] = phyVecSpaceOrdering[1];
         else
             n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
-            sampleResult[siteIdx] = n;
-            sampleMomentum[siteIdx] = phyVecSpaceOrdering[n];
+            sampleResult[siteIdx] = n
+            sampleMomentum[siteIdx] = phyVecSpaceOrdering[n]
         end
         # fuse left virtual index and (fixed) physical index to transfer information about sample outcome on one site to the next site
-        fusionIsometry = isometry(fuse(space(An, 1), space(An, 2)), space(An, 1) ⊗ space(An, 2));
+        fusionIsometry = isometry(fuse(space(An, 1), space(An, 2)),
+                                  space(An, 1) ⊗ space(An, 2))
         if siteIdx < length(finiteMPS)
-            @tensor A[-1 -2; -3] := fusionIsometry[-1, 1, 2] * An[1, 2, 3] * finiteMPS[siteIdx + 1][3, -2, -3];
-            A *= (1.0 / sqrt(pn));
-            finiteMPS[siteIdx + 1] = A;
+            @tensor A[-1 -2; -3] := fusionIsometry[-1, 1, 2] * An[1, 2, 3] *
+                                    finiteMPS[siteIdx + 1][3, -2, -3]
+            A *= (1.0 / sqrt(pn))
+            finiteMPS[siteIdx + 1] = A
         end
     end
     return sampleResult, sampleMomentum;
 end
 
-function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, finalBeta::Union{Int64, Float64}, alg::METTS2)
+function metts(finiteMPS::SparseMPS,
+               finiteMPO::SparseMPO,
+               numTimeStep::Int64,
+               finalBeta::Union{Int64,Float64},
+               alg::METTS2)
     """
     Returns:
     - energies: energies[:, 1] -> energy at time step i
@@ -143,14 +149,15 @@ function metts(finiteMPS::SparseMPS, finiteMPO::SparseMPO, numTimeStep::Int64, f
         end
         # perform time step by applying exp(-timeStep * H)
         for _ in eachindex(timeRanges)
-            finiteMPS, _, _, truncErr = perform_timestep!(finiteMPS, finiteMPO, timeStep, TDVP2());
+            finiteMPS, _, _, truncErr = perform_timestep!(finiteMPS, finiteMPO, timeStep,
+                                                          TDVP2())
             truncErrs[step] = truncErr
         end
         # measure properties after >= alg.numWarmUp METTS have been made
         if step > alg.numWarmUp
-            mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO);
+            mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
             if abs(imag(mpoExpVal)) < 1e-12
-                mpoExpVal = real(mpoExpVal);
+                mpoExpVal = real(mpoExpVal)
             else
                 ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
             end

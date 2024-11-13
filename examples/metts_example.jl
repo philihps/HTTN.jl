@@ -26,16 +26,16 @@ modelName = "sineGordon"
 modeOrdering = 1;
 
 # set truncation parameters
-truncMethod = 3;
-kMax = 2;
-nMax = 3;
+truncMethod = 5;
+kMax = 4;
+nMax = 4;
 nMaxZM = 10;
 bogoliubovRot = false;
 bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13];
 bogParameters = bogParameters[1:kMax];
 
 # set model parameters
-β = 0.25 * sqrt(4 * π);
+β = 1.0 * sqrt(4 * π);
 λ = 1.0;
 L = 15.0;
 
@@ -93,3 +93,26 @@ energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(n
 # savefig(aplot, OUTPUT_PATH * "low_T_METTS.pdf")
 
 nothing
+numTimeStep = 10
+finalBeta = 2.0;
+energies = metts(initialMPS,
+                 hamMPO,
+                 numTimeStep,
+                 finalBeta,
+                 METTS2(; numMETTS = numTimeStep, doBasisExtend = true));
+
+plotSamples = plot(energies[:, 1];
+                   linewidth = 2.0,
+                   frame = :box,
+                   xlabel = "METTS sample",
+                   ylabel = L"E_{\mathrm{thermal}}",
+                   label = "",);
+plot!(plotSamples, energies[:, 2]; color = :black, linewidth = 1.5, label = "");
+# plot!(plotSamples, sum(energies)/length(energies) * ones(length(energies)), color = :black, linewidth = 1.5);
+display(plotSamples)
+# println("ok")
+
+# sampleResult, sampleMomentum = sample_from_MPS!(initialMPS);
+# display(reshape(sampleResult, 1, :))
+# display(reshape(sampleMomentum, 1, :))
+# println("sum of sampled momenta = ", sum(sampleMomentum))

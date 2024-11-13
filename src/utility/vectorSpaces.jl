@@ -2,24 +2,25 @@
 function LinearAlgebra.diag(T::AbstractTensorMap)
     """ Overloading of LinearAlgebra function diag for TensorMap type """
 
-    diagElements = Vector{Float64}();
-    blockSectors = blocksectors(T);
-    for blockIdx = blockSectors
+    diagElements = Vector{Float64}()
+    blockSectors = blocksectors(T)
+    for blockIdx in blockSectors
         append!(diagElements, real.(diag(block(T, blockIdx))))
     end
-    return sort(diagElements, rev = true);
-
+    return sort(diagElements; rev = true)
 end
 
 function removeDegeneracyQN(vecSpace; degenCutOff::Int64 = 1)
     """ Function to remove degeneracies of QNs """
-    
-    qnSectors = vecSpace.dims;
-    momentumQNs = [productSector.charge for productSector in keys(qnSectors)];
-    momentumDGs = [degeneracyValue for degeneracyValue in values(qnSectors)];
-    truncatedVectorSpace = Rep[U₁]([momentumQNs[qnIdx] => min(momentumDGs[qnIdx], degenCutOff) for qnIdx in eachindex(momentumQNs)]);
-    return truncatedVectorSpace;
 
+    qnSectors = vecSpace.dims
+    momentumQNs = [productSector.charge for productSector in keys(qnSectors)]
+    momentumDGs = [degeneracyValue for degeneracyValue in values(qnSectors)]
+    truncatedVectorSpace = Rep[U₁]([momentumQNs[qnIdx] => min(momentumDGs[qnIdx],
+                                                              degenCutOff)
+                                    for
+                                    qnIdx in eachindex(momentumQNs)])
+    return truncatedVectorSpace
 end
 
 # function constructPhysSpaces(momentumModes::Vector{Int64}, occPerSite::Vector{Int64})
@@ -64,32 +65,32 @@ function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S; removeDegene
     """ Constructs vector spaces for virtual bond indices of the MPS """
 
     # get number of momentum modes
-    numSites = length(physSpaces);
+    numSites = length(physSpaces)
 
     # create virtual vector spaces L
-    virtSpaces_L = Vector{GradedSpace}();
-    virtSpaces_L = vcat(virtSpaces_L, qnL);
-    for ind = 1 : +1 : numSites
-        spaceL = virtSpaces_L[end];
-        spaceP = physSpaces[ind];
-        spaceR = fuse(spaceL, spaceP);
+    virtSpaces_L = Vector{GradedSpace}()
+    virtSpaces_L = vcat(virtSpaces_L, qnL)
+    for ind in 1:+1:numSites
+        spaceL = virtSpaces_L[end]
+        spaceP = physSpaces[ind]
+        spaceR = fuse(spaceL, spaceP)
         if removeDegeneracy
-            spaceR = removeDegeneracyQN(spaceR, degenCutOff = degenCutOff);
+            spaceR = removeDegeneracyQN(spaceR; degenCutOff = degenCutOff)
         end
-        virtSpaces_L = vcat(virtSpaces_L, [spaceR]);
+        virtSpaces_L = vcat(virtSpaces_L, [spaceR])
     end
 
     # create virtual vector spaces R
-    virtSpaces_R = Vector{GradedSpace}();
-    virtSpaces_R = vcat(qnR, virtSpaces_R);
-    for ind = numSites : -1 : 1
-        spaceR = virtSpaces_R[1];
-        spaceP = physSpaces[ind];
-        spaceL = fuse(conj(flip(spaceP)), spaceR);
+    virtSpaces_R = Vector{GradedSpace}()
+    virtSpaces_R = vcat(qnR, virtSpaces_R)
+    for ind in numSites:-1:1
+        spaceR = virtSpaces_R[1]
+        spaceP = physSpaces[ind]
+        spaceL = fuse(conj(flip(spaceP)), spaceR)
         if removeDegeneracy
-            spaceL = removeDegeneracyQN(spaceL);
+            spaceL = removeDegeneracyQN(spaceL)
         end
-        virtSpaces_R = vcat([spaceL], virtSpaces_R);
+        virtSpaces_R = vcat([spaceL], virtSpaces_R)
     end
 
     # combine virtual vector spaces
@@ -99,46 +100,54 @@ function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S; removeDegene
 
 end
 
-function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}}; qnL::ElementarySpace = U1Space(0 => 1), qnR::ElementarySpace = U1Space(0 => 1), removeDegeneracy::Bool = true, degenCutOff::Int64 = 1)
+function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace,
+                                                              CompositeSpace{ElementarySpace}}};
+                                   qnL::ElementarySpace = U1Space(0 => 1),
+                                   qnR::ElementarySpace = U1Space(0 => 1),
+                                   removeDegeneracy::Bool = true,
+                                   degenCutOff::Int64 = 1,)
     """ Function to generate global momentum-conserving MPS to be contracted with local vertex operators to generate full interaction """
-    
+
     # get number of momentum modes
-    numSites = length(physSpaces);
+    numSites = length(physSpaces)
 
     # create virtual vector spaces L
-    virtSpaces_L = Vector{GradedSpace}();
-    virtSpaces_L = vcat(virtSpaces_L, qnL);
-    for ind = 1 : +1 : numSites
-        spaceL = virtSpaces_L[end];
-        spaceP = physSpaces[ind];
-        spaceR = fuse(spaceL, spaceP);
+    virtSpaces_L = Vector{GradedSpace}()
+    virtSpaces_L = vcat(virtSpaces_L, qnL)
+    for ind in 1:+1:numSites
+        spaceL = virtSpaces_L[end]
+        spaceP = physSpaces[ind]
+        spaceR = fuse(spaceL, spaceP)
         if removeDegeneracy
-            spaceR = removeDegeneracyQN(spaceR, degenCutOff = degenCutOff);
+            spaceR = removeDegeneracyQN(spaceR; degenCutOff = degenCutOff)
         end
-        virtSpaces_L = vcat(virtSpaces_L, [spaceR]);
+        virtSpaces_L = vcat(virtSpaces_L, [spaceR])
     end
 
     # create virtual vector spaces R
-    virtSpaces_R = Vector{GradedSpace}();
-    virtSpaces_R = vcat(qnR, virtSpaces_R);
-    for ind = numSites : -1 : 1
-        spaceR = virtSpaces_R[1];
-        spaceP = physSpaces[ind];
-        spaceL = fuse(conj(flip(spaceP)), spaceR);
+    virtSpaces_R = Vector{GradedSpace}()
+    virtSpaces_R = vcat(qnR, virtSpaces_R)
+    for ind in numSites:-1:1
+        spaceR = virtSpaces_R[1]
+        spaceP = physSpaces[ind]
+        spaceL = fuse(conj(flip(spaceP)), spaceR)
         if removeDegeneracy
-            spaceL = removeDegeneracyQN(spaceL);
+            spaceL = removeDegeneracyQN(spaceL)
         end
-        virtSpaces_R = vcat([spaceL], virtSpaces_R);
+        virtSpaces_R = vcat([spaceL], virtSpaces_R)
     end
 
     # combine virtual vector spaces
-    virtSpaces = [infimum(virtSpaces_L[siteIdx], virtSpaces_R[siteIdx]) for siteIdx = 1 : (numSites + 1)];
+    virtSpaces = [infimum(virtSpaces_L[siteIdx], virtSpaces_R[siteIdx])
+                  for siteIdx in 1:(numSites + 1)]
 
     # construct MPS with physSpaces and virtSpaces
-    deltaMPS = Vector{TensorMap}(undef, numSites);
-    for siteIdx = 1 : numSites
-        deltaMPS[siteIdx] = TensorMap(ones, Float64, virtSpaces[siteIdx] ⊗ physSpaces[siteIdx], virtSpaces[siteIdx + 1]);
+    deltaMPS = Vector{TensorMap}(undef, numSites)
+    for siteIdx in 1:numSites
+        deltaMPS[siteIdx] = TensorMap(ones,
+                                      Float64,
+                                      virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
+                                      virtSpaces[siteIdx + 1])
     end
-    return SparseMPS(deltaMPS);
-
+    return SparseMPS(deltaMPS)
 end
