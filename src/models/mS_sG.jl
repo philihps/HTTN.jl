@@ -59,14 +59,13 @@ function SineGordonModel(truncationParameters::NamedTuple,
     modelParameters = SineGordonParameters(truncationParameters, hamiltonianParameters)
 
     # get hamiltonianParameters
-    β = hamiltonianParameters[:β];
-    λ = hamiltonianParameters[:λ];
-    L = hamiltonianParameters[:L];
+    β = hamiltonianParameters[:β]
+    λ = hamiltonianParameters[:λ]
+    L = hamiltonianParameters[:L]
 
     # construct modeOccupations and physSpaces
-    modeOccupations, physSpaces = constructPhysSpaces(modelParameters);
-    return SineGordonModel(modelParameters, modeOccupations, physSpaces);
-
+    modeOccupations, physSpaces = constructPhysSpaces(modelParameters)
+    return SineGordonModel(modelParameters, modeOccupations, physSpaces)
 end
 
 function MassiveSchwingerModel(truncationParameters::NamedTuple,
@@ -114,16 +113,14 @@ function updateBogoliubovParameters(Model::Union{MassiveSchwingerModel,SineGordo
                                                          Vector{ComplexF64}})
 
     # update truncationParameters
-    truncationParameters = Model.modelParameters.truncationParameters;
-    truncationParameters = (
-        kMax = truncationParameters[:kMax], 
-        nMax = truncationParameters[:nMax], 
-        nMaxZM = truncationParameters[:nMaxZM], 
-        truncMethod = truncationParameters[:truncMethod], 
-        modeOrdering = truncationParameters[:modeOrdering], 
-        bogoliubovRot = truncationParameters[:bogoliubovRot], 
-        bogParameters = bogParameters
-    );
+    truncationParameters = Model.modelParameters.truncationParameters
+    truncationParameters = (kMax = truncationParameters[:kMax],
+                            nMax = truncationParameters[:nMax],
+                            nMaxZM = truncationParameters[:nMaxZM],
+                            truncMethod = truncationParameters[:truncMethod],
+                            modeOrdering = truncationParameters[:modeOrdering],
+                            bogoliubovRot = truncationParameters[:bogoliubovRot],
+                            bogParameters = bogParameters)
 
     # get hamiltonianParameters
     hamiltonianParameters = Model.modelParameters.hamiltonianParameters
@@ -183,10 +180,10 @@ end
 function generate_MPO_sG(sGModel::SineGordonModel)
 
     # get hamiltonianParameters
-    β = sGModel.modelParameters.hamiltonianParameters[:β];
-    λ = sGModel.modelParameters.hamiltonianParameters[:λ];
-    L = sGModel.modelParameters.hamiltonianParameters[:L];
-    m = 1;  ## this is the soliton mass, which is our unit of energy in the sG model. 
+    β = sGModel.modelParameters.hamiltonianParameters[:β]
+    λ = sGModel.modelParameters.hamiltonianParameters[:λ]
+    L = sGModel.modelParameters.hamiltonianParameters[:L]
+    m = 1  ## this is the soliton mass, which is our unit of energy in the sG model. 
 
     # construct MPOs
     modeOccupations, physSpaces = constructPhysSpaces(sGModel.modelParameters)
@@ -195,28 +192,29 @@ function generate_MPO_sG(sGModel::SineGordonModel)
 
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     if λ == 0
-        mpo_sG = mpo_H0;
-    else        
-        Δ = β^2 / (8 * π); # Eq. (A46)
-        κ = (2 * gamma(Δ)) / (π * gamma(1 - Δ)) * ( (sqrt(π) * gamma(1 / (2 * (1 - Δ)))) / (2 * gamma(Δ / (2 * (1 - Δ)))) )^(2 - 2 * Δ); # Eq. (A48)
-        convFactor = - λ * L * m^2 * (2 * π / m / L)^(2 * Δ) * κ;
-        mpo_sG = mpo_H0 + convFactor * mpo_H1;
+        mpo_sG = mpo_H0
+    else
+        Δ = β^2 / (8 * π) # Eq. (A46)
+        κ = (2 * gamma(Δ)) / (π * gamma(1 - Δ)) *
+            ((sqrt(π) * gamma(1 / (2 * (1 - Δ)))) / (2 * gamma(Δ / (2 * (1 - Δ)))))^(2 -
+                                                                                     2 * Δ) # Eq. (A48)
+        convFactor = -λ * L * m^2 * (2 * π / m / L)^(2 * Δ) * κ
+        mpo_sG = mpo_H0 + convFactor * mpo_H1
     end
 
-    return mpo_sG;
-
-end 
+    return mpo_sG
+end
 
 function modelSetup(modelParameters::Union{MassiveSchwingerParameters,SineGordonParameters})
 
     # get truncationParameters
-    truncationParameters = modelParameters.truncationParameters;
-    kMax = truncationParameters[:kMax];
-    nMax = truncationParameters[:nMax];
-    nMaxZM = truncationParameters[:nMaxZM];
-    truncMethod = truncationParameters[:truncMethod];
-    modeOrdering = truncationParameters[:modeOrdering];
-    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    truncationParameters = modelParameters.truncationParameters
+    kMax = truncationParameters[:kMax]
+    nMax = truncationParameters[:nMax]
+    nMaxZM = truncationParameters[:nMaxZM]
+    truncMethod = truncationParameters[:truncMethod]
+    modeOrdering = truncationParameters[:modeOrdering]
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
 
     # set momentum values
     momentumModes = convert.(Int64, collect((-kMax):1:(+kMax)))
@@ -368,33 +366,37 @@ function initializeMPS(Model::Union{MassiveSchwingerModel,SineGordonModel},
     return SparseMPS(mpsTensors; normalizeMPS = true)
 end
 
-function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,SineGordonParameters}, modeOccupations::Matrix{Int64}, physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}})
+function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
+                                                   SineGordonParameters},
+                            modeOccupations::Matrix{Int64},
+                            physSpaces::Vector{<:Union{ElementarySpace,
+                                                       CompositeSpace{ElementarySpace}}})
     """
     Compute ∑_{k} E_k . [(μ_k^2 + ν_k^2) . b†_k b_k)]
     """
-    
+
     # get truncationParameters
-    truncationParameters = modelParameters.truncationParameters;
-    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    truncationParameters = modelParameters.truncationParameters
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
     if bogoliubovRot
-        bogParameters = truncationParameters[:bogParameters];
+        bogParameters = truncationParameters[:bogParameters]
     end
 
     # get hamiltonianParameters
     hamiltonianParameters = modelParameters.hamiltonianParameters
     # distinguish between mS and sG model 
     if modelParameters isa MassiveSchwingerParameters
-        θ = hamiltonianParameters[:θ];
-        m = hamiltonianParameters[:m];
-        M = hamiltonianParameters[:M];
-        β = sqrt(4 * pi);    # β = sqrt(4 * pi) for the mS model 
+        θ = hamiltonianParameters[:θ]
+        m = hamiltonianParameters[:m]
+        M = hamiltonianParameters[:M]
+        β = sqrt(4 * pi)    # β = sqrt(4 * pi) for the mS model 
         # R = 1 / sqrt(4 * pi);    # R is the compactification radius R = 1/β which for the mS model is 1/sqrt(4 * pi)
     end
     if modelParameters isa SineGordonParameters
-        θ = 0.0;    # default value for sG is 0
-        m = 1.0;    # m is the fermion mass of the fermionic equivalent model, which for the sG model is the soliton mass with is 1
-        M = 0.0;    # M is the boson mass used to define the harmonic mode frequencies, which for the sG model is 0
-        β = hamiltonianParameters[:β];
+        θ = 0.0    # default value for sG is 0
+        m = 1.0    # m is the fermion mass of the fermionic equivalent model, which for the sG model is the soliton mass with is 1
+        M = 0.0    # M is the boson mass used to define the harmonic mode frequencies, which for the sG model is 0
+        β = hamiltonianParameters[:β]
         # @printf("β = %f \n", β);
     end
     L = hamiltonianParameters[:L]
@@ -435,27 +437,26 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,Si
             if modelParameters isa SineGordonParameters
 
                 # set modeFactor
-                modeFactor = 1 / (2 * L); # factor in first term in Eq. (A13)
-                R = 1.0 / β;
+                modeFactor = 1 / (2 * L) # factor in first term in Eq. (A13)
+                R = 1.0 / β
 
                 # compute occupation per site for the zeroMode
-                nMaxZM = Int(0.5 * (dimHS - 1));
+                nMaxZM = Int(0.5 * (dimHS - 1))
                 # Section 5 Appendix
                 if siteIdx == 1
-                    mpoBlock = zeros(Float64, 1, dimHS, 2, dimHS);
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
-                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2;
+                    mpoBlock = zeros(Float64, 1, dimHS, 2, dimHS)
+                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
+                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
                 elseif siteIdx == numSites
-                    mpoBlock = zeros(Float64, 2, dimHS, 1, dimHS);
-                    mpoBlock[1, :, 1, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2;
-                    mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS);
+                    mpoBlock = zeros(Float64, 2, dimHS, 1, dimHS)
+                    mpoBlock[1, :, 1, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
+                    mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS)
                 else
-                    mpoBlock = zeros(Float64, 2, dimHS, 2, dimHS);
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS);
-                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2;
-                    mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS);
+                    mpoBlock = zeros(Float64, 2, dimHS, 2, dimHS)
+                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
+                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
+                    mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
                 end
-
             end
 
         else
@@ -466,15 +467,15 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,Si
                                    for productSector in keys(qnSectors)]
 
             # set modeFactor
-            modeFactor = modeEnergy(momentumVal, L, M); # E_k
+            modeFactor = modeEnergy(momentumVal, L, M) # E_k
 
             # get Bogoliubov rotation parameters
             if bogoliubovRot
-                kIdx = abs(momentumVal);
-                ξ = bogParameters[kIdx];
-                μ = cosh(ξ);
-                ν = sinh(ξ);
-                modeFactor *= (μ^2 + ν^2);
+                kIdx = abs(momentumVal)
+                ξ = bogParameters[kIdx]
+                μ = cosh(ξ)
+                ν = sinh(ξ)
+                modeFactor *= (μ^2 + ν^2)
             end
 
             if siteIdx == 1
@@ -513,11 +514,11 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
                                                        CompositeSpace{ElementarySpace}}})
 
     # get truncationParameters
-    truncationParameters = modelParameters.truncationParameters;
-    kMax = truncationParameters[:kMax];
-    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    truncationParameters = modelParameters.truncationParameters
+    kMax = truncationParameters[:kMax]
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
     if bogoliubovRot
-        bogParameters = truncationParameters[:bogParameters];
+        bogParameters = truncationParameters[:bogParameters]
     end
 
     # get hamiltonianParameters
@@ -566,7 +567,7 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
         mpoCrCr = convertLocalOperatorsToMPO(localOperators)
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
-        ξ = bogParameters[abs(kVal)];
+        ξ = bogParameters[abs(kVal)]
 
         # μ = real(cosh(abs(ξ)));
         # ν = real(sinh(abs(ξ)));
@@ -596,11 +597,11 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
                                                        CompositeSpace{ElementarySpace}}})
 
     # get truncationParameters
-    truncationParameters = modelParameters.truncationParameters;
-    kMax = truncationParameters[:kMax];
-    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    truncationParameters = modelParameters.truncationParameters
+    kMax = truncationParameters[:kMax]
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
     if bogoliubovRot
-        bogParameters = truncationParameters[:bogParameters];
+        bogParameters = truncationParameters[:bogParameters]
     end
 
     # get hamiltonianParameters
@@ -656,16 +657,16 @@ function generate_H0(modelParameters::Union{MassiveSchwingerParameters,
     """ Function to generate the non-interacting part H0 of the massive Schwinger Hamiltonian """
 
     # get truncationParameters
-    truncationParameters = modelParameters.truncationParameters;
-    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    truncationParameters = modelParameters.truncationParameters
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
 
     # get diagonal part of H0 (part A)
     mpo_H0 = generate_H0_Part_A(modelParameters, modeOccupations, physSpaces)
 
     # get additional parts due to the Bogoliubov rotation
     if bogoliubovRot
-        mpo_H0 += generate_H0_Part_B(modelParameters, modeOccupations, physSpaces);
-        mpo_H0 += generate_H0_Part_C(modelParameters, modeOccupations, physSpaces);
+        mpo_H0 += generate_H0_Part_B(modelParameters, modeOccupations, physSpaces)
+        mpo_H0 += generate_H0_Part_C(modelParameters, modeOccupations, physSpaces)
     end
 
     if modelParameters isa SineGordonParameters
@@ -715,7 +716,10 @@ end
 # end
 
 ### this is the new function 
-function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeSpace{ElementarySpace}}, s::Int64, β::Float64, M::Float64, L::Float64, bogoliubovRot::Bool = false, ξ::Union{Int64, Float64} = 0.0)
+function localVertexOp(k::Int64,
+                       physVecSpace::Union{ElementarySpace,CompositeSpace{ElementarySpace}},
+                       s::Int64, β::Float64, M::Float64, L::Float64,
+                       bogoliubovRot::Bool = false, ξ::Union{Int64,Float64} = 0.0)
     """ Construct local vertex operator, to be combined with kroneckerDeltaMPS to form full MPO """
 
     # construct kroneckerDelta space
@@ -763,31 +767,32 @@ function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeS
                                       dimAuxVecSpace)
             for nBra in 0:(dimPhyVecSpace - 1), nKet in 0:(dimPhyVecSpace - 1)
                 ### interactionTensor[nBra + 1, nKet + 1, 1] = convert(Float64, sum([F_mS(nBra, nKet, j, momentumVal, α, L, M) for j = max(0, nBra - nKet) : nBra]));
-                interactionTensor[nBra + 1, nKet + 1, 1] = G(nBra, nKet, w);
+                interactionTensor[nBra + 1, nKet + 1, 1] = G(nBra, nKet, w)
             end
+        end
 
-        end 
-        
     else
 
         # get ordering of QNs in physVecSpace and kronDelSpace
-        phyQNSectors = physVecSpace.dims;
-        auxQNSectors = kronDelSpace.dims;
-        phyVecSpaceOrdering = [productSector.charge for productSector in keys(phyQNSectors)];
-        auxVecSpaceOrdering = [productSector.charge for productSector in keys(auxQNSectors)];
-        
+        phyQNSectors = physVecSpace.dims
+        auxQNSectors = kronDelSpace.dims
+        phyVecSpaceOrdering = [productSector.charge for productSector in keys(phyQNSectors)]
+        auxVecSpaceOrdering = [productSector.charge for productSector in keys(auxQNSectors)]
+
         # fill interactionTensor
-        w = α / sqrt(2 * modeEnergy(k, L, M) * L);
-        interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dimAuxVecSpace);
-        for nBra = 0 : (dimPhyVecSpace - 1), nKet = 0 : (dimPhyVecSpace - 1)
-            braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra));
-            ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet));
-            auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)));
+        w = α / sqrt(2 * modeEnergy(k, L, M) * L)
+        interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dimAuxVecSpace)
+        for nBra in 0:(dimPhyVecSpace - 1), nKet in 0:(dimPhyVecSpace - 1)
+            braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra))
+            ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet))
+            auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)))
             if bogoliubovRot
-                factorBCH = exp(- α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy(k, L, M)));
-                interactionTensor[braIndPos, ketIndPos, auxIndPos] = factorBCH * G(nBra, nKet, w * exp(ξ));
+                factorBCH = exp(-α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy(k, L, M)))
+                interactionTensor[braIndPos, ketIndPos, auxIndPos] = factorBCH *
+                                                                     G(nBra, nKet,
+                                                                       w * exp(ξ))
             else
-                interactionTensor[braIndPos, ketIndPos, auxIndPos] = G(nBra, nKet, w);
+                interactionTensor[braIndPos, ketIndPos, auxIndPos] = G(nBra, nKet, w)
             end
         end
     end
@@ -804,15 +809,15 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     """ Function to generate the interacting part H1 of the Schwinger Hamiltonian """
 
     # get truncationParameters
-    truncationParameters = modelParameters.truncationParameters;
-    kMax = truncationParameters[:kMax];
-    nMax = truncationParameters[:nMax];
-    nMaxZM = truncationParameters[:nMaxZM];
-    truncMethod = truncationParameters[:truncMethod];
-    modeOrdering = truncationParameters[:modeOrdering];
-    bogoliubovRot = truncationParameters[:bogoliubovRot];
+    truncationParameters = modelParameters.truncationParameters
+    kMax = truncationParameters[:kMax]
+    nMax = truncationParameters[:nMax]
+    nMaxZM = truncationParameters[:nMaxZM]
+    truncMethod = truncationParameters[:truncMethod]
+    modeOrdering = truncationParameters[:modeOrdering]
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
     if bogoliubovRot
-        bogParameters = truncationParameters[:bogParameters];
+        bogParameters = truncationParameters[:bogParameters]
     end
 
     # get hamiltonianParameters
@@ -845,14 +850,17 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     localOperators_neg = Vector{TensorMap}(undef, numSites)
     localOperators_pos = Vector{TensorMap}(undef, numSites)
     for (siteIdx, momentumVal) in enumerate(momentumModes)
-        physVecSpace = physSpaces[siteIdx];
+        physVecSpace = physSpaces[siteIdx]
         if bogoliubovRot
-            momentumVal == 0 ? bogParameter = 0.0 : bogParameter = bogParameters[abs(momentumVal)];
+            momentumVal == 0 ? bogParameter = 0.0 :
+            bogParameter = bogParameters[abs(momentumVal)]
         else
-            bogParameter = 0.0;
+            bogParameter = 0.0
         end
-        localOperators_neg[siteIdx] = localVertexOp(momentumVal, physVecSpace, -1, β, M, L, bogoliubovRot, bogParameter);
-        localOperators_pos[siteIdx] = localVertexOp(momentumVal, physVecSpace, +1, β, M, L, bogoliubovRot, bogParameter);
+        localOperators_neg[siteIdx] = localVertexOp(momentumVal, physVecSpace, -1, β, M, L,
+                                                    bogoliubovRot, bogParameter)
+        localOperators_pos[siteIdx] = localVertexOp(momentumVal, physVecSpace, +1, β, M, L,
+                                                    bogoliubovRot, bogParameter)
     end
     expOperator_neg = SparseEXP(localOperators_neg)
     expOperator_pos = SparseEXP(localOperators_pos)

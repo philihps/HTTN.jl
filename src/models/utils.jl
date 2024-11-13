@@ -1,44 +1,48 @@
 
-function convertLocalOperatorsToMPO(localOperators::Vector{<:AbstractTensorMap}; truncMomentumQNs::Union{Int64, Float64} = Inf)
+function convertLocalOperatorsToMPO(localOperators::Vector{<:AbstractTensorMap};
+                                    truncMomentumQNs::Union{Int64,Float64} = Inf,)
     """ Generates MPO out of three-index local operators using kroneckerDeltaMPS """
 
     # construct kroneckerDeltaMPS
-    kronDeltaIndices = [space(localOp, 3)' for localOp in localOperators];
-    kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaIndices);
+    kronDeltaIndices = [space(localOp, 3)' for localOp in localOperators]
+    kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaIndices)
 
     # combine local operators and kroneckerDeltaMPS
-    localOperators = SparseEXP(localOperators);
-    finalMPO = convertLocalOperatorsToMPO(localOperators, kroneckerDeltaMPS);
-    return finalMPO;
-    
+    localOperators = SparseEXP(localOperators)
+    finalMPO = convertLocalOperatorsToMPO(localOperators, kroneckerDeltaMPS)
+    return finalMPO
 end
 
 function convertLocalOperatorsToMPO(localOperators::SparseEXP, kroneckerDeltaMPS::SparseMPS)
     """ Generates MPO out of three-index local operators using kroneckerDeltaMPS """
 
     # get length of localOperators
-    numSites = length(localOperators);
+    numSites = length(localOperators)
 
     # combine local operators and kroneckerDeltaMPS
-    mpoTensors = Vector{TensorMap}(undef, numSites);
-    for siteIdx = 1 : numSites
-        @tensor mpoTensors[siteIdx][-1 -2; -3 -4] := localOperators[siteIdx][-2, -4, 1] * kroneckerDeltaMPS[siteIdx][-1, 1, -3];
+    mpoTensors = Vector{TensorMap}(undef, numSites)
+    for siteIdx in 1:numSites
+        @tensor mpoTensors[siteIdx][-1 -2; -3 -4] := localOperators[siteIdx][-2, -4, 1] *
+                                                     kroneckerDeltaMPS[siteIdx][-1, 1, -3]
     end
-    return SparseMPO(mpoTensors);
-
+    return SparseMPO(mpoTensors)
 end
 
-function constructIdentityMPO(physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}}, virtVecSpace::Union{ElementarySpace, CompositeSpace{ElementarySpace}})
+function constructIdentityMPO(physSpaces::Vector{<:Union{ElementarySpace,
+                                                         CompositeSpace{ElementarySpace}}},
+                              virtVecSpace::Union{ElementarySpace,
+                                                  CompositeSpace{ElementarySpace}})
     """ Constructs the identity MPO with trivial vector space on virtual indices """
 
     # construct identity MPOs
-    identityMPO = Vector{TensorMap}(undef, length(physSpaces));
-    for (siteIdx, physSpace) = enumerate(physSpaces)
-        dimPhysSpace = dim(physSpace);
-        localMPO  = zeros(Float64, dim(virtVecSpace), dim(physSpace), dim(virtVecSpace), dim(physSpace));
-        localMPO[1, :, 1, :] = diagm(ones(dimPhysSpace));
-        identityMPO[siteIdx] = TensorMap(localMPO, virtVecSpace ⊗ physSpace, virtVecSpace ⊗ physSpace);
+    identityMPO = Vector{TensorMap}(undef, length(physSpaces))
+    for (siteIdx, physSpace) in enumerate(physSpaces)
+        dimPhysSpace = dim(physSpace)
+        localMPO = zeros(Float64, dim(virtVecSpace), dim(physSpace), dim(virtVecSpace),
+                         dim(physSpace))
+        localMPO[1, :, 1, :] = diagm(ones(dimPhysSpace))
+        identityMPO[siteIdx] = TensorMap(localMPO, virtVecSpace ⊗ physSpace,
+                                         virtVecSpace ⊗ physSpace)
     end
-    return SparseMPO(identityMPO);
-
+    return SparseMPO(identityMPO)
 end

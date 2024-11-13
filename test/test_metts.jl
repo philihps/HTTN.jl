@@ -24,15 +24,13 @@ bogParameters = bogParameters[1:kMax];
 L = 15.0;
 
 # create NamedTuple for truncation parameters and model parameters
-truncationParameters = (
-    kMax = kMax,
-    nMax = nMax,
-    nMaxZM = nMaxZM,
-    truncMethod = truncMethod,
-    modeOrdering = modeOrdering,
-    bogoliubovRot = bogoliubovRot,
-    bogParameters = bogParameters,
-);
+truncationParameters = (kMax = kMax,
+                        nMax = nMax,
+                        nMaxZM = nMaxZM,
+                        truncMethod = truncMethod,
+                        modeOrdering = modeOrdering,
+                        bogoliubovRot = bogoliubovRot,
+                        bogParameters = bogParameters);
 hamiltonianParameters = (β = β, λ = λ, L = L);
 
 # construct Sine-Gordon model (with MPO)
@@ -43,18 +41,16 @@ display(sG.modeOccupations)
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
-virtSpaces = constructVirtSpaces(
-    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = true
-);
+virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR;
+                                 removeDegeneracy = true);
 ######################################################################
 
 # initialize random MPS
 initialTensors = Vector{TensorMap}(undef, length(physSpaces));
 for siteIdx in eachindex(physSpaces)
-    physSpace = physSpaces[siteIdx];
-    initialTensors[siteIdx] = TensorMap(
-        randn, virtSpaces[siteIdx] ⊗ physSpace, virtSpaces[siteIdx + 1]
-    );
+    physSpace = physSpaces[siteIdx]
+    initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
+                                        virtSpaces[siteIdx + 1])
 end
 initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 
@@ -69,11 +65,6 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
     @test spacesString[3] == "Rep[U₁](-1=>1)"
     @test spacesString[4] == "Rep[U₁](2=>1)"
     @test spacesString[5] == "Rep[U₁](-4=>1)"
-    
 end
-
-
-
-
 
 nothing

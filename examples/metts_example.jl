@@ -16,7 +16,7 @@ using TensorKit
 
 # plot settings
 OUTPUT_PATH = "/home/psireal42/study/HTTN.jl/outputs/"
-default(; fontfamily="Computer Modern")
+default(; fontfamily = "Computer Modern")
 colorPal = palette(:tab10)
 
 # set modelName
@@ -40,15 +40,13 @@ bogParameters = bogParameters[1:kMax];
 L = 15.0;
 
 # create NamedTuple for truncation parameters and model parameters
-truncationParameters = (
-    kMax = kMax,
-    nMax = nMax,
-    nMaxZM = nMaxZM,
-    truncMethod = truncMethod,
-    modeOrdering = modeOrdering,
-    bogoliubovRot = bogoliubovRot,
-    bogParameters = bogParameters,
-);
+truncationParameters = (kMax = kMax,
+                        nMax = nMax,
+                        nMaxZM = nMaxZM,
+                        truncMethod = truncMethod,
+                        modeOrdering = modeOrdering,
+                        bogoliubovRot = bogoliubovRot,
+                        bogParameters = bogParameters);
 hamiltonianParameters = (β = β, λ = λ, L = L);
 
 # construct Sine-Gordon model (with MPO)
@@ -59,17 +57,15 @@ display(sG.modeOccupations)
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
-virtSpaces = constructVirtSpaces(
-    sG.physSpaces, boundarySpaceL, boundarySpaceR; removeDegeneracy = true
-);
+virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR;
+                                 removeDegeneracy = true);
 
 # initialize random MPS
 initialTensors = Vector{TensorMap}(undef, length(physSpaces));
 for siteIdx in eachindex(physSpaces)
-    physSpace = physSpaces[siteIdx];
-    initialTensors[siteIdx] = TensorMap(
-        randn, virtSpaces[siteIdx] ⊗ physSpace, virtSpaces[siteIdx + 1]
-    );
+    physSpace = physSpaces[siteIdx]
+    initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
+                                        virtSpaces[siteIdx + 1])
 end
 
 initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
@@ -79,7 +75,8 @@ hamMPO = generate_MPO_sG(sG);
 numTimeStep = 100;
 finalBeta = 20.0;
 numMETTS = 5;
-energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta, METTS2(numMETTS=numMETTS, doBasisExtend = false, tol = 5.0)); # energies = -0.1997
+energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta,
+                            METTS2(; numMETTS = numMETTS, doBasisExtend = false, tol = 5.0)); # energies = -0.1997
 
 # aplot = plot();
 # plot!((1:numMETTS),energies[:, 1], label="concurrent");

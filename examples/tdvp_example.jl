@@ -29,7 +29,12 @@ L = 100.0;
 
 # create NamedTuple for truncation and model parameters
 # truncationParameters = (kMax = kMax, nMax = nMax, nMaxZM = nMaxZM, truncMethod = truncMethod, modeOrdering = modeOrdering, bogoliubovR = bogoliubovR, bogParameters = bogParameters);
-truncationParameters = (kMax = kMax, nMax = nMax, nMaxZM = nMaxZM, truncMethod = truncMethod, modeOrdering = modeOrdering, bogoliubovR = bogoliubovR);
+truncationParameters = (kMax = kMax,
+                        nMax = nMax,
+                        nMaxZM = nMaxZM,
+                        truncMethod = truncMethod,
+                        modeOrdering = modeOrdering,
+                        bogoliubovR = bogoliubovR);
 hamiltonianParameters = (θ = θ, m = m, M = M, L = L);
 
 # construct Schwinger model with MPO
@@ -64,25 +69,40 @@ storeBondDimension = zeros(Float64, 0, length(physSpaces) - 1);
 timeEvolvedMPS = copy(vacuumMPS);
 
 # perform time evolution with TDVP
-for timeStep = 0 : numTimeSteps
+for timeStep in 0:numTimeSteps
 
     # perform time step
     if timeStep > 0
         if bogoliubovR == 0
-            timeEvolvedMPS, envL, envR, ϵ = perform_timestep(timeEvolvedMPS, hamMPO, δT, TDVP2(bondDim = bondDim, truncErrT = truncErrT, krylovDim = 2, verbosePrint = true));
+            timeEvolvedMPS, envL, envR, ϵ = perform_timestep(timeEvolvedMPS,
+                                                             hamMPO,
+                                                             δT,
+                                                             TDVP2(;
+                                                                   bondDim = bondDim,
+                                                                   truncErrT = truncErrT,
+                                                                   krylovDim = 2,
+                                                                   verbosePrint = true,))
         elseif bogoliubovR == 1
-            timeEvolvedMPS, envL, envR, ϵ = perform_timestep(timeEvolvedMPS, hamMPO, δT, TDVP2(bondDim = bondDim, truncErrT = truncErrT, krylovDim = 2, verbosePrint = true));
+            timeEvolvedMPS, envL, envR, ϵ = perform_timestep(timeEvolvedMPS,
+                                                             hamMPO,
+                                                             δT,
+                                                             TDVP2(;
+                                                                   bondDim = bondDim,
+                                                                   truncErrT = truncErrT,
+                                                                   krylovDim = 2,
+                                                                   verbosePrint = true,))
         end
     end
 
     # compute entanglement entropies
-    mpsEntanglementEntropies = compute_entanglement_entropies(timeEvolvedMPS);
-    storeEntanglementEntropy = vcat(storeEntanglementEntropy, reshape(mpsEntanglementEntropies, 1, :));
+    mpsEntanglementEntropies = compute_entanglement_entropies(timeEvolvedMPS)
+    storeEntanglementEntropy = vcat(storeEntanglementEntropy,
+                                    reshape(mpsEntanglementEntropies, 1, :))
     # println(mpsEntanglementEntropies)
 
     # get maximal bond dimension
-    virtBondDims = getLinkDimsMPS(timeEvolvedMPS);
-    storeBondDimension = vcat(storeBondDimension, reshape(virtBondDims[2 : (end - 1)], 1, :));
+    virtBondDims = getLinkDimsMPS(timeEvolvedMPS)
+    storeBondDimension = vcat(storeBondDimension, reshape(virtBondDims[2:(end - 1)], 1, :))
     # println(mpsEntanglementEntropies)
 
 end
@@ -90,18 +110,15 @@ end
 display(storeBondDimension)
 
 # initialize plot for the entanglement entropy over time
-plotEntanglementEntropy = plot(
-    xlabel = L"t", 
-    ylabel = L"S(T)", 
-    frame = :box, 
-)
+plotEntanglementEntropy = plot(; xlabel = L"t", ylabel = L"S(T)", frame = :box)
 
 # plot entanglement entropy
-for idxB = axes(storeEntanglementEntropy, 2)
-    plot!(plotEntanglementEntropy, δT * collect(0 : numTimeSteps), storeEntanglementEntropy[:, idxB],
-        linewidth = 2.0, 
-        label = "", 
-    )
+for idxB in axes(storeEntanglementEntropy, 2)
+    plot!(plotEntanglementEntropy,
+          δT * collect(0:numTimeSteps),
+          storeEntanglementEntropy[:, idxB];
+          linewidth = 2.0,
+          label = "",)
 end
 display(plotEntanglementEntropy)
 
@@ -125,17 +142,14 @@ display(plotEntanglementEntropy)
 # display(plotEntanglementEntropy)
 
 # initialize plot for the bond dimension over time
-plotBondDimensions = plot(
-    xlabel = L"t", 
-    ylabel = L"\\chi(T)", 
-    frame = :box, 
-)
+plotBondDimensions = plot(; xlabel = L"t", ylabel = L"\\chi(T)", frame = :box)
 
 # plot entanglement entropy
-for idxB = axes(storeBondDimension, 2)
-    plot!(plotBondDimensions, δT * collect(0 : numTimeSteps), storeBondDimension[:, idxB],
-        linewidth = 2.0, 
-        label = "", 
-    )
+for idxB in axes(storeBondDimension, 2)
+    plot!(plotBondDimensions,
+          δT * collect(0:numTimeSteps),
+          storeBondDimension[:, idxB];
+          linewidth = 2.0,
+          label = "",)
 end
 display(plotBondDimensions)

@@ -26,10 +26,10 @@ the average and the standard error
 (= the width of distribution of the numbers)
 """
 function avg_stderr(v::Vector)
-  N = length(v)
-  avg = sum(v) / N;
-  avg2 = sum(v.^2) / N;
-  return avg, sqrt(abs((avg2 - avg^2)) / N)
+    N = length(v)
+    avg = sum(v) / N
+    avg2 = sum(v .^ 2) / N
+    return avg, sqrt(abs((avg2 - avg^2)) / N)
 end
 
 function sample(localMPS, index::Int64, physSpace, phyVecSpaceOrdering)
@@ -57,28 +57,30 @@ function sample(localMPS, index::Int64, physSpace, phyVecSpaceOrdering)
             projVector = TensorMap(ones, targetQN, physSpace)
         end
         # collapse basis state onto localMPS
-        @tensor An[-1 -2; -3] := projVector[-2, 2] * localMPS[-1, 2, -3];
-        pn = real(tr(An' * An));
-        pDisc += pn;
-        (randNum < pDisc) && break;
-        n += 1;
+        @tensor An[-1 -2; -3] := projVector[-2, 2] * localMPS[-1, 2, -3]
+        pn = real(tr(An' * An))
+        pDisc += pn
+        (randNum < pDisc) && break
+        n += 1
     end
     return n, pn, An
 end
 
 function sample_to_CPS(mpsSample, momSample, finiteMPS)
-    virtSpaces = vcat(U1Space(0 => 1), [U1Space(sum(momSample[1 : linkIdx]) => 1) for linkIdx = 1 : (length(momSample) - 1)], U1Space(0 => 1));
+    virtSpaces = vcat(U1Space(0 => 1),
+                      [U1Space(sum(momSample[1:linkIdx]) => 1)
+                       for linkIdx in 1:(length(momSample) - 1)], U1Space(0 => 1))
     # create new classical product state from mpsSample
-    initialTensors = Vector{TensorMap}(undef, length(finiteMPS));
-    for siteIdx = eachindex(finiteMPS)
-        physSpace = space(finiteMPS[siteIdx], 2);
-        virtSpaceL = virtSpaces[siteIdx + 0];
-        virtSpaceR = virtSpaces[siteIdx + 1];
-        initTensor = zeros(Float64, dim(virtSpaceL), dim(physSpace), dim(virtSpaceR));
-        initTensor[1, mpsSample[siteIdx], 1] = 1.0;
-        initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpace, virtSpaceR);
+    initialTensors = Vector{TensorMap}(undef, length(finiteMPS))
+    for siteIdx in eachindex(finiteMPS)
+        physSpace = space(finiteMPS[siteIdx], 2)
+        virtSpaceL = virtSpaces[siteIdx + 0]
+        virtSpaceR = virtSpaces[siteIdx + 1]
+        initTensor = zeros(Float64, dim(virtSpaceL), dim(physSpace), dim(virtSpaceR))
+        initTensor[1, mpsSample[siteIdx], 1] = 1.0
+        initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpace, virtSpaceR)
     end
-    return SparseMPS(initialTensors);
+    return SparseMPS(initialTensors)
 end
 function sample_from_MPS!(finiteMPS::SparseMPS)
     """
@@ -87,19 +89,19 @@ function sample_from_MPS!(finiteMPS::SparseMPS)
     - sampleResult: vector contains index of basis state for each site
     - sampleMomentum: vector contains momentum mode   
     """
-    sampleResult = zeros(Int64, length(finiteMPS));
-    sampleMomentum = zeros(Int64, length(finiteMPS));
+    sampleResult = zeros(Int64, length(finiteMPS))
+    sampleMomentum = zeros(Int64, length(finiteMPS))
     # sample from probability distribution given by finiteMPS
     for siteIdx in eachindex(finiteMPS)
         # get physical vector space
-        physSpace = space(finiteMPS[siteIdx], 2);
+        physSpace = space(finiteMPS[siteIdx], 2)
         # get ordering of QNs in physSpace
         physSpaceQNs = physSpace.dims
         phyVecSpaceOrdering = [productSector.charge for productSector in keys(physSpaceQNs)]
         if siteIdx == 1
             n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
-            sampleResult[siteIdx] = n;
-            sampleMomentum[siteIdx] = phyVecSpaceOrdering[1];
+            sampleResult[siteIdx] = n
+            sampleMomentum[siteIdx] = phyVecSpaceOrdering[1]
         else
             n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
             sampleResult[siteIdx] = n
@@ -115,7 +117,7 @@ function sample_from_MPS!(finiteMPS::SparseMPS)
             finiteMPS[siteIdx + 1] = A
         end
     end
-    return sampleResult, sampleMomentum;
+    return sampleResult, sampleMomentum
 end
 
 function metts(finiteMPS::SparseMPS,
@@ -130,18 +132,18 @@ function metts(finiteMPS::SparseMPS,
                 energies[:, 3] -> standard error up to time step i
     """
 
-    timeRanges = range(0, stop=finalBeta / 2, length=numTimeStep+1)
-    timeStep = 1im*(timeRanges[2] - timeRanges[1])
+    timeRanges = range(0; stop = finalBeta / 2, length = numTimeStep + 1)
+    timeStep = 1im * (timeRanges[2] - timeRanges[1])
     println("Running METTS algorithm for timestep: $(timeStep)")
-    
+
     numMETTSMax = 2000 # hard limit of METTS iterations
     numMETTSMin = 10
     numMETTS = max(alg.numMETTS, numMETTSMax)
-    energies = zeros(Float64, 0, 3);
+    energies = zeros(Float64, 0, 3)
     truncErrs = zeros(Float64, alg.numWarmUp + numMETTS)
 
     # main METTS loop
-    for step in 1 : (alg.numWarmUp + numMETTS)
+    for step in 1:(alg.numWarmUp + numMETTS)
         if step <= alg.numWarmUp
             println("Making warmup METTS number $step")
         else
@@ -161,23 +163,21 @@ function metts(finiteMPS::SparseMPS,
             else
                 ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
             end
-            av_E, err_E = avg_stderr(energies[:, 1]);
-            energies = vcat(energies, [mpoExpVal av_E err_E]);
+            av_E, err_E = avg_stderr(energies[:, 1])
+            energies = vcat(energies, [mpoExpVal av_E err_E])
             @printf("Energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
-            @printf(
-                "Estimated energy = %0.6f ± %0.6f  /  [%0.6f, %0.6f]\n",
-                av_E,
-                err_E,
-                av_E - err_E,
-                av_E + err_E
-            )
+            @printf("Estimated energy = %0.6f ± %0.6f  /  [%0.6f, %0.6f]\n",
+                    av_E,
+                    err_E,
+                    av_E - err_E,
+                    av_E + err_E)
             if step > (alg.numWarmUp + numMETTSMin) && abs(err_E / av_E) * 100 <= alg.tol
                 println("Standard error is within $(alg.tol)% of the average observable at METTS number $(step - alg.numWarmUp)")
                 break
             end
         end
         # collapse to a new state with local basis defined by mpsSample and momSample
-        mpsSample, momSample = sample_from_MPS!(finiteMPS);
+        mpsSample, momSample = sample_from_MPS!(finiteMPS)
         println("Sample of local basis (index): $(mpsSample)")
         println("Sample of local basis (momentum): $(momSample)")
         finiteMPS = sample_to_CPS(mpsSample, momSample, finiteMPS)

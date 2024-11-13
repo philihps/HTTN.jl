@@ -50,9 +50,9 @@ function infimum_larger_deg(V1::GradedSpace, V2::GradedSpace)
     """
     if V1.dual == V2.dual
         infimumSpace = typeof(V1)(c => min(dim(V1, c), dim(V2, c))
-                   for c in
-                       union(sectors(V1), sectors(V2)), dual in V1.dual)
-        infimumSpace = [(c, max(dim(V1,c), dim(V2,c))) for c in sectors(infimumSpace)]
+                                  for c in
+                                      union(sectors(V1), sectors(V2)), dual in V1.dual)
+        infimumSpace = [(c, max(dim(V1, c), dim(V2, c))) for c in sectors(infimumSpace)]
         infimumSpace = U1Space(infimumSpace)
         return infimumSpace
     else
@@ -60,8 +60,9 @@ function infimum_larger_deg(V1::GradedSpace, V2::GradedSpace)
     end
 end
 
-
-function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S; removeDegeneracy::Bool = true, degenCutOff::Int64 = 1) where {S<:ElementarySpace}
+function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S;
+                             removeDegeneracy::Bool = true,
+                             degenCutOff::Int64 = 1) where {S<:ElementarySpace}
     """ Constructs vector spaces for virtual bond indices of the MPS """
 
     # get number of momentum modes
@@ -94,10 +95,10 @@ function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S; removeDegene
     end
 
     # combine virtual vector spaces
-    virtSpaces = [infimum_larger_deg(virtSpaces_L[siteIdx], virtSpaces_R[siteIdx]) for siteIdx = 1 : (numSites + 1)];
+    virtSpaces = [infimum_larger_deg(virtSpaces_L[siteIdx], virtSpaces_R[siteIdx])
+                  for siteIdx in 1:(numSites + 1)]
 
-    return virtSpaces;
-
+    return virtSpaces
 end
 
 function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace,

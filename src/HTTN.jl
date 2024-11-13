@@ -30,24 +30,24 @@ export SparseEXP
 # export environments
 export SparseENV
 
-    # export models
-    export SineGordonParameters
-    export SineGordonModel
-    export MassiveSchwingerParameters
-    export MassiveSchwingerModel
-    export initializeVacuumMPS, initializeMPS
-    export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG
-    export updateBogoliubovParameters
-    export local_number_operators
-    export pairing_operators
+# export models
+export SineGordonParameters
+export SineGordonModel
+export MassiveSchwingerParameters
+export MassiveSchwingerModel
+export initializeVacuumMPS, initializeMPS
+export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG
+export updateBogoliubovParameters
+export local_number_operators
+export pairing_operators
 
-    # export algorithms
-    export find_groundstate, find_excitedstate
-    export DMRG2, DMRG2BO
-    export perform_timestep!
-    export TDVP2, TDVP2BO
-    export metts
-    export METTS2
+# export algorithms
+export find_groundstate, find_excitedstate
+export DMRG2, DMRG2BO
+export perform_timestep!
+export TDVP2, TDVP2BO
+export metts
+export METTS2
 
 # export mpo compression functions
 export compress_MPO, convert_MPO_33block, convert_33block_MPO
@@ -61,12 +61,12 @@ export compute_entanglement_spectra,
        compute_mutual_information_pairs
 export compute_phase_distribution
 
-    # export utility functions
-    export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
-    export infimum_larger_deg
-    export diag
-    export sample_from_MPS!, sample_to_CPS
-    export save_to_file, load_from_file
+# export utility functions
+export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
+export infimum_larger_deg
+export diag
+export sample_from_MPS!, sample_to_CPS
+export save_to_file, load_from_file
 
 # include source files
 include("states/SparseMPS.jl")
@@ -79,9 +79,9 @@ include("models/qft_models.jl")
 include("models/mS_sG.jl")
 include("models/utils.jl")
 
-    include("models/qft_models.jl")
-    include("models/mS_sG.jl")
-    include("models/utils.jl")
+include("models/qft_models.jl")
+include("models/mS_sG.jl")
+include("models/utils.jl")
 
 include("algorithms/mpo_compression.jl")
 
