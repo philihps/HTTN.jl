@@ -39,6 +39,21 @@ struct SineGordonModel <: AbstractQFTModel
     # modelMPO::SparseMPO
 end
 
+### moved and rewrote definitions of moe momentum and energy from utils.jl 
+
+function modeMomentum(k::Int64, L::Union{Int64, Float64})
+    """ Function to compute the momentum corresponding to mode k """
+
+    Pk = 2*pi/L * k;
+    return Pk;
+end
+
+function modeEnergy(k::Int64, L::Union{Int64, Float64}, M::Union{Int64, Float64})
+    """ Function to compute the energy corresponding to mode k """
+
+    Ek = sqrt(modeMomentum(k, L)^2 + M^2);
+    return Ek;
+end
 
 function SineGordonModel(truncationParameters::NamedTuple, hamiltonianParameters::NamedTuple)
     
@@ -512,14 +527,13 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,Si
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal)];
-        modeEnergy = sqrt((2*pi/L * kVal)^2 + M^2)
 
         # μ = real(cosh(abs(ξ)));
         # ν = real(sinh(abs(ξ)));
         # mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * (2 * μ * ν);
         # mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * (2 * μ * ν);
-        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= modeEnergy * sinh(2 * ξ);
-        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= modeEnergy * sinh(2 * ξ);
+        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * sinh(2 * ξ);
+        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * sinh(2 * ξ);
         # mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= -1 * modeEnergy(kVal, L, M) * sinh(2 * ξ);
         # mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= -1 * modeEnergy(kVal, L, M) * sinh(2 * ξ);
 
@@ -578,9 +592,7 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,Si
         ξ = bogParameters[abs(kVal)];
         μ = cosh(ξ);
         ν = sinh(ξ);
-        modeEnergy = sqrt((2*pi/L * kVal)^2 + M^2)
-
-        mpoIdId[1 + 2 * (kIdx - 1) + 1] *= modeEnergy * 2 * ν^2;
+        mpoIdId[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * 2 * ν^2;
 
         # store MPO
         storeIndividualMPOs[kIdx] = mpoIdId;
@@ -700,8 +712,7 @@ function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeS
         elseif M != 0.0
 
             # fill interactionTensor for massive zero mode: this is now a harmonic mode (independently of whether it is massless or massive, there is no quantum number constraint for the zero mode, so it should be costructed differently from the nonzero modes) 
-            modeEnergy = sqrt((2*pi/L * k)^2 + M^2)
-            w = α / sqrt(2 * modeEnergy * L);
+            w = α / sqrt(2 * modeEnergy(k, L, M) * L);
             interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dimAuxVecSpace);
             for nBra = 0 : (dimPhyVecSpace - 1), nKet = 0 : (dimPhyVecSpace - 1)
                 ### interactionTensor[nBra + 1, nKet + 1, 1] = convert(Float64, sum([F_mS(nBra, nKet, j, momentumVal, α, L, M) for j = max(0, nBra - nKet) : nBra]));
@@ -719,15 +730,14 @@ function localVertexOp(k::Int64, physVecSpace::Union{ElementarySpace, CompositeS
         auxVecSpaceOrdering = [productSector.charge for productSector in keys(auxQNSectors)];
         
         # fill interactionTensor
-        modeEnergy = sqrt((2*pi/L * k)^2 + M^2)
-        w = α / sqrt(2 * modeEnergy * L);
+        w = α / sqrt(2 * modeEnergy(k, L, M) * L);
         interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dimAuxVecSpace);
         for nBra = 0 : (dimPhyVecSpace - 1), nKet = 0 : (dimPhyVecSpace - 1)
             braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra));
             ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet));
             auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)));
             if bogoliubovRot
-                factorBCH = exp(- α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy));
+                factorBCH = exp(- α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy(k, L, M)));
                 interactionTensor[braIndPos, ketIndPos, auxIndPos] = factorBCH * G(nBra, nKet, w * exp(ξ));
             else
                 interactionTensor[braIndPos, ketIndPos, auxIndPos] = G(nBra, nKet, w);
