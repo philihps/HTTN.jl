@@ -432,7 +432,7 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,Si
             phyVecSpaceOrdering = [productSector.charge for productSector in keys(qnSectors)];
 
             # set modeFactor
-            modeFactor = sqrt((2*pi/L * momentumVal)^2 + M^2); # E_k
+            modeFactor = modeEnergy(momentumVal, L, M); # E_k
 
             # get Bogoliubov rotation parameters
             if bogoliubovRot
