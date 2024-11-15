@@ -82,6 +82,7 @@ function sample_to_CPS(mpsSample, momSample, finiteMPS)
     end
     return SparseMPS(initialTensors)
 end
+
 function sample_from_MPS!(finiteMPS::SparseMPS)
     """
     Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents
