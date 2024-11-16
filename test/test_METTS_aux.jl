@@ -1,5 +1,4 @@
 using HTTN
-using Printf
 using TensorKit
 using Test
 
