@@ -75,6 +75,10 @@ include("utility/SparseMPS.jl")
 include("utility/SparseMPO.jl")
 include("utility/environments.jl")
 
+include("models/qft_models.jl")
+include("models/mS_sG.jl")
+include("models/utils.jl")
+
 include("algorithms/dmrg.jl")
 include("algorithms/tdvp.jl")
 include("algorithms/metts.jl")
@@ -83,9 +87,5 @@ include("algorithms/expectation_values.jl")
 include("algorithms/entanglement_quantities.jl")
 include("algorithms/full_counting_statistics.jl")
 include("algorithms/mpo_compression.jl")
-
-include("models/qft_models.jl")
-include("models/mS_sG.jl")
-include("models/utils.jl")
 
 end
