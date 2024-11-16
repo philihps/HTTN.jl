@@ -1,4 +1,3 @@
-"Testing"
 function LinearAlgebra.diag(T::AbstractTensorMap)
     """ Overloading of LinearAlgebra function diag for TensorMap type """
 

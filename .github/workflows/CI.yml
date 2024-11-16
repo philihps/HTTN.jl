@@ -2,34 +2,67 @@ name: CI
 on:
   push:
     branches:
-      - main
-    tags: ['*']
+      - '*'
   pull_request:
+    branches:
+      - main
   workflow_dispatch:
-concurrency:
-  # Skip intermediate builds: always.
-  # Cancel intermediate builds: only if it is a pull request build.
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
 jobs:
-  test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    permissions: # needed to allow julia-actions/cache to proactively delete old caches that it has created
-      actions: write
-      contents: read
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
         version:
-          - '1.0'
-          - '1.10'
-          - 'nightly'
+          - '1' # automatically expands to the latest stable 1.x release of Julia
         os:
           - ubuntu-latest
         arch:
           - x64
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      
+      - name: Install JuliaFormatter and format
+        run: |
+          julia -e 'using Pkg; Pkg.activate("."); Pkg.add("JuliaFormatter")'
+          julia  -e 'using JuliaFormatter; format(".", verbose=true)'
+
+      - name: Check formatting
+        run: |
+          julia -e '
+          out = Cmd(`git diff --name-only`) |> read |> String
+          if out == ""
+              exit(0)
+          else
+              @error "Some files have not been formatted !!!"
+              write(stdout, out)
+              exit(1)
+          end'
+  
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1'
+          - 'lts'
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+        arch:
+          - x64
+        #   - x86
+        # exclude:
+        #   - os: macOS-latest
+        #     arch: x86
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
@@ -37,5 +70,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - uses: julia-actions/julia-buildpkg@latest
+      - uses: julia-actions/julia-runtest@latest
+        env:
+          JULIA_NUM_THREADS: 4
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v4
+        with:
+          file: lcov.info
