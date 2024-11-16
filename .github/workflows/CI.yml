@@ -52,17 +52,10 @@ jobs:
       matrix:
         version:
           - '1'
-          - 'lts'
         os:
           - ubuntu-latest
-          - macOS-latest
-          - windows-latest
         arch:
           - x64
-        #   - x86
-        # exclude:
-        #   - os: macOS-latest
-        #     arch: x86
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
