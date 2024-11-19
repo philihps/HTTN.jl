@@ -221,7 +221,7 @@ function modelSetup(modelParameters::Union{MassiveSchwingerParameters,SineGordon
     numSites = length(momentumModes)
 
     # sort momentumModes according to abs value
-    if modeOrdering == 1
+    if modeOrdering
         momentumModes = sort(momentumModes; by = abs)
     end
 
@@ -300,7 +300,7 @@ function constructPhysSpaces(modelParameters::Union{MassiveSchwingerParameters,
 end
 
 function initializeVacuumMPS(Model::Union{MassiveSchwingerModel,SineGordonModel};
-                             modeOrdering::Int64 = 1)
+                             modeOrdering::Bool = true)
     """ construct vacuum MPS tensor with physSpaces and virtSpaces """
 
     # get physSpaces
@@ -327,7 +327,7 @@ end
 
 function initializeMPS(Model::Union{MassiveSchwingerModel,SineGordonModel},
                        initMPS::SparseMPS;
-                       modeOrdering::Int64 = 1,)
+                       modeOrdering::Bool = true,)
     """ construct random MPS tensor with physVecSpaces and virtVecSpaces """
 
     # construct physical and virtual vector spaces for the MPS
@@ -339,11 +339,12 @@ function initializeMPS(Model::Union{MassiveSchwingerModel,SineGordonModel},
 
     numSites = length(physSpaces)
     mpsTensors = Vector{TensorMap}(undef, numSites)
-    if modeOrdering == 0
-        zeroSitePos = Int((numSites - 1) / 2 + 1)
-    elseif modeOrdering == 1
+    if modeOrdering
         zeroSitePos = 1
+    else
+        zeroSitePos = Int((numSites - 1) / 2 + 1)
     end
+
     for siteIdx in 1:numSites
         initTensor = 1e-0 * convert(Array, initMPS[siteIdx])
         siteTensor = TensorMap(randn,

@@ -32,19 +32,21 @@ function avg_stderr(v::Vector)
     return avg, sqrt(abs((avg2 - avg^2)) / N)
 end
 
-function sample(localMPS, index::Int64, physSpace, phyVecSpaceOrdering)
+function sample(localTensor, index::Int64, physSpace, phyVecSpaceOrdering)
     """
+    Sample each local tensor in an MPS
+
     Returns
     - n: index of sampled basis state
-    - pn: probability of localMPS to be in the n-th basis state
-    - An: collapsed localMPS
+    - pn: probability of localTensor to be in the n-th basis state
+    - An: collapsed localTensor
     """
     pDisc = 0.0
     randNum = rand()
     n = 1
-    An = similar(localMPS)
     pn = 0.0
     dimPhysSpace = dim(physSpace)
+
     while n <= dimPhysSpace
         # create projectors defined by basis state
         if index == 1
@@ -56,8 +58,8 @@ function sample(localMPS, index::Int64, physSpace, phyVecSpaceOrdering)
             targetQN = U1Space(phyVecSpaceOrdering[n] => 1)
             projVector = TensorMap(ones, targetQN, physSpace)
         end
-        # collapse basis state onto localMPS
-        @tensor An[-1 -2; -3] := projVector[-2, 2] * localMPS[-1, 2, -3]
+        # collapse basis state onto localTensor
+        @tensor An[-1 -2; -3] := projVector[-2, 2] * localTensor[-1, 2, -3]
         pn = real(tr(An' * An))
         pDisc += pn
         (randNum < pDisc) && break
@@ -83,7 +85,7 @@ function sample_to_CPS(mpsSample, momSample, finiteMPS)
     return SparseMPS(initialTensors)
 end
 
-function sample_from_MPS!(finiteMPS::SparseMPS)
+function sample_MPS!(finiteMPS::SparseMPS)
     """
     Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents
     Returns:
@@ -121,7 +123,7 @@ function sample_from_MPS!(finiteMPS::SparseMPS)
     return sampleResult, sampleMomentum
 end
 
-function metts(finiteMPS::SparseMPS,
+function metts!(finiteMPS::SparseMPS,
                finiteMPO::SparseMPO,
                numTimeStep::Int64,
                finalBeta::Union{Int64,Float64},
@@ -137,7 +139,7 @@ function metts(finiteMPS::SparseMPS,
     timeStep = 1im * (timeRanges[2] - timeRanges[1])
     println("Running METTS algorithm for timestep: $(timeStep)")
 
-    numMETTSMax = 2000 # hard limit of METTS iterations
+    numMETTSMax = 3000 # hard limit of METTS iterations
     numMETTSMin = 10
     numMETTS = max(alg.numMETTS, numMETTSMax)
     energies = zeros(Float64, 0, 3)
@@ -178,7 +180,7 @@ function metts(finiteMPS::SparseMPS,
             end
         end
         # collapse to a new state with local basis defined by mpsSample and momSample
-        mpsSample, momSample = sample_from_MPS!(finiteMPS)
+        mpsSample, momSample = sample_MPS!(finiteMPS)
         println("Sample of local basis (index): $(mpsSample)")
         println("Sample of local basis (momentum): $(momSample)")
         finiteMPS = sample_to_CPS(mpsSample, momSample, finiteMPS)
@@ -189,4 +191,100 @@ function metts(finiteMPS::SparseMPS,
         println("The observable does not converge within $numMETTS iterations.")
     end
     return energies, truncErrs
+end
+
+function metts(finiteMPS::SparseMPS,
+    finiteMPO::SparseMPO,
+    numTimeStep::Int64,
+    finalBeta::Union{Int64,Float64},
+    alg::METTS2)
+
+
+    return metts!(copy(finiteMPS), finiteMPO::SparseMPO,
+    numTimeStep::Int64,
+    finalBeta::Union{Int64,Float64},
+    alg::METTS2)
+end
+
+function sample_block(finiteMPS, siteIdx::Int64)
+
+    @assert mod(siteIdx, 2) == 0
+
+    pDisc = 0.0
+    randNum = rand()
+    n = 1
+    pn = 0.0
+
+    physSpaceL = space(finiteMPS[siteIdx + 0], 2);
+    physSpaceR = space(finiteMPS[siteIdx + 1], 2);
+    @assert dim(physSpaceL) == dim(physSpaceR)
+
+    physSpaceQNsL = physSpaceL.dims
+    phyVecSpaceOrderingL = [productSector.charge for productSector in keys(physSpaceQNsL)]
+    physSpaceQNsR = physSpaceR.dims
+    phyVecSpaceOrderingR = [productSector.charge for productSector in keys(physSpaceQNsR)]
+
+    while n <= dim(physSpaceL)
+        targetQNL = U1Space(phyVecSpaceOrderingL[n] => 1)
+        targetQNR = U1Space(phyVecSpaceOrderingR[n] => 1)
+        projVector = TensorMap(ones, targetQNL ⊗ targetQNR, physSpaceL ⊗ physSpaceR)
+
+        @tensor An[-1 -2 -3; -4] := projVector[-2, -3, 1, 3] * finiteMPS[siteIdx + 0][-1, 1, 2] * finiteMPS[siteIdx + 1][2, 3, -4]
+        pn = real(tr(An' * An))
+        pDisc += pn
+        (randNum < pDisc) && break
+        n += 1
+    end
+    
+    return n, pn, An
+end
+
+
+function sample_blockMPS!(finiteMPS::SparseMPS)
+    sampleResult = zeros(Int64, length(finiteMPS))
+    sampleMomentum = zeros(Int64, length(finiteMPS))
+
+    for siteIdx in eachindex(finiteMPS)
+
+        physSpace = space(finiteMPS[siteIdx], 2)
+        physSpaceQNs = physSpace.dims
+        phyVecSpaceOrdering = [productSector.charge for productSector in keys(physSpaceQNs)]
+
+        if siteIdx == 1
+            n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
+            sampleResult[siteIdx] = n
+            sampleMomentum[siteIdx] = phyVecSpaceOrdering[1]
+
+            @tensor A[-1 -2; -3] := An[-1, 1] * finiteMPS[siteIdx + 1][1, -2, -3];
+            A *= (1.0 / sqrt(pn));
+
+            fusionIsometry = isometry(fuse(space(An, 1), space(An, 2)),
+                                      space(An, 1) ⊗ space(An, 2))
+            @tensor A[-1 -2; -3] := fusionIsometry[-1, 1, 2] * An[1, 2, 3] *
+                                    finiteMPS[siteIdx + 1][3, -2, -3]
+            A *= (1.0 / sqrt(pn))
+            finiteMPS[siteIdx + 1] = A
+
+        elseif mod(siteIdx, 2) == 0
+            n, pn, An = sample_block(finiteMPS, siteIdx)
+            sampleResult[siteIdx] = n
+            sampleMomentum[siteIdx] = phyVecSpaceOrdering[n]
+
+            if siteIdx < length(finiteMPS) - 1
+                fusionIsometry = isometry(fuse(space(An, 1), space(An, 2), space(An, 3)),
+                                      space(An, 1) ⊗ space(An, 2) ⊗ space(An, 3))
+                @tensor A[-1 -2 -3; -4] := fusionIsometry[-1, 1, 2, 3] * An[1, 2, 3, 4] *
+                                           finiteMPS[siteIdx + 2][4, -2, 5] *
+                                           finiteMPS[siteIdx + 3][5, -3, -4]
+                A *= (1.0 / sqrt(pn))
+                (Q, R) = leftorth(A, (1, 2), (3, 4); alg=QRpos())
+                finiteMPS[siteIdx + 2] = permute(Q, (1, 2), (3,))
+                finiteMPS[siteIdx + 3] = permute(
+                    R * permute(finiteMPS[siteIdx + 3], (1,), (2, 3)), (1, 2), (3,)
+                )
+            end
+        end     
+    end
+
+    return sampleResult, sampleMomentum
 end

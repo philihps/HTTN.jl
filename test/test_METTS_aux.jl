@@ -6,7 +6,7 @@ using Test
 modelName = "sineGordon"
 
 # set display parameters
-modeOrdering = 1;
+modeOrdering = true;
 
 # set truncation parameters
 truncMethod = 3;

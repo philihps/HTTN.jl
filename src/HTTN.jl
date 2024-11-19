@@ -65,7 +65,7 @@ export compute_phase_distribution
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export infimum_larger_deg
 export diag
-export sample_from_MPS!, sample_to_CPS
+export sample_MPS!, sample_to_CPS
 export save_to_file, load_from_file
 
 # include source files

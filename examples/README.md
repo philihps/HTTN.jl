@@ -4,8 +4,8 @@
 The many parameters of a many-body problem
 - Display parameters
     - `modeOrdering`: ordering of momentum modes
-        - `0 -> -2  -1   0  1  2`
-        - `1 -> 0  -1  1  -2  2`
+        - `false -> -2  -1   0  1  2`
+        - `true -> 0  -1  1  -2  2`
 
 The many spaces of a many-body problem
 - Space objects and parameters
