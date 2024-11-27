@@ -62,7 +62,7 @@ export compute_entanglement_spectra,
 export compute_phase_distribution
 
 # export utility functions
-export orthogonalizeMPS!
+export normalizeMPS, normalizeMPO
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export infimum_larger_deg
 export diag
