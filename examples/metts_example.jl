@@ -35,7 +35,8 @@ bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.1
 bogParameters = bogParameters[1:kMax];
 
 # set model parameters
-β = 0.25 * sqrt(4 * π);
+β = 0.25 * sqrt(4 * π); # frequency unit
+invβ = 1 / β;
 λ = 1.0;
 L = 15.0;
 
@@ -81,15 +82,15 @@ DMRG2(; bondDim = 1000,
 
 # metts parameters
 numTimeSteps = 500 # 1000
-finalBetas = [1000.0, 500.0, 100.0, 50.0, 10.0, 5.0, 1.0, 0.5];
+inverseTs = [1e-3 * invβ, 1e-2 * invβ, 1e-1 * invβ, 0.5 * invβ, invβ, 1.5 * invβ];
 numMETTS = 100;
 # 5.0 didnt converge, 1.0, 0.5 no variance in first 10 samples
-finalEnergies = zeros(Float64,length(finalBetas),2)
-finalT = [1/i for i in finalBetas]
+finalEnergies = zeros(Float64,length(inverseTs),2)
+finalTs = [1/i for i in inverseTs]
 
-for (i, finalBeta) in enumerate(finalBetas)
-    @show finalBeta
-    energies, truncErrs = metts(initialMPS, hamMPO, numTimeSteps, finalBeta,
+for (i, inverseT) in enumerate(inverseTs)
+    @show inverseT
+    energies, truncErrs = metts(initialMPS, hamMPO, numTimeSteps, inverseT,
                             METTS2(; numMETTS = numMETTS, doBasisExtend = false, tol = 1.0)); # energies = -0.1997
     
     _, av_E_last, err_E_last = energies[end, :]
@@ -97,8 +98,8 @@ for (i, finalBeta) in enumerate(finalBetas)
 end
 
 aplot = plot();
-plot!([finalT[1]; finalT[end]], [groundStateEnergy_DMRG, groundStateEnergy_DMRG], label="Ground state energy")
-plot!(finalT, finalEnergies[:, 1], seriestype=:scatter, ls=:dot, label="");
+plot!([finalTs[1]; finalTs[end]], [groundStateEnergy_DMRG, groundStateEnergy_DMRG], label="Ground state energy")
+plot!(finalTs, finalEnergies[:, 1], seriestype=:scatter, ls=:dot, label="");
 plot!(;
     xlabel=L"T",
     ylabel=L"E_{\mathrm{thermal}}",

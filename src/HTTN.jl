@@ -62,11 +62,15 @@ export compute_entanglement_spectra,
 export compute_phase_distribution
 
 # export utility functions
+export orthogonalizeMPS!
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export infimum_larger_deg
 export diag
-export sample_MPS!, sample_to_CPS
+export sample_MPS!, sample_to_CPS, sample_to_CPS_basis
 export save_to_file, load_from_file
+
+# export Bogoliubov transformation functions
+export squeezingOp
 
 # include source files
 include("utility/bosonOperators.jl")

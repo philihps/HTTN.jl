@@ -896,12 +896,16 @@ function local_number_operators(Model::Union{MassiveSchwingerModel,SineGordonMod
     # set number operator for every site
     numberOperators = Vector{TensorMap}(undef, length(physSpaces))
     for (siteIdx, maxOccupation) in enumerate(modeOccupations[2, :])
-
         # get physical vector space
         physSpace = physSpaces[siteIdx]
 
         # set individual operators
         numberOperator = getNumberOperator(maxOccupation)
+        if Model isa SineGordonModel
+            if siteIdx == 1
+                numberOperator = abs.(LinearAlgebra.diagm(collect((-maxOccupation):maxOccupation)))
+            end
+        end
         numberOperators[siteIdx] = TensorMap(numberOperator, physSpace, physSpace)
     end
     return numberOperators

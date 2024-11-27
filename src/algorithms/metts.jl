@@ -12,6 +12,7 @@ For more information on METTS, see the following references:
     numWarmUp::Int64 = 10
     numMETTS::Int64 = 500
     krylovDim::Int = 2
+    bondDim::Int = 1000
     compressionAlg::String = "zipUp"
     truncErrT::Float64 = 1e-6 # after applying 2-body gate in TVDP
     truncErrK::Float64 = 1e-8 # from basis extension
@@ -43,6 +44,7 @@ function sample(localTensor, index::Int64, physSpace, phyVecSpaceOrdering)
     """
     pDisc = 0.0
     randNum = rand()
+    An = similar(localTensor)
     n = 1
     pn = 0.0
     dimPhysSpace = dim(physSpace)
@@ -57,6 +59,44 @@ function sample(localTensor, index::Int64, physSpace, phyVecSpaceOrdering)
         else
             targetQN = U1Space(phyVecSpaceOrdering[n] => 1)
             projVector = TensorMap(ones, targetQN, physSpace)
+        end
+        # collapse basis state onto localTensor
+        @tensor An[-1 -2; -3] := projVector[-2, 2] * localTensor[-1, 2, -3]
+        pn = real(tr(An' * An))
+        pDisc += pn
+        (randNum < pDisc) && break
+        n += 1
+    end
+    return n, pn, An
+end
+
+function sample_basis(localTensor, localProj, index::Int64, physSpace, phyVecSpaceOrdering)
+    """
+    Sample each local tensor in an MPS given non-Fock basis
+
+    Returns
+    - n: index of sampled basis state
+    - pn: probability of localTensor to be in the n-th basis state
+    - An: collapsed localTensor
+    """
+    pDisc = 0.0
+    randNum = rand()
+    An = similar(localTensor)
+    n = 1
+    pn = 0.0
+    dimPhysSpace = dim(physSpace)
+    while n <= dimPhysSpace
+        # create projectors defined by basis state
+        if index == 1
+            targetQN = U1Space(phyVecSpaceOrdering[1] => 1)
+            projVector = zeros(Float64, 1, dimPhysSpace)
+            projVector[1, n] = 1.0
+            projVector = TensorMap(projVector, targetQN, physSpace)
+        else
+            targetQN = U1Space(phyVecSpaceOrdering[n] => 1)
+            proj = blocks(localProj)[U1Irrep(phyVecSpaceOrdering[n])][1]
+
+            projVector = proj * TensorMap(ones, targetQN, physSpace)
         end
         # collapse basis state onto localTensor
         @tensor An[-1 -2; -3] := projVector[-2, 2] * localTensor[-1, 2, -3]
@@ -85,7 +125,33 @@ function sample_to_CPS(mpsSample, momSample, finiteMPS)
     return SparseMPS(initialTensors)
 end
 
-function sample_MPS!(finiteMPS::SparseMPS)
+function sample_to_CPS_basis(mpsSample, momSample, finiteMPS, newBasis)
+    virtSpaces = vcat(U1Space(0 => 1),
+                      [U1Space(sum(momSample[1:linkIdx]) => 1)
+                       for linkIdx in 1:(length(momSample) - 1)], U1Space(0 => 1))
+    # create new classical product state from mpsSample
+    initialTensors = Vector{TensorMap}(undef, length(finiteMPS))
+    for siteIdx in eachindex(finiteMPS)
+        physSpace = space(finiteMPS[siteIdx], 2)
+        virtSpaceL = virtSpaces[siteIdx + 0]
+        virtSpaceR = virtSpaces[siteIdx + 1]
+
+        eigState = 1.0
+        if siteIdx != 1
+            targetQN = physSpace.dims.keys[mpsSample[siteIdx]]
+            eigState = blocks(newBasis[siteIdx])[targetQN][1]
+        end
+
+        initTensor = zeros(ComplexF64, dim(virtSpaceL), dim(physSpace), dim(virtSpaceR))
+        initTensor[1, mpsSample[siteIdx], 1] = eigState
+        initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpace, virtSpaceR)
+    end
+    return SparseMPS(initialTensors)
+end
+
+# function sample_MPS!(finiteMPS::SparseMPS)
+function sample_MPS!(finiteMPS::SparseMPS, newProjs)
+
     """
     Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents
     Returns:
@@ -106,13 +172,17 @@ function sample_MPS!(finiteMPS::SparseMPS)
             sampleResult[siteIdx] = n
             sampleMomentum[siteIdx] = phyVecSpaceOrdering[1]
         else
-            n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
+            # n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
+            localProj = newProjs[siteIdx] 
+            n, pn, An = sample_basis(finiteMPS[siteIdx], localProj, siteIdx, physSpace, phyVecSpaceOrdering)
+
             sampleResult[siteIdx] = n
             sampleMomentum[siteIdx] = phyVecSpaceOrdering[n]
         end
         # fuse left virtual index and (fixed) physical index to transfer information about sample outcome on one site to the next site
         fusionIsometry = isometry(fuse(space(An, 1), space(An, 2)),
                                   space(An, 1) ⊗ space(An, 2))
+
         if siteIdx < length(finiteMPS)
             @tensor A[-1 -2; -3] := fusionIsometry[-1, 1, 2] * An[1, 2, 3] *
                                     finiteMPS[siteIdx + 1][3, -2, -3]
@@ -140,7 +210,6 @@ function metts!(finiteMPS::SparseMPS,
     println("Running METTS algorithm for timestep: $(timeStep)")
 
     numMETTSMax = 3000 # hard limit of METTS iterations
-    numMETTSMin = 10
     numMETTS = max(alg.numMETTS, numMETTSMax)
     energies = zeros(Float64, 0, 3)
     truncErrs = zeros(Float64, alg.numWarmUp + numMETTS)
@@ -174,7 +243,7 @@ function metts!(finiteMPS::SparseMPS,
                     err_E,
                     av_E - err_E,
                     av_E + err_E)
-            if step > (alg.numWarmUp + numMETTSMin) && abs(err_E / av_E) * 100 <= alg.tol
+            if err_E > 0 && abs(err_E / av_E) * 100 <= alg.tol
                 println("Standard error is within $(alg.tol)% of the average observable at METTS number $(step - alg.numWarmUp)")
                 break
             end
@@ -206,85 +275,99 @@ function metts(finiteMPS::SparseMPS,
     alg::METTS2)
 end
 
-function sample_block(finiteMPS, siteIdx::Int64)
+function mettsBasisChange!(finiteMPS::SparseMPS,
+    finiteMPO::SparseMPO,
+    numTimeStep::Int64,
+    finalBeta::Union{Int64,Float64},
+    alg::METTS2)
+    """
+    Returns:
+    - energies: energies[:, 1] -> energy at time step i
+        energies[:, 2] -> average energy up to time step i
+        energies[:, 3] -> standard error up to time step i
+    """
 
-    @assert mod(siteIdx, 2) == 0
+    timeRanges = range(0; stop = finalBeta / 2, length = numTimeStep + 1)
+    timeStep = 1im * (timeRanges[2] - timeRanges[1])
+    println("Running METTS algorithm for timestep: $(timeStep)")
 
-    pDisc = 0.0
-    randNum = rand()
-    n = 1
-    pn = 0.0
+    numMETTSMax = 3000 # hard limit of METTS iterations
+    numMETTS = max(alg.numMETTS, numMETTSMax)
+    energies = zeros(Float64, 0, 3)
+    truncErrs = zeros(Float64, alg.numWarmUp + numMETTS)
 
-    physSpaceL = space(finiteMPS[siteIdx + 0], 2);
-    physSpaceR = space(finiteMPS[siteIdx + 1], 2);
-    @assert dim(physSpaceL) == dim(physSpaceR)
-
-    physSpaceQNsL = physSpaceL.dims
-    phyVecSpaceOrderingL = [productSector.charge for productSector in keys(physSpaceQNsL)]
-    physSpaceQNsR = physSpaceR.dims
-    phyVecSpaceOrderingR = [productSector.charge for productSector in keys(physSpaceQNsR)]
-
-    while n <= dim(physSpaceL)
-        targetQNL = U1Space(phyVecSpaceOrderingL[n] => 1)
-        targetQNR = U1Space(phyVecSpaceOrderingR[n] => 1)
-        projVector = TensorMap(ones, targetQNL ⊗ targetQNR, physSpaceL ⊗ physSpaceR)
-
-        @tensor An[-1 -2 -3; -4] := projVector[-2, -3, 1, 3] * finiteMPS[siteIdx + 0][-1, 1, 2] * finiteMPS[siteIdx + 1][2, 3, -4]
-        pn = real(tr(An' * An))
-        pDisc += pn
-        (randNum < pDisc) && break
-        n += 1
-    end
-    
-    return n, pn, An
-end
-
-
-function sample_blockMPS!(finiteMPS::SparseMPS)
-    sampleResult = zeros(Int64, length(finiteMPS))
-    sampleMomentum = zeros(Int64, length(finiteMPS))
-
-    for siteIdx in eachindex(finiteMPS)
-
-        physSpace = space(finiteMPS[siteIdx], 2)
-        physSpaceQNs = physSpace.dims
-        phyVecSpaceOrdering = [productSector.charge for productSector in keys(physSpaceQNs)]
-
-        if siteIdx == 1
-            n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
-            sampleResult[siteIdx] = n
-            sampleMomentum[siteIdx] = phyVecSpaceOrdering[1]
-
-            @tensor A[-1 -2; -3] := An[-1, 1] * finiteMPS[siteIdx + 1][1, -2, -3];
-            A *= (1.0 / sqrt(pn));
-
-            fusionIsometry = isometry(fuse(space(An, 1), space(An, 2)),
-                                      space(An, 1) ⊗ space(An, 2))
-            @tensor A[-1 -2; -3] := fusionIsometry[-1, 1, 2] * An[1, 2, 3] *
-                                    finiteMPS[siteIdx + 1][3, -2, -3]
-            A *= (1.0 / sqrt(pn))
-            finiteMPS[siteIdx + 1] = A
-
-        elseif mod(siteIdx, 2) == 0
-            n, pn, An = sample_block(finiteMPS, siteIdx)
-            sampleResult[siteIdx] = n
-            sampleMomentum[siteIdx] = phyVecSpaceOrdering[n]
-
-            if siteIdx < length(finiteMPS) - 1
-                fusionIsometry = isometry(fuse(space(An, 1), space(An, 2), space(An, 3)),
-                                      space(An, 1) ⊗ space(An, 2) ⊗ space(An, 3))
-                @tensor A[-1 -2 -3; -4] := fusionIsometry[-1, 1, 2, 3] * An[1, 2, 3, 4] *
-                                           finiteMPS[siteIdx + 2][4, -2, 5] *
-                                           finiteMPS[siteIdx + 3][5, -3, -4]
-                A *= (1.0 / sqrt(pn))
-                (Q, R) = leftorth(A, (1, 2), (3, 4); alg=QRpos())
-                finiteMPS[siteIdx + 2] = permute(Q, (1, 2), (3,))
-                finiteMPS[siteIdx + 3] = permute(
-                    R * permute(finiteMPS[siteIdx + 3], (1,), (2, 3)), (1, 2), (3,)
-                )
+    # main METTS loop
+    for step in 1:(alg.numWarmUp + numMETTS)
+        if step <= alg.numWarmUp
+        println("Making warmup METTS number $step")
+        else
+        println("Making actual METTS number $(step - alg.numWarmUp)")
+        end
+        # perform time step by applying exp(-timeStep * H)
+        for _ in eachindex(timeRanges)
+        finiteMPS, _, _, truncErr = perform_timestep!(finiteMPS, finiteMPO, timeStep,
+                                                    TDVP2())
+        truncErrs[step] = truncErr
+        end
+        # measure properties after >= alg.numWarmUp METTS have been made
+        if step > alg.numWarmUp
+            mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
+            if abs(imag(mpoExpVal)) < 1e-12
+                mpoExpVal = real(mpoExpVal)
+            else
+                ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
             end
-        end     
+            av_E, err_E = avg_stderr(energies[:, 1])
+            energies = vcat(energies, [mpoExpVal av_E err_E])
+            @printf("Energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
+            @printf("Estimated energy = %0.6f ± %0.6f  /  [%0.6f, %0.6f]\n",
+                    av_E,
+                    err_E,
+                    av_E - err_E,
+                    av_E + err_E)
+            if err_E > 0 && abs(err_E / av_E) * 100 <= alg.tol
+                println("Standard error is within $(alg.tol)% of the average observable at METTS number $(step - alg.numWarmUp)")
+                break
+            end
+
+            for siteIdx in 1 : +1 : (length(finiteMPS) - 1)
+                if mod(siteIdx, 2) == 0
+                    k = abs(siteIdx ÷ 2)
+                    nMaxk = sG.modeOccupations[2, :][siteIdx]
+                    ξ = rand(-0.5 : 0.5) # uniform random
+                    push!(ξs, ξ)
+                    physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2), space(finiteMPS[siteIdx + 1], 2)
+                    sqOp = squeezingOp(ξ, nMaxk, -k, k, physSpaceL, physSpaceR)
+
+                    @tensor localBond[-1 -2 -3; -4] := sqOp[-2, -3, 1, 3] * finiteMPS[siteIdx + 0][-1, 1, 2] *
+                                                       finiteMPS[siteIdx + 1][2, 3, -4]
+                    
+                    U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4); 
+                                    trunc = truncdim(bondDim) & truncerr(truncErr),
+                                    alg = TensorKit.SVD())
+
+                    S /= norm(S)
+                    U = permute(U, (1, 2), (3,))
+                    V = permute(S * V, (1, 2), (3,))
+
+                    testMPS[siteIdx + 0] = U
+                    testMPS[siteIdx + 1] = V
+                end
+            end
+        end
+
+
+        # collapse to a new state with local basis defined by mpsSample and momSample
+        mpsSample, momSample = sample_MPS!(finiteMPS)
+        println("Sample of local basis (index): $(mpsSample)")
+        println("Sample of local basis (momentum): $(momSample)")
+        finiteMPS = sample_to_CPS(mpsSample, momSample, finiteMPS)
     end
 
-    return sampleResult, sampleMomentum
+    _, av_E_last, err_E_last = energies[end, :]
+    if abs(err_E_last / av_E_last) * 100 > alg.tol
+        println("The observable does not converge within $numMETTS iterations.")
+    end
+
+    return energies, truncErrs
 end
