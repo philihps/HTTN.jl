@@ -87,117 +87,118 @@ end
 
 initialMPS = SparseMPS(initialTensors; normalizeMPS = true);                                 
 
-# mpsSample = [15, 2, 4, 4, 3]
-# momSample = [0, -1, 3, -6, 4]
 
-# println("############Starting from product state############")
 
-# finiteCPS = sample_to_CPS(mpsSample, momSample, initialMPS)
-# @show getLinkDimsMPS(finiteCPS)
+println("############Starting from product state############")
+mpsSample = [15, 4, 2, 1, 2]
+momSample = [0, -3, 1, 0, 2]
+
+finiteCPS = sample_to_CPS(mpsSample, momSample, initialMPS)
 
 numberOperators = local_number_operators(sG);
-# localOccupations = expectation_values(finiteCPS, numberOperators);
-# @show localOccupations
+localOccupations = expectation_values(finiteCPS, numberOperators);
+@show localOccupations
 
-# # application of Bogoliubov op on mps
-# testMPS = deepcopy(finiteCPS)
-# ξs = Float64[]
-# sqOps = []
+# application of Bogoliubov op on mps
+testMPS = deepcopy(finiteCPS)
+ξs = Float64[]
+sqOps = []
 
-# for siteIdx in 1 : +1 : (length(testMPS) - 1)
-#     if mod(siteIdx, 2) == 0
-#         k = abs(siteIdx ÷ 2)
-#         nMaxk = sG.modeOccupations[2, :][siteIdx]
-#         ξ = rand() - 0.5 # uniform random
-#         push!(ξs, ξ)
-#         physSpaceL, physSpaceR = space(testMPS[siteIdx + 0], 2), space(testMPS[siteIdx + 1], 2)
-#         sqOp = squeezingOp(ξ, nMaxk, -k, k, physSpaceL, physSpaceR)
-#         push!(sqOps, sqOp)
+for siteIdx in 1 : +1 : (length(testMPS) - 1)
+    if mod(siteIdx, 2) == 0
+        k = abs(siteIdx ÷ 2)
+        nMaxk = sG.modeOccupations[2, :][siteIdx]
+        ξ = rand() - 0.5 # uniform random
+        push!(ξs, ξ)
+        physSpaceL, physSpaceR = space(testMPS[siteIdx + 0], 2), space(testMPS[siteIdx + 1], 2)
+        sqOp = squeezingOp(ξ, nMaxk, -k, k, physSpaceL, physSpaceR)
+        push!(sqOps, sqOp)
 
-#         @tensor localBond[-1 -2 -3; -4] := sqOp[-2, -3, 1, 3] * testMPS[siteIdx + 0][-1, 1, 2] *
-#                                            testMPS[siteIdx + 1][2, 3, -4]
+        @tensor localBond[-1 -2 -3; -4] := sqOp[-2, -3, 1, 3] * testMPS[siteIdx + 0][-1, 1, 2] *
+                                           testMPS[siteIdx + 1][2, 3, -4]
         
-#         U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))
+        U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))
 
-#         S /= norm(S)
-#         U = permute(U, (1, 2), (3,))
-#         V = permute(S * V, (1, 2), (3,))
+        S /= norm(S)
+        U = permute(U, (1, 2), (3,))
+        V = permute(S * V, (1, 2), (3,))
 
-#         testMPS[siteIdx + 0] = U
-#         testMPS[siteIdx + 1] = V
-#     end
-# end
+        testMPS[siteIdx + 0] = U
+        testMPS[siteIdx + 1] = V
+    end
+end
 
 
-# orthogonalizeMPS!(testMPS, 1)
-# println("############Testing transformation of MPS############")
-# @show getLinkDimsMPS(testMPS)
+testMPS = normalizeMPS(testMPS)
+println("############Testing transformation of MPS############")
+@show getLinkDimsMPS(testMPS)
 
-# println("After Bogoliubov transformation of MPS")
-# localOccupations = expectation_values(testMPS, numberOperators);
-# @show localOccupations
+println("After Bogoliubov transformation of MPS")
+localOccupations = expectation_values(testMPS, numberOperators);
+@show localOccupations
 
-# # inverse transformation
-# invtestMPS = deepcopy(testMPS)
-# for siteIdx in 1 : +1 : (length(invtestMPS) - 1)
-#     if mod(siteIdx, 2) == 0
-#         sqOp = sqOps[siteIdx ÷ 2]
-#         @tensor localBond[-1 -2 -3; -4] := conj(sqOp[1, 3, -2, -3]) * invtestMPS[siteIdx + 0][-1, 1, 2] *
-#                                            invtestMPS[siteIdx + 1][2, 3, -4] 
-#         U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))
+# inverse transformation
+invtestMPS = deepcopy(testMPS)
+for siteIdx in 1 : +1 : (length(invtestMPS) - 1)
+    if mod(siteIdx, 2) == 0
+        sqOp = sqOps[siteIdx ÷ 2]
+        @tensor localBond[-1 -2 -3; -4] := conj(sqOp[1, 3, -2, -3]) * invtestMPS[siteIdx + 0][-1, 1, 2] *
+                                           invtestMPS[siteIdx + 1][2, 3, -4] 
+        U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))
 
-#         S /= norm(S)
+        S /= norm(S)
 
-#         U = permute(U, (1, 2), (3,))
-#         V = permute(S * V, (1, 2), (3,))
+        U = permute(U, (1, 2), (3,))
+        V = permute(S * V, (1, 2), (3,))
 
-#         invtestMPS[siteIdx + 0] = U
-#         invtestMPS[siteIdx + 1] = V
-#     end
-# end
+        invtestMPS[siteIdx + 0] = U
+        invtestMPS[siteIdx + 1] = V
+    end
+end
 
-# orthogonalizeMPS!(invtestMPS, 1)
+invtestMPS = normalizeMPS(invtestMPS)
 
-# println("After inverse Bogoliubov transformation of MPS")
-# @show getLinkDimsMPS(invtestMPS)
+println("After inverse Bogoliubov transformation of MPS")
+@show getLinkDimsMPS(invtestMPS)
 
-# localOccupations = expectation_values(invtestMPS, numberOperators);
-# @show localOccupations
+localOccupations = expectation_values(invtestMPS, numberOperators);
+@show localOccupations
 
-# println("############Testing transformation of operator############")
-# numOps = deepcopy(numberOperators)
-# # transformation of numberOperators
-# for siteIdx in 1 : +1 : (length(testMPS) - 1)
-#     if mod(siteIdx, 2) == 0
-#         sqOp = sqOps[siteIdx ÷ 2]
-#         # @tensor localBond[-1 -2; -3 -4] := sqOp[1, 2, -3, -4] * numberOperators[siteIdx + 0][-1, 1] *
-#         #                                          numberOperators[siteIdx + 1][-2, 2]
-#         # @tensor test1[-1 -2; -3 -4] := conj(sqOp[1, 2, -1, -2]) * sqOp[1, 2, -3, -4]
-#         # @tensor test2[-1 -2; -3 -4] := sqOp'[-1, -2, 1, 2] * sqOp[1, 2, -3, -4]
+println("############Testing transformation of operator############")
+numOps = deepcopy(numberOperators)
+# transformation of numberOperators
+for siteIdx in 1 : +1 : (length(testMPS) - 1)
+    if mod(siteIdx, 2) == 0
+        sqOp = sqOps[siteIdx ÷ 2]
+        # @tensor localBond[-1 -2; -3 -4] := sqOp[1, 2, -3, -4] * numberOperators[siteIdx + 0][-1, 1] *
+        #                                          numberOperators[siteIdx + 1][-2, 2]
+        # @tensor test1[-1 -2; -3 -4] := conj(sqOp[1, 2, -1, -2]) * sqOp[1, 2, -3, -4]
+        # @tensor test2[-1 -2; -3 -4] := sqOp'[-1, -2, 1, 2] * sqOp[1, 2, -3, -4]
 
-#         # @show test1==test2
-#         @tensor localBond[-1 -2; -3 -4] := conj(sqOp[1, 2, -1, -2]) * numOps[siteIdx + 0][1, 3] *
-#                                            numOps[siteIdx + 1][2, 4] * sqOp[3, 4, -3, -4]
-#         U, S, V, ϵ = tsvd(localBond, (1, 3), (2, 4))
+        # @show test1==test2
+        @tensor localBond[-1 -2; -3 -4] := conj(sqOp[1, 2, -1, -2]) * numOps[siteIdx + 0][1, 3] *
+                                           numOps[siteIdx + 1][2, 4] * sqOp[3, 4, -3, -4]
+        U, S, V, ϵ = tsvd(localBond, (1, 3), (2, 4))
 
-#         S /= norm(S)
-#         boundaryL = TensorMap(ones, one(U1Space()), space(S, 1))
-#         boundaryR = TensorMap(ones, space(S, 1), one(U1Space()))
+        S /= norm(S)
+        boundaryL = TensorMap(ones, one(U1Space()), space(S, 1))
+        boundaryR = TensorMap(ones, space(S, 1), one(U1Space()))
 
-#         U = permute(U * sqrt(S), (1, ), (2, 3))
-#         @tensor U[-1; -2] := U[-1, -2, 1] * boundaryR[1]
-#         V = permute(sqrt(S) * V, (1, 2), (3, ))
-#         @tensor V[-1; -2] := boundaryL[1] * V[1, -1, -2]
+        U = permute(U * sqrt(S), (1, ), (2, 3))
+        @tensor U[-1; -2] := U[-1, -2, 1] * boundaryR[1]
+        V = permute(sqrt(S) * V, (1, 2), (3, ))
+        @tensor V[-1; -2] := boundaryL[1] * V[1, -1, -2]
 
-#         numOps[siteIdx + 0] = U
-#         numOps[siteIdx + 1] = V
-#     end
-# end
+        numOps[siteIdx + 0] = U
+        numOps[siteIdx + 1] = V
+    end
+end
 
-# localOccupations = expectation_values(testMPS, numOps);
-# @show localOccupations
+localOccupations = expectation_values(testMPS, numOps);
+@show localOccupations
 
 println("############Starting from random state############")
+println("Perform Bogoliubov transformation of MPS")
 testMPS = deepcopy(initialMPS)
 ξs = Float64[]
 sqOps = []
@@ -225,7 +226,7 @@ for siteIdx in 1 : +1 : (length(testMPS) - 1)
         testMPS[siteIdx + 1] = V
     end
 end
-normalizeMPS(testMPS)
+testMPS = normalizeMPS(testMPS)
 
 # eigendecomposition of squeezingOps
 eigStatesSqOps =  []
@@ -304,6 +305,7 @@ for siteIdx in 1 : +1 : (length(invtestMPS) - 1)
 end
 
 invtestMPS = normalizeMPS(invtestMPS)
+println("After inverse Bogoliubov transformation of MPS")
 localOccupations = expectation_values(invtestMPS, numberOperators);
 @show localOccupations
 
@@ -336,6 +338,7 @@ for siteIdx in 1 : +1 : (length(finiteMPS) - 1)
         numOps[siteIdx + 1] = V
     end
 end
+println("Apply transformed op on transformed MPS")
 
 localOccupations = expectation_values(finiteMPS, numOps);
 @show localOccupations
@@ -347,3 +350,4 @@ nothing
 # Initiate CPS in new basis?
 # 1. Initiate CPS in old basis
 # 2. Apply Bogoliubov transformation onto CPS
+# Another way to split numOp. Similar to proj?
