@@ -33,9 +33,9 @@ function avg_stderr(v::Vector)
     return avg, sqrt(abs((avg2 - avg^2)) / N)
 end
 
-function sample(localTensor, index::Int64, physSpace, phyVecSpaceOrdering)
+function sample_ZM(localTensor, physSpace)
     """
-    Sample each local tensor in an MPS
+    Sample zero mode
 
     Returns
     - n: index of sampled basis state
@@ -47,23 +47,18 @@ function sample(localTensor, index::Int64, physSpace, phyVecSpaceOrdering)
     An = similar(localTensor)
     n = 1
     pn = 0.0
-    dimPhysSpace = dim(physSpace)
 
-    while n <= dimPhysSpace
+    while n <= dim(physSpace)
         # create projectors defined by basis state
-        if index == 1
-            targetQN = U1Space(phyVecSpaceOrdering[1] => 1)
-            projVector = zeros(Float64, 1, dimPhysSpace)
-            projVector[1, n] = 1.0
-            projVector = TensorMap(projVector, targetQN, physSpace)
-        else
-            targetQN = U1Space(phyVecSpaceOrdering[n] => 1)
-            projVector = TensorMap(ones, targetQN, physSpace)
-        end
+        targetQN = U1Space(0 => 1)
+        projVector = zeros(Float64, 1, dim(physSpace))
+        projVector[1, n] = 1.0
+        projVector = TensorMap(projVector, targetQN, physSpace)
+       
         # collapse basis state onto localTensor
         @tensor An[-1 -2; -3] := projVector[-2, 2] * localTensor[-1, 2, -3]
         pn = real(tr(An' * An))
-        pDisc += pn
+        pDisc += real(pn)
         (randNum < pDisc) && break
         n += 1
     end
@@ -72,7 +67,7 @@ end
 
 function sample_basis(localTensor, localProj, index::Int64, physSpace, phyVecSpaceOrdering)
     """
-    Sample each local tensor in an MPS given non-Fock basis
+    Sample local tensor given projection operators
 
     Returns
     - n: index of sampled basis state
@@ -108,6 +103,100 @@ function sample_basis(localTensor, localProj, index::Int64, physSpace, phyVecSpa
     return n, pn, An
 end
 
+function sample_pair_basis_1(localTensor, modeProj, qNsL, qNsR)
+    """
+    Sample mode tensor using projection operators in sqOp basis
+
+    Params:
+    - localTensor: 3-leg tensor for siteIdx = 1, 4-leg tensor for siteIdx % 2 = 0
+
+    Returns:
+    - n: index tuple for sampled pair mode (-k, k'+)
+    """
+    pDisc = 0.0
+    randNum = rand()
+    An = similar(localTensor)
+    n = (0,0)
+    pn = 0.0
+
+    codoms, doms = map(fusiontrees(modeProj)) do (f1, f2)
+        (f1, f2)
+    end |> x -> (map(first, x), map(last, x))
+
+    # define projector for each possible pair mode in the codomain
+    for codom in unique(codoms)
+        singleModeProj = complex(TensorMap(zeros, codomain(modeProj), domain(modeProj)))
+
+        # ensure indices matching
+        @assert (fusiontrees(singleModeProj)).rowr == (fusiontrees(modeProj)).rowr
+        @assert (fusiontrees(singleModeProj)).colr == (fusiontrees(modeProj)).colr
+
+        indicesCodom = findall(x -> x == codom, codoms)
+        # find the corresponding pair mode in the domain
+        for i in indicesCodom
+            singleModeProj[codoms[i], doms[i]] = modeProj[codoms[i], doms[i]]
+        end
+
+        qNs = codom.uncoupled
+        n = (indexin(qNs[1].charge, [qN.charge for qN in qNsL])[1], indexin(qNs[2].charge, [qN.charge for qN in qNsR])[1])
+        @tensor An[-1 -2 -3; -4] := singleModeProj[-2, -3, 1, 2] * localTensor[-1, 1, 2, -4]
+        pn = real(tr(An' * An))
+
+        pDisc += pn
+        (randNum < pDisc) && break
+    end
+
+    return n, pn, An
+end
+
+function sample_pair_basis_2(localTensor, modeProj, qNsL, qNsR)
+    """
+    Sample mode tensor using projection operators in Fock basis
+
+    Params:
+    - localTensor: 3-leg tensor for siteIdx = 1, 4-leg tensor for siteIdx % 2 = 0
+
+    Returns:
+    - n: index tuple for sampled pair mode (-k, k'+)
+    """
+    pDisc = 0.0
+    randNum = rand()
+    An = similar(localTensor)
+    n = (0,0)
+    pn = 0.0
+
+    codoms, doms = map(fusiontrees(modeProj)) do (f1, f2)
+        (f1, f2)
+    end |> x -> (map(first, x), map(last, x))
+
+    # define projector for each possible pair mode in the codomain
+    for codom in unique(codoms)
+        codomL, codomR = codom.uncoupled
+        singleModeProj = zeros(ComplexF64, 1, 1, length(qNsL), length(qNsR))
+        indicesCodom = findall(x -> x == codom, codoms)
+
+        # find the corresponding pair mode in the domain
+        for i in indicesCodom
+            indexL, indexR = doms[i].uncoupled
+            indexL, indexR = indexL.charge, indexR.charge
+            posL, posR = indexin(indexL, [qN.charge for qN in qNsL])[1], indexin(indexR, [qN.charge for qN in qNsR])[1]
+            singleModeProj[1, 1, posL, posR] = 1.0
+        end
+
+        singleModeProj = TensorMap(singleModeProj, U1Space(codomL.charge => 1) ⊗ U1Space(codomR.charge => 1), domain(modeProj))
+
+        qNs = codom.uncoupled
+        n = (indexin(qNs[1].charge, [qN.charge for qN in qNsL])[1], indexin(qNs[2].charge, [qN.charge for qN in qNsR])[1])
+        @tensor An[-1 -2 -3; -4] := singleModeProj[-2, -3, 1, 2] * localTensor[-1, 1, 2, -4]
+        pn = real(tr(An' * An))
+
+        pDisc += pn
+        (randNum < pDisc) && break
+    end
+
+    return n, pn, An
+end
+
 function sample_to_CPS(mpsSample, momSample, finiteMPS)
     virtSpaces = vcat(U1Space(0 => 1),
                       [U1Space(sum(momSample[1:linkIdx]) => 1)
@@ -125,28 +214,49 @@ function sample_to_CPS(mpsSample, momSample, finiteMPS)
     return SparseMPS(initialTensors)
 end
 
-function sample_to_CPS_basis(mpsSample, momSample, finiteMPS, newBasis)
+function sample_to_BPS(mpsSample, momSample, finiteMPS, coeffs, modeSectors)
     virtSpaces = vcat(U1Space(0 => 1),
-                      [U1Space(sum(momSample[1:linkIdx]) => 1)
-                       for linkIdx in 1:(length(momSample) - 1)], U1Space(0 => 1))
-    # create new classical product state from mpsSample
-    initialTensors = Vector{TensorMap}(undef, length(finiteMPS))
+                      [U1Space(sum(momSample[1:linkIdx + 1]) => 1)
+                       for linkIdx in 1:(length(momSample)) if linkIdx%2==0])
+    blockState = Vector{TensorMap}(undef, length(virtSpaces))
+    i = 1
+    
     for siteIdx in eachindex(finiteMPS)
-        physSpace = space(finiteMPS[siteIdx], 2)
-        virtSpaceL = virtSpaces[siteIdx + 0]
-        virtSpaceR = virtSpaces[siteIdx + 1]
+        if siteIdx == 1
+            physSpace = space(finiteMPS[siteIdx], 2)
+            virtSpaceL = U1Space(0 => 1)
+            virtSpaceR = U1Space(0 => 1)
+            initTensor = zeros(ComplexF64, dim(virtSpaceL), dim(physSpace), dim(virtSpaceR))
+            initTensor[1, mpsSample[siteIdx], 1] = 1.0
+            blockState[i] = TensorMap(initTensor, virtSpaceL ⊗ physSpace, virtSpaceR)
+            i += 1
+        
+        elseif siteIdx % 2 == 0
+            virtSpaceL = virtSpaces[siteIdx ÷ 2]
+            virtSpaceR = virtSpaces[siteIdx ÷ 2 + 1]
+            physSpaceL = space(finiteMPS[siteIdx], 2)
+            physSpaceR = space(finiteMPS[siteIdx + 1], 2)
+            qNsL = [qN.charge for qN in physSpaceL.dims.keys]
+            qNsR = [qN.charge for qN in physSpaceR.dims.keys]
 
-        eigState = 1.0
-        if siteIdx != 1
-            targetQN = physSpace.dims.keys[mpsSample[siteIdx]]
-            eigState = blocks(newBasis[siteIdx])[targetQN][1]
+            initTensor = zeros(ComplexF64, 1, dim(physSpaceL), dim(physSpaceR), 1)
+            
+            totalMom = momSample[siteIdx + 0] + momSample[siteIdx + 1]
+            coeff = coeffs[siteIdx ÷ 2].data[U1Irrep(totalMom)]
+            fusionTree = modeSectors[siteIdx ÷ 2][U1Irrep(totalMom)]
+            for (pairMode, posTK) in fusionTree
+                indexL, indexR = pairMode.uncoupled
+                indexL, indexR = indexL.charge, indexR.charge
+                posL, posR = indexin(indexL, qNsL)[1], indexin(indexR, qNsR)[1]
+                initTensor[1, posL, posR, 1] = coeff[posTK[1], posTK[1]]
+            end
+            blockState[i] = TensorMap(initTensor, virtSpaceL ⊗ physSpaceL ⊗ physSpaceR, virtSpaceR)
+
+            i += 1
         end
-
-        initTensor = zeros(ComplexF64, dim(virtSpaceL), dim(physSpace), dim(virtSpaceR))
-        initTensor[1, mpsSample[siteIdx], 1] = eigState
-        initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpace, virtSpaceR)
     end
-    return SparseMPS(initialTensors)
+            
+    return blockState
 end
 
 # function sample_MPS!(finiteMPS::SparseMPS)
@@ -164,20 +274,19 @@ function sample_MPS!(finiteMPS::SparseMPS, newProjs)
     for siteIdx in eachindex(finiteMPS)
         # get physical vector space
         physSpace = space(finiteMPS[siteIdx], 2)
-        # get ordering of QNs in physSpace
-        physSpaceQNs = physSpace.dims
-        phyVecSpaceOrdering = [productSector.charge for productSector in keys(physSpaceQNs)]
+        # get QNs in physSpace
+        physSpaceQNs = physSpace.dims.keys
         if siteIdx == 1
             n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
             sampleResult[siteIdx] = n
-            sampleMomentum[siteIdx] = phyVecSpaceOrdering[1]
+            sampleMomentum[siteIdx] = physSpaceQNs[1]
         else
             # n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
             localProj = newProjs[siteIdx] 
             n, pn, An = sample_basis(finiteMPS[siteIdx], localProj, siteIdx, physSpace, phyVecSpaceOrdering)
 
             sampleResult[siteIdx] = n
-            sampleMomentum[siteIdx] = phyVecSpaceOrdering[n]
+            sampleMomentum[siteIdx] = physSpaceQNs[n]
         end
         # fuse left virtual index and (fixed) physical index to transfer information about sample outcome on one site to the next site
         fusionIsometry = isometry(fuse(space(An, 1), space(An, 2)),
@@ -190,6 +299,52 @@ function sample_MPS!(finiteMPS::SparseMPS, newProjs)
             finiteMPS[siteIdx + 1] = A
         end
     end
+    return sampleResult, sampleMomentum
+end
+
+function sample_MPS_pair!(finiteMPS::SparseMPS, modeProjs)
+
+    """
+    Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents
+    Returns:
+    - sampleResult: vector contains index of basis state for each site
+    - sampleMomentum: vector contains momentum mode
+    """
+    sampleResult = zeros(Int64, length(finiteMPS))
+    sampleMomentum = zeros(Int64, length(finiteMPS))
+
+    for siteIdx in eachindex(finiteMPS)
+        if siteIdx == 1
+            n, pn, An = sample_ZM(finiteMPS[1], space(finiteMPS[1], 2))
+            sampleResult[siteIdx] = n
+            sampleMomentum[siteIdx] = 0
+
+            fusionIsometry = isometry(fuse(space(An, 1), space(An, 2)),
+                                  space(An, 1) ⊗ space(An, 2))
+            @tensor A[-1 -2; -3] := fusionIsometry[-1, 1, 2] * An[1, 2, 3] *
+                                    finiteMPS[siteIdx + 1][3, -2, -3]
+            A *= (1.0 / sqrt(pn))
+            finiteMPS[siteIdx + 1] = A
+
+        elseif siteIdx % 2 == 0
+            qNsL, qNsR =  space(finiteMPS[siteIdx + 0], 2).dims.keys, space(finiteMPS[siteIdx + 1], 2).dims.keys
+            @tensor localTensor[-1 -2 -3; -4] := finiteMPS[siteIdx + 0][-1, -2, 1] * finiteMPS[siteIdx + 1][1, -3, -4]
+            n, pn, An = sample_pair_basis_2(localTensor, modeProjs[siteIdx ÷ 2], qNsL, qNsR)
+            sampleResult[siteIdx + 0], sampleResult[siteIdx + 1] = n
+            sampleMomentum[siteIdx + 0], sampleMomentum[siteIdx + 1] = qNsL[n[1]].charge, qNsR[n[2]].charge
+
+            if siteIdx < length(finiteMPS) - 2
+                @tensor nextTensor[-1 -2 -3; -4] := finiteMPS[siteIdx + 2][-1, -2, 1] * finiteMPS[siteIdx + 3][1, -3, -4]
+                fusionIsometry = isometry(fuse(space(An, 1), space(An, 2), space(An, 3)), space(An, 1) ⊗ space(An, 2) ⊗ space(An, 3))
+                @tensor A[-1 -2 -3; -4] := fusionIsometry[-1, 1, 2, 3] * An[1, 2, 3, 4] * nextTensor[4, -2, -3, -4]
+                A *= (1.0 /sqrt(pn))
+                U, S, V = tsvd(A, (1, 2), (3, 4))
+                finiteMPS[siteIdx + 2] = permute(U * sqrt(S), (1, 2), (3, ))
+                finiteMPS[siteIdx + 3] = permute(sqrt(S) * V, (1, 2), (3, ))
+            end
+        end
+    end
+    
     return sampleResult, sampleMomentum
 end
 

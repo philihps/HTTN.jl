@@ -66,7 +66,7 @@ export normalizeMPS, normalizeMPO
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export infimum_larger_deg
 export diag
-export sample_MPS!, sample_to_CPS, sample_to_CPS_basis
+export sample_MPS!, sample_MPS_pair!, sample_to_BPS
 export save_to_file, load_from_file
 
 # export Bogoliubov transformation functions
