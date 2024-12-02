@@ -179,6 +179,7 @@ function sample_pair_basis_2(localTensor, modeProj, qNsL, qNsR)
         for i in indicesCodom
             indexL, indexR = doms[i].uncoupled
             indexL, indexR = indexL.charge, indexR.charge
+            @assert indexL + indexR == codomL.charge + codomR.charge # check momentum preservation
             posL, posR = indexin(indexL, [qN.charge for qN in qNsL])[1], indexin(indexR, [qN.charge for qN in qNsR])[1]
             singleModeProj[1, 1, posL, posR] = 1.0
         end
