@@ -65,19 +65,34 @@ for siteIdx in eachindex(physSpaces)
                                         virtSpaces[siteIdx + 1])
 end
 
-initialMPS = SparseMPS(initialTensors; normalizeMPS = true);                                 
+initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
+
+# create eigenmodes
+mpsSample1 = [15, 4, 2, 1, 2]
+momSample1 = [0, -3, 1, 0, 2]
+mpsSample2 = [10, 3, 3, 2, 2]
+momSample2 = [0, -2, 2, -2, 2]
+
+eigenMode1 = sample_to_CPS(mpsSample1, momSample1, initialMPS)
+eigenMode2 = sample_to_CPS(mpsSample2, momSample2, initialMPS)
+eigenMode = eigenMode1 + eigenMode2
+eigenMode = normalizeMPS(eigenMode)
+
 
 hamMPO = generate_MPO_sG(sG);
 
-testMPS = deepcopy(initialMPS)
+# testMPS = deepcopy(initialMPS)
+testMPS = deepcopy(eigenMode)
 ξs = Float64[]
 sqOps = [] # length 2
 
-for siteIdx in 1 : +1 : (length(testMPS) - 1)
+for siteIdx in eachindex(testMPS)
     if mod(siteIdx, 2) == 0
         k = abs(siteIdx ÷ 2)
         nMaxk = sG.modeOccupations[2, :][siteIdx]
-        ξ = normal_in_interval(-0.5, 0.5)  # uniform random
+        ξ = normal_in_interval(-0.5, 0.5)  # optimal range (-0.15, 0.15) for 2 eigenmodes
+        # ξ = normal_in_interval(-1e-7, 1e-7)  
+
         push!(ξs, ξ)
         physSpaceL, physSpaceR = space(testMPS[siteIdx + 0], 2), space(testMPS[siteIdx + 1], 2)
         sqOp = squeezingOp(ξ, nMaxk, -k, k, physSpaceL, physSpaceR)
@@ -105,17 +120,59 @@ coeffs = []
 for sqOp in sqOps
     D, V = eig(sqOp, (1, 2), (3, 4))
     @tensor proj[-1 -2; -3 -4] := conj(V[-3, -4, 1]) * V[-1, -2, 1]
-    @assert proj.colr == proj.rowr
     push!(modeProjs, proj)
     push!(eigStates, V)
     push!(coeffs, D)
 end
 
 mpsSample, momSample = sample_MPS_pair!(testMPS, modeProjs)
+# mpsSample, momSample = sample_MPS!(testMPS, modeProjs)
+
 println("Sample of local basis (index): $(mpsSample)")
 println("Sample of local basis (momentum): $(momSample)")
 
+# Approach 1: initialize state as eigenstate of squeezing operator
 modeSectors = [proj.colr for proj in modeProjs]
-blockState = sample_to_BPS(mpsSample, momSample, testMPS, coeffs, modeSectors)
+interState = sample_to_BPS(mpsSample, momSample, testMPS, coeffs, modeSectors)
+blockState = Vector{TensorMap}(undef, length(physSpaces));
+blockState[1] = interState[1]
+for i in 1:(length(interState)-1)
+    U, S, V, _ = tsvd(interState[i+1], (1, 2), (3, 4))
+    S /= norm(S)
+    U = permute(U * sqrt(S), (1, 2), (3,))
+    V = permute(sqrt(S) * V, (1, 2), (3,))
+
+    blockState[2*i + 0] = U
+    blockState[2*i + 1] = V
+end
+blockState = normalizeMPS(blockState)
+println("Energy of BPS: $(expectation_value_mpo(blockState, hamMPO))")
+
+# Approach 2: initialize state as CPS in Fock basis and apply squeezing operator
+productState = sample_to_CPS(mpsSample, momSample, testMPS)
+
+for siteIdx in eachindex(testMPS)
+    if mod(siteIdx, 2) == 0
+        sqOp = sqOps[siteIdx ÷ 2]
+        # projOp = modeProjs[siteIdx ÷ 2]
+
+        @tensor localBond[-1 -2 -3; -4] := sqOp'[-2, -3, 1, 3] * productState[siteIdx + 0][-1, 1, 2] *
+                                            productState[siteIdx + 1][2, 3, -4]
+        
+        U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))
+
+        S /= norm(S)
+        U = permute(U, (1, 2), (3,))
+        V = permute(S * V, (1, 2), (3,))
+
+        productState[siteIdx + 0] = U
+        productState[siteIdx + 1] = V
+    end
+end
+
+productState = normalizeMPS(productState)
+println("Energy of rotated CPS: $(expectation_value_mpo(productState, hamMPO))")
+
+
 
 nothing

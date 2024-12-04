@@ -166,7 +166,7 @@ function Base.:*(ψ::SparseMPS, b::Number)
 end
 Base.:*(b::Number, ψ::SparseMPS) = ψ * b
 
-function orthogonalizeMPS!(finiteMPS::SparseMPS, orthCenter::Int = 1)
+function orthogonalizeMPS!(finiteMPS, orthCenter::Int = 1)
     """ Function to bring MPS into mixed canonical form with orthogonality center at site 'orthCenter' """
 
     # bring sites 1 to orthCenter - 1 into left-orthogonal form
@@ -186,13 +186,13 @@ function orthogonalizeMPS!(finiteMPS::SparseMPS, orthCenter::Int = 1)
     end
     return finiteMPS
 end
-function orthogonalizeMPS(finiteMPS::SparseMPS, args...)
+function orthogonalizeMPS(finiteMPS, args...)
     newMPS = copy(finiteMPS)
     orthogonalizeMPS!(newMPS, args...)
     return newMPS
 end
 
-function normMPS(finiteMPS::SparseMPS)
+function normMPS(finiteMPS)
     """ Returns the norm of the MPS after bringing it into canonical form """
 
     orthogonalizeMPS!(finiteMPS, 1)
@@ -200,7 +200,7 @@ function normMPS(finiteMPS::SparseMPS)
     return normMPS
 end
 
-function normalizeMPS(finiteMPS::SparseMPS)
+function normalizeMPS(finiteMPS)
     """ Brings MPS into canonical form and returns normalized MPS """
 
     # bring finiteMPS into canonical form
