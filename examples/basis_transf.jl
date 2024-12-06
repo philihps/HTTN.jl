@@ -81,24 +81,32 @@ eigenMode = normalizeMPS(eigenMode)
 
 hamMPO = generate_MPO_sG(sG);
 
-# testMPS = deepcopy(initialMPS)
-testMPS = deepcopy(eigenMode)
+testMPS = deepcopy(initialMPS)
+# testMPS = deepcopy(eigenMode)
 ξs = Float64[]
-sqOps = [] # length 2
+sqOps = [] # length 2, 4-leg tensors
+eigStates = [] # length 2, 4-leg tensors
+coeffs = [] # length 2, 2-leg tensors
 
 for siteIdx in eachindex(testMPS)
     if mod(siteIdx, 2) == 0
         k = abs(siteIdx ÷ 2)
         nMaxk = sG.modeOccupations[2, :][siteIdx]
-        ξ = normal_in_interval(-0.5, 0.5)  # optimal range (-0.15, 0.15) for 2 eigenmodes
+        ξ = normal_in_interval(-0.15, 0.15)  # optimal range (-0.15, 0.15) for 2 eigenmodes
         # ξ = normal_in_interval(-1e-7, 1e-7)  
 
         push!(ξs, ξ)
         physSpaceL, physSpaceR = space(testMPS[siteIdx + 0], 2), space(testMPS[siteIdx + 1], 2)
         sqOp = squeezingOp(ξ, nMaxk, -k, k, physSpaceL, physSpaceR)
         push!(sqOps, sqOp)
+        D, V = eig(sqOp, (1, 2), (3, 4))
+        splitIso = isometry(fuse(physSpaceL, physSpaceR), physSpaceL ⊗ physSpaceR)
+        @tensor V[-1 -2; -3 -4] := V[-1, -2, 1] * splitIso[1, -3, -4]
 
-        @tensor localBond[-1 -2 -3; -4] := sqOp[-2, -3, 1, 3] * testMPS[siteIdx + 0][-1, 1, 2] *
+        push!(eigStates, V)
+        push!(coeffs, D)
+
+        @tensor localBond[-1 -2 -3; -4] := V[-2, -3, 1, 3] * testMPS[siteIdx + 0][-1, 1, 2] *
                                            testMPS[siteIdx + 1][2, 3, -4]
         
         U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))
@@ -113,26 +121,20 @@ for siteIdx in eachindex(testMPS)
 end
 testMPS = normalizeMPS(testMPS)
 
-# eigendecomposition of squeezingOps
-modeProjs =  [] # length 2
-eigStates = [] # length 2, 4-leg tensor
-coeffs = []
-for sqOp in sqOps
-    D, V = eig(sqOp, (1, 2), (3, 4))
-    @tensor proj[-1 -2; -3 -4] := conj(V[-3, -4, 1]) * V[-1, -2, 1]
-    push!(modeProjs, proj)
-    push!(eigStates, V)
-    push!(coeffs, D)
-end
+println("Sampling single tensors...")
+testMPS1 = deepcopy(testMPS)
+mpsSample, momSample = sample_MPS!(testMPS1)
+println("Sample of local basis (index): $(mpsSample)")
+println("Sample of local basis (momentum): $(momSample)")
 
-mpsSample, momSample = sample_MPS_pair!(testMPS, modeProjs)
-# mpsSample, momSample = sample_MPS!(testMPS, modeProjs)
 
+println("Sampling in blocks...")
+mpsSample, momSample = sample_MPS_pair!(testMPS, eigStates)
 println("Sample of local basis (index): $(mpsSample)")
 println("Sample of local basis (momentum): $(momSample)")
 
 # Approach 1: initialize state as eigenstate of squeezing operator
-modeSectors = [proj.colr for proj in modeProjs]
+modeSectors = [eigState.colr for eigState in eigStates]
 interState = sample_to_BPS(mpsSample, momSample, testMPS, coeffs, modeSectors)
 blockState = Vector{TensorMap}(undef, length(physSpaces));
 blockState[1] = interState[1]
@@ -153,10 +155,9 @@ productState = sample_to_CPS(mpsSample, momSample, testMPS)
 
 for siteIdx in eachindex(testMPS)
     if mod(siteIdx, 2) == 0
-        sqOp = sqOps[siteIdx ÷ 2]
-        # projOp = modeProjs[siteIdx ÷ 2]
+        eigState = eigStates[siteIdx ÷ 2]
 
-        @tensor localBond[-1 -2 -3; -4] := sqOp'[-2, -3, 1, 3] * productState[siteIdx + 0][-1, 1, 2] *
+        @tensor localBond[-1 -2 -3; -4] := eigState'[-2, -3, 1, 3] * productState[siteIdx + 0][-1, 1, 2] *
                                             productState[siteIdx + 1][2, 3, -4]
         
         U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))

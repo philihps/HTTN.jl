@@ -65,6 +65,29 @@ function sample_ZM(localTensor, physSpace)
     return n, pn, An
 end
 
+function sample_non_ZM(localTensor, physSpace)
+    pDisc = 0.0
+    randNum = rand()
+    n = 1
+    pn = 0.0
+    An = similar(localTensor)
+
+    dimPhysSpace = dim(physSpace)
+    physSpaceQNs = physSpace.dims.keys
+
+    while n <= dimPhysSpace
+        targetQN = U1Space(physSpaceQNs[n] => 1)
+        projVector = TensorMap(ones, targetQN, physSpace)
+
+        @tensor An[-1 -2; -3] := projVector[-2, 2] * localTensor[-1, 2, -3]
+        pn = real(tr(An' * An))
+        pDisc += pn
+        (randNum < pDisc) && break
+        n += 1
+    end
+    return n, pn, An
+end
+
 function sample_basis(localTensor, localProj, index::Int64, physSpace, phyVecSpaceOrdering)
     """
     Sample local tensor given projection operators
@@ -149,7 +172,7 @@ function sample_pair_basis_1(localTensor, modeProj, qNsL, qNsR)
     return n, pn, An
 end
 
-function sample_pair_basis_2(localTensor, modeProj, qNsL, qNsR)
+function sample_pair_basis_2(localTensor, eigState, qNsL, qNsR)
     """
     Sample mode tensor using projection operators in Fock basis
 
@@ -165,14 +188,14 @@ function sample_pair_basis_2(localTensor, modeProj, qNsL, qNsR)
     n = (0,0)
     pn = 0.0
 
-    codoms, doms = map(fusiontrees(modeProj)) do (f1, f2)
+    codoms, doms = map(fusiontrees(eigState)) do (f1, f2)
         (f1, f2)
     end |> x -> (map(first, x), map(last, x))
 
     # define projector for each possible pair mode in the codomain
     for codom in unique(codoms)
         codomL, codomR = codom.uncoupled
-        singleModeProj = zeros(ComplexF64, 1, 1, length(qNsL), length(qNsR))
+        pairModeProj = zeros(ComplexF64, 1, 1, length(qNsL), length(qNsR))
         indicesCodom = findall(x -> x == codom, codoms)
 
         # find the corresponding pair mode in the domain
@@ -181,14 +204,14 @@ function sample_pair_basis_2(localTensor, modeProj, qNsL, qNsR)
             indexL, indexR = indexL.charge, indexR.charge
             @assert indexL + indexR == codomL.charge + codomR.charge # check momentum preservation
             posL, posR = indexin(indexL, [qN.charge for qN in qNsL])[1], indexin(indexR, [qN.charge for qN in qNsR])[1]
-            singleModeProj[1, 1, posL, posR] = 1.0
+            pairModeProj[1, 1, posL, posR] = 1.0
         end
 
-        singleModeProj = TensorMap(singleModeProj, U1Space(codomL.charge => 1) ⊗ U1Space(codomR.charge => 1), domain(modeProj))
+        pairModeProj = TensorMap(pairModeProj, U1Space(codomL.charge => 1) ⊗ U1Space(codomR.charge => 1), domain(eigState))
 
         qNs = codom.uncoupled
         n = (indexin(qNs[1].charge, [qN.charge for qN in qNsL])[1], indexin(qNs[2].charge, [qN.charge for qN in qNsR])[1])
-        @tensor An[-1 -2 -3; -4] := singleModeProj[-2, -3, 1, 2] * localTensor[-1, 1, 2, -4]
+        @tensor An[-1 -2 -3; -4] := pairModeProj[-2, -3, 1, 2] * localTensor[-1, 1, 2, -4]
         pn = real(tr(An' * An))
 
         pDisc += pn
@@ -260,9 +283,7 @@ function sample_to_BPS(mpsSample, momSample, finiteMPS, coeffs, modeSectors)
     return blockState
 end
 
-# function sample_MPS!(finiteMPS::SparseMPS)
-function sample_MPS!(finiteMPS::SparseMPS, newProjs)
-
+function sample_MPS!(finiteMPS::SparseMPS)
     """
     Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents
     Returns:
@@ -274,17 +295,15 @@ function sample_MPS!(finiteMPS::SparseMPS, newProjs)
     # sample from probability distribution given by finiteMPS
     for siteIdx in eachindex(finiteMPS)
        
+        physSpace = space(finiteMPS[siteIdx], 2)
 
         if siteIdx == 1
-            n, pn, An = sample_ZM(finiteMPS[1], space(finiteMPS[1], 2))
+            n, pn, An = sample_ZM(finiteMPS[1], physSpace)
             sampleResult[siteIdx] = n
             sampleMomentum[siteIdx] = 0
         else
-            physSpace = space(finiteMPS[siteIdx], 2)
             physSpaceQNs = physSpace.dims.keys
-            # n, pn, An = sample(finiteMPS[siteIdx], siteIdx, physSpace, phyVecSpaceOrdering)
-            localProj = newProjs[siteIdx] 
-            n, pn, An = sample_basis(finiteMPS[siteIdx], localProj, siteIdx, physSpace, physSpaceQNs)
+            n, pn, An = sample_non_ZM(finiteMPS[siteIdx],physSpace)
             sampleResult[siteIdx] = n
             sampleMomentum[siteIdx] = physSpaceQNs[n].charge
         end
@@ -302,7 +321,8 @@ function sample_MPS!(finiteMPS::SparseMPS, newProjs)
     return sampleResult, sampleMomentum
 end
 
-function sample_MPS_pair!(finiteMPS::SparseMPS, modeProjs)
+
+function sample_MPS_pair!(finiteMPS::SparseMPS, eigStates)
     """
     Returns one sample of the probability distribution defined by squaring the components of the tensor that the MPS represents
     Returns:
@@ -328,7 +348,7 @@ function sample_MPS_pair!(finiteMPS::SparseMPS, modeProjs)
         elseif siteIdx % 2 == 0
             qNsL, qNsR =  space(finiteMPS[siteIdx + 0], 2).dims.keys, space(finiteMPS[siteIdx + 1], 2).dims.keys
             @tensor localTensor[-1 -2 -3; -4] := finiteMPS[siteIdx + 0][-1, -2, 1] * finiteMPS[siteIdx + 1][1, -3, -4]
-            n, pn, An = sample_pair_basis_2(localTensor, modeProjs[siteIdx ÷ 2], qNsL, qNsR)
+            n, pn, An = sample_pair_basis_2(localTensor, eigStates[siteIdx ÷ 2], qNsL, qNsR)
             sampleResult[siteIdx + 0], sampleResult[siteIdx + 1] = n
             sampleMomentum[siteIdx + 0], sampleMomentum[siteIdx + 1] = qNsL[n[1]].charge, qNsR[n[2]].charge
 
