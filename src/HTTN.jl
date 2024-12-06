@@ -18,7 +18,8 @@ using Plots
 using Roots
 using SpecialFunctions
 using TensorKit
-# using Zygote
+
+import Distributions: Normal
 
 # export states
 export SparseMPS, normMPS
@@ -66,7 +67,7 @@ export normalizeMPS, normalizeMPO
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export infimum_larger_deg
 export diag
-export sample_MPS!, sample_MPS_pair!, sample_to_BPS, sample_to_CPS
+export transform_basis!, sample_MPS!, sample_to_BPS, sample_to_CPS
 export save_to_file, load_from_file
 
 # export Bogoliubov transformation functions
