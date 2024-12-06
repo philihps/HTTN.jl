@@ -150,7 +150,7 @@ end
 blockState = normalizeMPS(blockState)
 println("Energy of BPS: $(expectation_value_mpo(blockState, hamMPO))")
 
-# Approach 2: initialize state as CPS in Fock basis and apply squeezing operator
+# Approach 2: initialize state as CPS in new basis and apply inverse transformation
 productState = sample_to_CPS(mpsSample, momSample, testMPS)
 
 for siteIdx in eachindex(testMPS)
