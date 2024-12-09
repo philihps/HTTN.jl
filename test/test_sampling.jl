@@ -21,7 +21,7 @@ bogParameters = bogParameters[1:kMax];
 # set model parameters
 β = 0.25 * sqrt(4 * π); # frequency unit
 invβ = 1 / β;
-R = 1/β
+R = 1 / β
 λ = 1.0;
 L = 15.0;
 
@@ -50,38 +50,42 @@ virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR;
 nTrials = 100
 
 @testset "Test total momentum preservation of sampling" begin
-    for trial in (1 : nTrials)
-            
+    for trial in (1:nTrials)
+
         # initialize random MPS
-        testMPS = Vector{TensorMap}(undef, length(physSpaces));
+        testMPS = Vector{TensorMap}(undef, length(physSpaces))
         for siteIdx in eachindex(physSpaces)
             physSpace = physSpaces[siteIdx]
             testMPS[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
-                                                virtSpaces[siteIdx + 1])
+                                         virtSpaces[siteIdx + 1])
         end
 
-        testMPS = SparseMPS(testMPS; normalizeMPS = true);
+        testMPS = SparseMPS(testMPS; normalizeMPS = true)
         testMPS, eigStates, eigVals = transform_basis!(testMPS, sG)
-        
+        testMPS_1 = deepcopy(testMPS)
+
         mpsSample, momSample = sample_MPS!(testMPS)
         @test sum(momSample) == 0
+
+        mpsSample_1, momSample_1 = sample_MPS_block!(testMPS_1, eigStates)
+        @test sum(momSample_1) == 0
 
         if trial == 1
             # Approach 1: initialize state as eigenstate of squeezing operator
             modeSectors = [eigState.colr for eigState in eigStates]
             interState = sample_to_BPS(mpsSample, momSample, sG, eigVals, modeSectors)
-            blockState = Vector{TensorMap}(undef, length(physSpaces));
+            blockState = Vector{TensorMap}(undef, length(physSpaces))
             blockState[1] = interState[1]
-            for i in 1:(length(interState)-1)
-                U, S, V, _ = tsvd(interState[i+1], (1, 2), (3, 4))
+            for i in 1:(length(interState) - 1)
+                U, S, V, _ = tsvd(interState[i + 1], (1, 2), (3, 4))
                 S /= norm(S)
                 U = permute(U * sqrt(S), (1, 2), (3,))
                 V = permute(sqrt(S) * V, (1, 2), (3,))
 
-                blockState[2*i + 0] = U
-                blockState[2*i + 1] = V
+                blockState[2 * i + 0] = U
+                blockState[2 * i + 1] = V
             end
-            blockState = SparseMPS(blockState, normalizeMPS = true)
+            blockState = SparseMPS(blockState; normalizeMPS = true)
             blockStateEnergy = expectation_value_mpo(blockState, hamMPO)
 
             # Approach 2: initialize state as CPS in new basis and apply inverse transformation
@@ -91,9 +95,10 @@ nTrials = 100
                 if mod(siteIdx, 2) == 0
                     eigState = eigStates[siteIdx ÷ 2]
 
-                    @tensor localBond[-1 -2 -3; -4] := eigState'[-2, -3, 1, 3] * productState[siteIdx + 0][-1, 1, 2] *
-                                                        productState[siteIdx + 1][2, 3, -4]
-                    
+                    @tensor localBond[-1 -2 -3; -4] := eigState'[-2, -3, 1, 3] *
+                                                       productState[siteIdx + 0][-1, 1, 2] *
+                                                       productState[siteIdx + 1][2, 3, -4]
+
                     U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))
 
                     S /= norm(S)
@@ -111,4 +116,3 @@ nTrials = 100
         end
     end
 end
-

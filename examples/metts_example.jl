@@ -1,12 +1,8 @@
 #!/usr/bin/env julia
 
 # clear console
-Base.run(`clear`)
-
-using Pkg
 using Revise
 
-Pkg.activate(".")
 using JLD
 using HTTN
 using LaTeXStrings
@@ -74,37 +70,40 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 # construct sineGordon MPO
 hamMPO = generate_MPO_sG(sG);
 
-
 groundStateMPS, groundStateEnergy_DMRG = find_groundstate(initialMPS, hamMPO,
-DMRG2(; bondDim = 1000,
-      truncErr = 1e-6,
-      verbosePrint = true))
+                                                          DMRG2(; bondDim = 1000,
+                                                                truncErr = 1e-6,
+                                                                verbosePrint = true))
 
 # metts parameters
 numTimeSteps = 500 # 1000
-inverseTs = [1e-3 * invβ, 1e-2 * invβ, 1e-1 * invβ, 0.5 * invβ, invβ, 1.5 * invβ];
+inverseTs = [100 * invβ, 50 * invβ, 10 * invβ, 1 * invβ, 0.5 * invβ];
+
 numMETTS = 100;
-# 5.0 didnt converge, 1.0, 0.5 no variance in first 10 samples
-finalEnergies = zeros(Float64,length(inverseTs),2)
-finalTs = [1/i for i in inverseTs]
+finalEnergies = zeros(Float64, length(inverseTs), 2)
+finalTs = [1 / i for i in inverseTs]
 
 for (i, inverseT) in enumerate(inverseTs)
     @show inverseT
-    energies, truncErrs = metts(initialMPS, hamMPO, numTimeSteps, inverseT,
-                            METTS2(; numMETTS = numMETTS, doBasisExtend = false, tol = 1.0)); # energies = -0.1997
-    
+    # energies, truncErrs = metts(initialMPS, hamMPO, sG, numTimeSteps, inverseT,
+    #                         METTS2(; numMETTS = numMETTS, doBasisExtend = false, tol = 1.0)); # energies = -0.1997
+
+    energies, truncErrs = metts_basis(initialMPS, hamMPO, sG, numTimeSteps, inverseT,
+                                      METTS2(; numMETTS = numMETTS, doBasisExtend = false,
+                                             tol = 1.0)) # energies = -0.1997
+
     _, av_E_last, err_E_last = energies[end, :]
     finalEnergies[i, :] = [av_E_last, err_E_last]
 end
 
 aplot = plot();
-plot!([finalTs[1]; finalTs[end]], [groundStateEnergy_DMRG, groundStateEnergy_DMRG], label="Ground state energy")
-plot!(finalTs, finalEnergies[:, 1], seriestype=:scatter, ls=:dot, label="");
+plot!([finalTs[1]; finalTs[end]], [groundStateEnergy_DMRG, groundStateEnergy_DMRG];
+      label = "Ground state energy")
+plot!(finalTs, finalEnergies[:, 1]; seriestype = :scatter, ls = :dot, label = "");
 plot!(;
-    xlabel=L"T",
-    ylabel=L"E_{\mathrm{thermal}}",
-    title=L"\beta=0.25"
-)
+      xlabel = L"T",
+      ylabel = L"E_{\mathrm{thermal}}",
+      title = L"\beta=0.25")
 savefig(aplot, OUTPUT_PATH * "low_T_METTS.pdf")
 
 nothing

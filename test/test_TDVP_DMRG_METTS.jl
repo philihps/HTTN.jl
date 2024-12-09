@@ -97,7 +97,7 @@ numMETTS = 10;
     @test abs(groundStateEnergy_TDVP - groundStateEnergy_DMRG) < 1e-14
 
     @info "Start METTS"
-    energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta,
+    energies, truncErrs = metts(initialMPS, hamMPO, sG, numTimeStep, finalBeta,
                                 METTS2(; numMETTS = numMETTS, doBasisExtend = false,
                                        tol = 1.0))
 

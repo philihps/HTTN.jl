@@ -47,7 +47,7 @@ export find_groundstate, find_excitedstate
 export DMRG2, DMRG2BO
 export perform_timestep!
 export TDVP2, TDVP2BO
-export metts
+export metts, metts_basis
 export METTS2
 
 # export mpo compression functions
@@ -67,7 +67,7 @@ export normalizeMPS, normalizeMPO
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export infimum_larger_deg
 export diag
-export transform_basis!, sample_MPS!, sample_to_BPS, sample_to_CPS
+export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
 export save_to_file, load_from_file
 
 # export Bogoliubov transformation functions

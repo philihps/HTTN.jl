@@ -52,7 +52,7 @@ function squeezingOp(ξ::Union{Int64,Float64,ComplexF64},
     NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
     IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
 
-    K_A_0 = 1/2 * (NuId + IdNu + IdId)
+    K_A_0 = 1 / 2 * (NuId + IdNu + IdId)
     K_A_min = AnAn
     K_A_plus = CrCr
 
