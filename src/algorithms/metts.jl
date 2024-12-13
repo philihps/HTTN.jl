@@ -381,7 +381,7 @@ function metts!(finiteMPS::SparseMPS,
     println("Running METTS algorithm for timestep: $(timeStep)")
 
     numMETTSMax = 3000 # hard limit of METTS iterations
-    numMETTSMin = 10
+    numMETTSMin = 20
     numMETTS = max(alg.numMETTS, numMETTSMax)
     energies = zeros(Float64, 0, 3)
     truncErrs = zeros(Float64, alg.numWarmUp + numMETTS)
