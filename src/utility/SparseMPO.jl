@@ -460,10 +460,10 @@ end
 
 function save_to_file(fileName::String, sparseMPO::SparseMPO; dictKey::String = "sparseMPO")
     sparseMPO = convert.(Dict, sparseMPO)
-    return JLD.save(fileName, dictKey, sparseMPO)
+    return JLD2.save(fileName, dictKey, sparseMPO)
 end
 
-# function load_from_file(fileName::String, dictKey::String = "sparseMPO")
-#     sparseMPO = JLD.load(fileName, dictKey)
-#     sparseMPO = SparseMPO(convert.(TensorMap, sparseMPO))
-# end
+function load_from_file(fileName::String, dictKey::String = "sparseMPO")
+    sparseMPO = JLD2.load(fileName, dictKey)
+    sparseMPO = SparseMPO(convert.(TensorMap, sparseMPO))
+end

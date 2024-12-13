@@ -290,10 +290,10 @@ Base.:-(mpsA::SparseMPS, mpsB::SparseMPS) = mpsA + (-1 * mpsB)
 
 function save_to_file(fileName::String, sparseMPS::SparseMPS; dictKey::String = "sparseMPS")
     sparseMPS = convert.(Dict, sparseMPS)
-    return JLD.save(fileName, dictKey, sparseMPS)
+    return JLD2.save(fileName, dictKey, sparseMPS)
 end
 
-# function load_from_file(fileName::String, dictKey::String = "sparseMPS")
-#     sparseMPS = JLD.load(fileName, dictKey)
-#     sparseMPS = SparseMPS(convert.(TensorMap, sparseMPS))
-# end
+function load_from_file(fileName::String, dictKey::String = "sparseMPS")
+    sparseMPS = JLD2.load(fileName, dictKey)
+    sparseMPS = SparseMPS(convert.(TensorMap, sparseMPS))
+end

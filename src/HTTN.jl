@@ -9,7 +9,7 @@ using LinearAlgebra: LinearAlgebra
 using LinearAlgebra: diag, diagm
 
 using FFTW
-using JLD
+using JLD2
 using KrylovKit
 # using OptimKit
 using Printf
@@ -71,7 +71,7 @@ export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_t
 export save_to_file, load_from_file
 
 # export Bogoliubov transformation functions
-export squeezingOp
+export squeezingOp, singleSqueezingOp
 
 # include source files
 include("utility/bosonOperators.jl")

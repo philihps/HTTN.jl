@@ -14,8 +14,8 @@ For more information on METTS, see the following references:
     krylovDim::Int = 2
     bondDim::Int = 1000
     compressionAlg::String = "zipUp"
-    truncErrT::Float64 = 1e-6 # after applying 2-body gate in TVDP
-    truncErrK::Float64 = 1e-8 # from basis extension
+    truncErrT::Float64 = 1e-6 # after optimizing 2-site tensor in TVDP
+    truncErrK::Float64 = 1e-8 # for creating Krylov vector with zip up (fig 9.  Paeckel)
     truncErrM::Float64 = 1e-10 # from basis extension
     tol::Float64 = 1.0
     doBasisExtend::Bool = true
@@ -116,8 +116,8 @@ function sample_block(localTensor, eigState, qNsL, qNsR) #XXX: Issue: Which An t
 
     codoms, doms = (x -> (map(first, x), map(last, x)))(map(fusiontrees(eigState)) do (f1,
                                                                                        f2)
-                                                          return (f1, f2)
-                                                      end)
+                                                            return (f1, f2)
+                                                        end)
 
     # define projector for each possible pair mode in the codomain
     for codom in unique(codoms)
@@ -448,14 +448,16 @@ function metts_basis!(finiteMPS::SparseMPS,
 
     timeRanges = range(0; stop = finalBeta / 2, length = numTimeStep + 1)
     timeStep = 1im * (timeRanges[2] - timeRanges[1])
-    println("Running METTS algorithm for timestep: $(timeStep)")
+    println("Running METTS algorithm for timestep: $(timeStep), finalT=$(1/finalBeta)")
 
-    numMETTSMax = 3000 # hard limit of METTS iterations
-    numMETTSMin = 10
+    numMETTSMax = 10000 # hard limit of METTS iterations
+    numMETTSMin = 20
 
     numMETTS = max(alg.numMETTS, numMETTSMax)
     energies = zeros(Float64, 0, 3)
+    warmup_energies = zeros(Float64, 0, 3)
     truncErrs = zeros(Float64, alg.numWarmUp + numMETTS)
+    totalNumMETTS = 0
 
     # main METTS loop
     for step in 1:(alg.numWarmUp + numMETTS)
@@ -470,14 +472,19 @@ function metts_basis!(finiteMPS::SparseMPS,
                                                           TDVP2())
             truncErrs[step] = truncErr
         end
+
         # measure properties after >= alg.numWarmUp METTS have been made
-        if step > alg.numWarmUp
-            mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
-            if abs(imag(mpoExpVal)) < 1e-12
-                mpoExpVal = real(mpoExpVal)
-            else
-                ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
-            end
+        mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
+        if abs(imag(mpoExpVal)) < 1e-12
+            mpoExpVal = real(mpoExpVal)
+        else
+            ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
+        end
+
+        if step <= alg.numWarmUp
+            av_E, err_E = avg_stderr(warmup_energies[:, 1])
+            warmup_energies = vcat(energies, [mpoExpVal av_E err_E])
+        else
             av_E, err_E = avg_stderr(energies[:, 1])
             energies = vcat(energies, [mpoExpVal av_E err_E])
             @printf("Energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
@@ -488,7 +495,8 @@ function metts_basis!(finiteMPS::SparseMPS,
                     av_E + err_E)
             if step - alg.numWarmUp > numMETTSMin && err_E > 0 &&
                abs(err_E / av_E) * 100 <= alg.tol
-                println("Standard error is within $(alg.tol)% of the average observable at METTS number $(step - alg.numWarmUp)")
+                totalNumMETTS = step - alg.numWarmUp
+                println("Standard error is within $(alg.tol)% of the average observable at METTS number $(totalNumMETTS)")
                 break
             end
         end
@@ -528,7 +536,7 @@ function metts_basis!(finiteMPS::SparseMPS,
         println("The observable does not converge within $numMETTS iterations.")
     end
 
-    return energies, truncErrs
+    return warmup_energies, energies, truncErrs, totalNumMETTS
 end
 
 function metts(finiteMPS::SparseMPS,

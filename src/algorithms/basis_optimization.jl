@@ -63,6 +63,35 @@ function squeezingOp(ξ::Union{Int64,Float64,ComplexF64},
     return S
 end
 
+function singleSqueezingOp(ξ::Union{Int64,Float64,ComplexF64},
+                           nMax::Int64,
+                           physSpace::ElementarySpace)
+    """
+    S = e^{-tanh(ξ) . K_A_plus} . e^{-2 . log(cosh(ξ)) . K_A_0} . e^{tanh(ξ) . K_A_min}
+    K_A_0 = (1/2) * (N_{-k} + N_k + Id)
+    K_A_plus = Cr_k . Cr_{-k}
+    K_A_min = An_{-k} . An_k
+    """
+
+    # construct one-site operators
+    Cr = TensorMap(getCreationOperator(nMax), physSpace, physSpace)
+    @tensor CrCr[-1; -2] := Cr[-1, 1] * Cr[1, -2]
+    An = TensorMap(getAnnihilationOperator(nMax), physSpace, physSpace)
+    @tensor AnAn[-1; -2] := An[-1, 1] * An[1, -2]
+    numberOp = TensorMap(getNumberOperator(nMax), physSpace, physSpace)
+    idOp = TensorMap(getIdentityOperator(dim(physSpace)), physSpace, physSpace)
+
+    K_A_0 = numberOp + (1 / 2) * idOp
+    K_A_min = AnAn
+    K_A_plus = CrCr
+
+    # construct squeezing operator
+    S = matrixExponentialSeries(-1 * tanh(ξ) * K_A_plus, nMax) *
+        matrixExponentialSeries(-2 * log(cosh(ξ)) * K_A_0, nMax) *
+        matrixExponentialSeries(tanh(ξ) * K_A_min, nMax)
+    return S
+end
+
 function findDisentanglingRotation(ξ::Union{Int64,Float64,ComplexF64},
                                    nMax::Int64,
                                    kL::Int64,
