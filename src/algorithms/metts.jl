@@ -308,7 +308,7 @@ function sample_MPS_block!(finiteMPS::SparseMPS, eigStates)
     return sampleResult, sampleMomentum
 end
 
-function transform_basis!(finiteMPS, model; paramRange::Tuple = (-0.5, 0.5))
+function transform_basis!(finiteMPS, model; paramRange::Tuple = (-0.15, 0.15))
     """
     Transform non-zero momentum pair mode with squeezing operator defined 
     for parameters within paramRange
@@ -319,28 +319,32 @@ function transform_basis!(finiteMPS, model; paramRange::Tuple = (-0.5, 0.5))
     - eigVals: eigenvalues of squeezing operators for each pair mode
 
     """
-    ξs = zeros(Float64, (length(finiteMPS) - 1) ÷ 2)
-    eigStates = Vector(undef, (length(finiteMPS) - 1) ÷ 2)
-    eigVals = Vector(undef, (length(finiteMPS) - 1) ÷ 2)
+    ξs = zeros(Float64, (length(finiteMPS) - 1) ÷ 2 + 1)
+    sqOps = Vector(undef, (length(finiteMPS) - 1) ÷ 2 + 1)
 
     for siteIdx in eachindex(finiteMPS)
-        if mod(siteIdx, 2) == 0
-            k = abs(siteIdx ÷ 2)
-            nMaxk = model.modeOccupations[2, :][siteIdx]
-            ξ = normal_in_interval(paramRange[1], paramRange[2])
-            ξs[siteIdx ÷ 2] = ξ
+        k = abs(siteIdx ÷ 2)
+        nMaxk = model.modeOccupations[2, :][siteIdx]
+        ξ = normal_in_interval(paramRange[1] * nMaxk, paramRange[2] * nMaxk)
+
+        if siteIdx == 1
+            physSpace = space(finiteMPS[1], 2)
+            singleSqOp = singleSqueezingOp(ξ, nMaxk, physSpace)
+            ξs[1] = ξ
+            sqOps[1] = singleSqOp
+
+            @tensor localTensor[-1 -2; -3] := finiteMPS[1][-1, 1, -3] * singleSqOp[-2, 1]
+            finiteMPS[1] = localTensor
+
+        elseif mod(siteIdx, 2) == 0
+            ξs[siteIdx ÷ 2 + 1] = ξ
             physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2),
                                      space(finiteMPS[siteIdx + 1], 2)
             sqOp = squeezingOp(ξ, nMaxk, -k, k, physSpaceL, physSpaceR)
-            D, V = eig(sqOp, (1, 2), (3, 4))
-            splitIso = isometry(fuse(physSpaceL, physSpaceR), physSpaceL ⊗ physSpaceR)
-            @tensor V[-1 -2; -3 -4] := V[-1, -2, 1] * splitIso[1, -3, -4]
+            
+            sqOps[siteIdx ÷ 2 + 1] = sqOp
 
-            ξs[siteIdx ÷ 2] = ξ
-            eigStates[siteIdx ÷ 2] = V
-            eigVals[siteIdx ÷ 2] = D
-
-            @tensor localBond[-1 -2 -3; -4] := V[-2, -3, 1, 3] *
+            @tensor localBond[-1 -2 -3; -4] := sqOp[-2, -3, 1, 3] *
                                                finiteMPS[siteIdx + 0][-1, 1, 2] *
                                                finiteMPS[siteIdx + 1][2, 3, -4]
 
@@ -356,7 +360,7 @@ function transform_basis!(finiteMPS, model; paramRange::Tuple = (-0.5, 0.5))
     end
     finiteMPS = normalizeMPS(finiteMPS)
 
-    return finiteMPS, eigStates, eigVals
+    return finiteMPS, sqOps
 end
 
 function metts!(finiteMPS::SparseMPS,
@@ -448,7 +452,7 @@ function metts_basis!(finiteMPS::SparseMPS,
 
     timeRanges = range(0; stop = finalBeta / 2, length = numTimeStep + 1)
     timeStep = 1im * (timeRanges[2] - timeRanges[1])
-    println("Running METTS algorithm for timestep: $(timeStep), finalT=$(1/finalBeta)")
+    println("Running METTS algorithm for: timestep=$(timeStep), finalT=$(1/finalBeta)")
 
     numMETTSMax = 10000 # hard limit of METTS iterations
     numMETTSMin = 20
@@ -502,7 +506,7 @@ function metts_basis!(finiteMPS::SparseMPS,
         end
 
         # do basis transformation at each step
-        finiteMPS, eigStates, _ = transform_basis!(finiteMPS, model)
+        finiteMPS, sqOps = transform_basis!(finiteMPS, model)
 
         # collapse to a new state with local basis defined by mpsSample and momSample
         mpsSample, momSample = sample_MPS!(finiteMPS)
@@ -511,10 +515,16 @@ function metts_basis!(finiteMPS::SparseMPS,
         finiteMPS = sample_to_CPS(mpsSample, momSample, model)
 
         for siteIdx in eachindex(finiteMPS)
-            if mod(siteIdx, 2) == 0
-                eigState = eigStates[siteIdx ÷ 2]
+            if siteIdx == 1
+                sqOp = sqOps[1]
+                @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
 
-                @tensor localBond[-1 -2 -3; -4] := eigState'[-2, -3, 1, 3] *
+                finiteMPS[1] = localTensor
+
+            elseif mod(siteIdx, 2) == 0
+                sqOp = sqOps[siteIdx ÷ 2 + 1]
+
+                @tensor localBond[-1 -2 -3; -4] := sqOp'[-2, -3, 1, 3] *
                                                    finiteMPS[siteIdx + 0][-1, 1, 2] *
                                                    finiteMPS[siteIdx + 1][2, 3, -4]
 
