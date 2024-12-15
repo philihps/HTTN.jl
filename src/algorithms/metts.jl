@@ -11,6 +11,8 @@ For more information on METTS, see the following references:
 @kwdef struct METTS2
     numWarmUp::Int64 = 10
     numMETTS::Int64 = 500
+    numMETTSMin::Int64 = 20 
+    numMETTSMax::Int64 = 10000
     krylovDim::Int = 2
     bondDim::Int = 1000
     compressionAlg::String = "zipUp"
@@ -286,7 +288,7 @@ function sample_MPS_block!(finiteMPS::SparseMPS, eigStates)
             @tensor localTensor[-1 -2 -3; -4] := finiteMPS[siteIdx + 0][-1, -2, 1] *
                                                  finiteMPS[siteIdx + 1][1, -3, -4]
             localTensor /= sqrt(tr(localTensor' * localTensor))
-            n, _, An = sample_block(localTensor, eigStates[siteIdx ÷ 2], qNsL, qNsR)
+            n, _, An = sample_block(localTensor, eigStates[siteIdx ÷ 2 + 1], qNsL, qNsR)
             sampleResult[siteIdx + 0], sampleResult[siteIdx + 1] = n
             sampleMomentum[siteIdx + 0], sampleMomentum[siteIdx + 1] = qNsL[n[1]].charge,
                                                                        qNsR[n[2]].charge
@@ -454,10 +456,7 @@ function metts_basis!(finiteMPS::SparseMPS,
     timeStep = 1im * (timeRanges[2] - timeRanges[1])
     println("Running METTS algorithm for: timestep=$(timeStep), finalT=$(1/finalBeta)")
 
-    numMETTSMax = 10000 # hard limit of METTS iterations
-    numMETTSMin = 20
-
-    numMETTS = max(alg.numMETTS, numMETTSMax)
+    numMETTS = max(alg.numMETTS, alg.numMETTSMax)
     energies = zeros(Float64, 0, 3)
     warmup_energies = zeros(Float64, 0, 3)
     truncErrs = zeros(Float64, alg.numWarmUp + numMETTS)
@@ -497,7 +496,7 @@ function metts_basis!(finiteMPS::SparseMPS,
                     err_E,
                     av_E - err_E,
                     av_E + err_E)
-            if step - alg.numWarmUp > numMETTSMin && err_E > 0 &&
+            if step - alg.numWarmUp > alg.numMETTSMin && err_E > 0 &&
                abs(err_E / av_E) * 100 <= alg.tol
                 totalNumMETTS = step - alg.numWarmUp
                 println("Standard error is within $(alg.tol)% of the average observable at METTS number $(totalNumMETTS)")

@@ -49,8 +49,14 @@ virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
                                  removeDegeneracy = true);
 
 # initialize random MPS
-vacuumMPS = initializeVacuumMPS(mS; modeOrdering = modeOrdering)
-initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
+initialTensors = Vector{TensorMap}(undef, length(physSpaces));
+for siteIdx in eachindex(physSpaces)
+    physSpace = physSpaces[siteIdx]
+    initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
+                                        virtSpaces[siteIdx + 1])
+end
+initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
+
 
 numTimeStep = 500 # 1000
 numMETTS = 100

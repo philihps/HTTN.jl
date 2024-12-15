@@ -14,14 +14,29 @@ modelName = "sineGordon"
 # set display parameters
 modeOrdering = true;
 
+# set modelName
+modelName = "massiveSchwinger"
+
+# set display parameters
+modeOrdering = true;
+
 # set truncation parameters
-truncMethod = 3;
+truncMethod = 5;
 kMax = 2;
-nMax = 3;
+nMax = 5;
 nMaxZM = 10;
 bogoliubovRot = false;
 bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13];
 bogParameters = bogParameters[1:kMax];
+
+# set model parameters
+θ = 1.0 * π;
+e = 1.0;
+M = e / sqrt(π);
+L = 100.0;
+fermionMass = 0.1;
+
+# create NamedTuple for truncation parameters and model parameters
 truncationParameters = (kMax = kMax,
                         nMax = nMax,
                         nMaxZM = nMaxZM,
@@ -29,35 +44,30 @@ truncationParameters = (kMax = kMax,
                         modeOrdering = modeOrdering,
                         bogoliubovRot = bogoliubovRot,
                         bogParameters = bogParameters);
+hamiltonianParameters = (θ = θ, m = fermionMass, M = M, L = L)
 
-# set model parameters
-β = 0.25 * sqrt(4 * π);
-λ = 1.0;
-L = 15.0;
-hamiltonianParameters = (β = β, λ = λ, L = L);
+mS = MassiveSchwingerModel(truncationParameters, hamiltonianParameters)
+hamMPO = generate_MPO_mS(mS)
 
-# construct Sine-Gordon model with MPO
-sG = SineGordonModel(truncationParameters, hamiltonianParameters);
-println("Sine-Gordon model: ")
-display(sG.modeOccupations)
-hamMPO = generate_MPO_sG(sG);
 
 # construct physical and virtual vector spaces for the MPS
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
-physSpaces = sG.physSpaces;
-virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR;
+physSpaces = mS.physSpaces;
+virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
                                  removeDegeneracy = true);
 
 # initialize random MPS
-initialTensors = Vector{TensorMap}(undef, length(physSpaces));
-for siteIdx in eachindex(physSpaces)
-    physSpace = physSpaces[siteIdx]
-    initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
-                                        virtSpaces[siteIdx + 1])
-end
+# initialTensors = Vector{TensorMap}(undef, length(physSpaces));
+# for siteIdx in eachindex(physSpaces)
+#     physSpace = physSpaces[siteIdx]
+#     initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
+#                                         virtSpaces[siteIdx + 1])
+# end
+# initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 
-initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
+vacuumMPS = initializeVacuumMPS(mS; modeOrdering = modeOrdering)
+initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
 
 # set DMRG parameters
 bondDim = 128;
@@ -80,7 +90,7 @@ numMETTS = 10;
                                                                     truncErr = 1e-6,
                                                                     verbosePrint = true))
 
-    @test isapprox(groundStateEnergy_DMRG, -0.19967193)
+    @test isapprox(groundStateEnergy_DMRG, 1.5097641594121067)
 
     @info "Start TDVP"
     groundStateEnergy_TDVP = 0
@@ -97,9 +107,12 @@ numMETTS = 10;
     @test abs(groundStateEnergy_TDVP - groundStateEnergy_DMRG) < 1e-14
 
     @info "Start METTS"
-    energies, truncErrs = metts(initialMPS, hamMPO, sG, numTimeStep, finalBeta,
-                                METTS2(; numMETTS = numMETTS, doBasisExtend = false,
-                                       tol = 1.0))
+    _, energies, _, _ = metts_basis(initialMPS, hamMPO, mS, numTimeStep, finalBeta,
+                                METTS2(; numWarmUp = 10,
+                                numMETTS = numMETTS,
+                                numMETTSMin = 10,
+                                doBasisExtend = true,
+                                tol = 1.0))
 
     _, av_E_last, err_E_last = energies[end, :]
     @test abs(groundStateEnergy_TDVP - av_E_last) < 1e-14
