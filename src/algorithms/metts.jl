@@ -11,7 +11,7 @@ For more information on METTS, see the following references:
 @kwdef struct METTS2
     numWarmUp::Int64 = 10
     numMETTS::Int64 = 500
-    numMETTSMin::Int64 = 20 
+    numMETTSMin::Int64 = 20
     numMETTSMax::Int64 = 10000
     krylovDim::Int = 2
     bondDim::Int = 1000
@@ -343,7 +343,7 @@ function transform_basis!(finiteMPS, model; paramRange::Tuple = (-0.15, 0.15))
             physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2),
                                      space(finiteMPS[siteIdx + 1], 2)
             sqOp = squeezingOp(ξ, nMaxk, -k, k, physSpaceL, physSpaceR)
-            
+
             sqOps[siteIdx ÷ 2 + 1] = sqOp
 
             @tensor localBond[-1 -2 -3; -4] := sqOp[-2, -3, 1, 3] *
@@ -486,7 +486,7 @@ function metts_basis!(finiteMPS::SparseMPS,
 
         if step <= alg.numWarmUp
             av_E, err_E = avg_stderr(warmup_energies[:, 1])
-            warmup_energies = vcat(energies, [mpoExpVal av_E err_E])
+            warmup_energies = vcat(warmup_energies, [mpoExpVal av_E err_E])
         else
             av_E, err_E = avg_stderr(energies[:, 1])
             energies = vcat(energies, [mpoExpVal av_E err_E])

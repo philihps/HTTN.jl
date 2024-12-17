@@ -49,7 +49,6 @@ hamiltonianParameters = (θ = θ, m = fermionMass, M = M, L = L)
 mS = MassiveSchwingerModel(truncationParameters, hamiltonianParameters)
 hamMPO = generate_MPO_mS(mS)
 
-
 # construct physical and virtual vector spaces for the MPS
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
@@ -108,11 +107,11 @@ numMETTS = 10;
 
     @info "Start METTS"
     _, energies, _, _ = metts_basis(initialMPS, hamMPO, mS, numTimeStep, finalBeta,
-                                METTS2(; numWarmUp = 10,
-                                numMETTS = numMETTS,
-                                numMETTSMin = 10,
-                                doBasisExtend = true,
-                                tol = 1.0))
+                                    METTS2(; numWarmUp = 10,
+                                           numMETTS = numMETTS,
+                                           numMETTSMin = 10,
+                                           doBasisExtend = true,
+                                           tol = 1.0))
 
     _, av_E_last, err_E_last = energies[end, :]
     @test abs(groundStateEnergy_TDVP - av_E_last) < 1e-14

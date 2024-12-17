@@ -59,13 +59,13 @@ nTrials = 100
         end
 
         testMPS = SparseMPS(testMPS; normalizeMPS = true)
-        testMPS, sqOps= transform_basis!(testMPS, mS)
+        testMPS, sqOps = transform_basis!(testMPS, mS)
         testMPS_1 = deepcopy(testMPS)
 
         mpsSample, momSample = sample_MPS!(testMPS)
         @test sum(momSample) == 0
 
         mpsSample_1, momSample_1 = sample_MPS_block!(testMPS_1, sqOps)
-        @test sum(momSample_1) == 0        
+        @test sum(momSample_1) == 0
     end
 end

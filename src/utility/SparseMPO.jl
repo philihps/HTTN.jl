@@ -465,5 +465,5 @@ end
 
 function load_from_file(fileName::String, dictKey::String = "sparseMPO")
     sparseMPO = JLD2.load(fileName, dictKey)
-    sparseMPO = SparseMPO(convert.(TensorMap, sparseMPO))
+    return sparseMPO = SparseMPO(convert.(TensorMap, sparseMPO))
 end

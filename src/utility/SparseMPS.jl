@@ -295,5 +295,5 @@ end
 
 function load_from_file(fileName::String, dictKey::String = "sparseMPS")
     sparseMPS = JLD2.load(fileName, dictKey)
-    sparseMPS = SparseMPS(convert.(TensorMap, sparseMPS))
+    return sparseMPS = SparseMPS(convert.(TensorMap, sparseMPS))
 end
