@@ -1,3 +1,6 @@
+using Pkg
+Pkg.activate(ENV["JULIA_PROJECT"])
+
 using HTTN
 using Test
 
