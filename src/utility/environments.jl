@@ -33,13 +33,13 @@ function initializeMPOEnvironments(finiteMPS::SparseMPS, finiteMPO::SparseMPO;
     N = length(finiteMPS)
 
     # construct MPO environments
-    mpoEnvL = Vector{TensorMap}(undef, N)
-    mpoEnvR = Vector{TensorMap}(undef, N)
+    mpoEnvL = Vector{TensorMap{ComplexF64}}(undef, N)
+    mpoEnvR = Vector{TensorMap{ComplexF64}}(undef, N)
 
     # initialize end-points of mpoEnvL and mpoEnvR
-    mpoEnvL[1] = TensorMap(ones, space(finiteMPS[1], 1),
+    mpoEnvL[1] = TensorMap(ones, ComplexF64, space(finiteMPS[1], 1),
                            space(finiteMPO[1], 1) ⊗ space(finiteMPS[1], 1))
-    mpoEnvR[N] = TensorMap(ones, space(finiteMPS[N], 3)' ⊗ space(finiteMPO[N], 3)',
+    mpoEnvR[N] = TensorMap(ones, ComplexF64, space(finiteMPS[N], 3)' ⊗ space(finiteMPO[N], 3)',
                            space(finiteMPS[N], 3)')
 
     # compute mpoEnvL up to (centerPos - 1)
@@ -64,16 +64,16 @@ function initializePROEnvironments(ketMPS::SparseMPS, orthStates::Vector{SparseM
 
     # construct projector environments
     numOrthStates = length(orthStates)
-    projEnvsL = Vector{Vector{TensorMap}}(undef, numOrthStates)
-    projEnvsR = Vector{Vector{TensorMap}}(undef, numOrthStates)
+    projEnvsL = Vector{Vector{TensorMap{ComplexF64}}}(undef, numOrthStates)
+    projEnvsR = Vector{Vector{TensorMap{ComplexF64}}}(undef, numOrthStates)
     for orthIdx in eachindex(orthStates)
 
         # select braMPS
         braMPS = orthStates[orthIdx]
 
         # initialize projector environments
-        projEnvL = Vector{TensorMap}(undef, N)
-        projEnvR = Vector{TensorMap}(undef, N)
+        projEnvL = Vector{TensorMap{ComplexF64}}(undef, N)
+        projEnvR = Vector{TensorMap{ComplexF64}}(undef, N)
 
         # initialize end-points of projEnvL and projEnvR
         projEnvL[1] = TensorMap(ones, space(braMPS[1], 1), space(ketMPS[1], 1))

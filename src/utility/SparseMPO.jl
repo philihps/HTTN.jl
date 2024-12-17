@@ -9,26 +9,26 @@ abstract type AbstractMPO end
 abstract type AbstractFiniteEXP <: AbstractEXP end
 abstract type AbstractFiniteMPO <: AbstractMPO end
 
-struct SparseEXP{A<:AbstractTensorMap} <: AbstractFiniteEXP
+struct SparseEXP{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteEXP
     expTensors::Vector{A}
 
-    function SparseEXP{A}(expTensors::Vector{A}) where {A<:AbstractTensorMap}
+    function SparseEXP{A}(expTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
         return new{A}(expTensors)
     end
 
-    function SparseEXP(expTensors::Vector{A}) where {A<:AbstractTensorMap}
+    function SparseEXP(expTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
         return new{A}(expTensors)
     end
 end
 
-struct SparseMPO{A<:AbstractTensorMap} <: AbstractFiniteMPO
+struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
     mpoTensors::Vector{A}
 
-    function SparseMPO{A}(mpoTensors::Vector{A}) where {A<:AbstractTensorMap}
+    function SparseMPO{A}(mpoTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
         return new{A}(mpoTensors)
     end
 
-    function SparseMPO(mpoTensors::Vector{A}) where {A<:AbstractTensorMap}
+    function SparseMPO(mpoTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
         return new{A}(mpoTensors)
     end
 end
@@ -147,7 +147,7 @@ function Base.:+(mpoA::H, mpoB::H) where {H<:SparseMPO}
         throw(DimensionMismatch("lengths of MPO A ($NA) and MPO B ($NB) do not match"))
 
     # add MPOs from left to right
-    MPOC = Vector{TensorMap}(undef, NA)
+    MPOC = Vector{TensorMap{ComplexF64}}(undef, NA)
     if NA == 1
 
         # combine single tensor
@@ -264,14 +264,14 @@ function applyMPO(finiteMPO::SparseMPO,
     if compressionAlg == "densityMatrix"
 
         # construct MPO environments
-        mpoEnvL = Vector{TensorMap}(undef, N)
-        mpoEnvR = Vector{TensorMap}(undef, N)
+        mpoEnvL = Vector{TensorMap{ComplexF64}}(undef, N)
+        mpoEnvR = Vector{TensorMap{ComplexF64}}(undef, N)
 
         # initialize end-points of mpoEnvL and mpoEnvR
-        mpoEnvL[1] = TensorMap(ones,
+        mpoEnvL[1] = TensorMap(ones, ComplexF64,
                                space(compressedMPS[1], 1) ⊗ space(finiteMPO[1], 1),
                                space(finiteMPO[1], 1) ⊗ space(compressedMPS[1], 1))
-        mpoEnvR[N] = TensorMap(ones,
+        mpoEnvR[N] = TensorMap(ones, ComplexF64,
                                space(compressedMPS[N], 3)' ⊗ space(finiteMPO[N], 3)',
                                oneunit(spacetype(compressedMPS[N])))
 
@@ -354,8 +354,8 @@ function applyMPO(finiteMPO::SparseMPO,
     elseif compressionAlg == "variationalContraction"
 
         # construct MPO environments
-        mpoEnvL = Vector{TensorMap}(undef, N)
-        mpoEnvR = Vector{TensorMap}(undef, N)
+        mpoEnvL = Vector{TensorMap{ComplexF64}}(undef, N)
+        mpoEnvR = Vector{TensorMap{ComplexF64}}(undef, N)
 
         # initialize end-points of mpoEnvL and mpoEnvR
         mpoEnvL[1] = TensorMap(ones,

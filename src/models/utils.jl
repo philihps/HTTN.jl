@@ -20,7 +20,7 @@ function convertLocalOperatorsToMPO(localOperators::SparseEXP, kroneckerDeltaMPS
     numSites = length(localOperators)
 
     # combine local operators and kroneckerDeltaMPS
-    mpoTensors = Vector{TensorMap}(undef, numSites)
+    mpoTensors = Vector{TensorMap{ComplexF64}}(undef, numSites)
     for siteIdx in 1:numSites
         @tensor mpoTensors[siteIdx][-1 -2; -3 -4] := localOperators[siteIdx][-2, -4, 1] *
                                                      kroneckerDeltaMPS[siteIdx][-1, 1, -3]
@@ -35,7 +35,7 @@ function constructIdentityMPO(physSpaces::Vector{<:Union{ElementarySpace,
     """ Constructs the identity MPO with trivial vector space on virtual indices """
 
     # construct identity MPOs
-    identityMPO = Vector{TensorMap}(undef, length(physSpaces))
+    identityMPO = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces))
     for (siteIdx, physSpace) in enumerate(physSpaces)
         dimPhysSpace = dim(physSpace)
         localMPO = zeros(Float64, dim(virtVecSpace), dim(physSpace), dim(virtVecSpace),

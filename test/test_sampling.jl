@@ -51,7 +51,7 @@ nTrials = 100
     for trial in (1:nTrials)
 
         # initialize random MPS
-        testMPS = Vector{TensorMap}(undef, length(physSpaces))
+        testMPS = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces))
         for siteIdx in eachindex(physSpaces)
             physSpace = physSpaces[siteIdx]
             testMPS[siteIdx] = randn(ComplexF64, virtSpaces[siteIdx] ⊗ physSpace,

@@ -162,12 +162,12 @@ function sample_to_CPS(mpsSample, momSample, model)
                       [U1Space(sum(momSample[1:linkIdx]) => 1)
                        for linkIdx in 1:(length(momSample))])
     # create new classical product state from mpsSample
-    initialTensors = Vector{TensorMap}(undef, length(mpsSample))
+    initialTensors = Vector{TensorMap{ComplexF64}}(undef, length(mpsSample))
     physSpaces = model.physSpaces
     for siteIdx in 1:length(mpsSample)
         virtSpaceL = virtSpaces[siteIdx + 0]
         virtSpaceR = virtSpaces[siteIdx + 1]
-        initTensor = zeros(Float64, dim(virtSpaceL), dim(physSpaces[siteIdx]),
+        initTensor = zeros(ComplexF64, dim(virtSpaceL), dim(physSpaces[siteIdx]),
                            dim(virtSpaceR))
         initTensor[1, mpsSample[siteIdx], 1] = 1.0
         initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpaces[siteIdx],
@@ -180,7 +180,7 @@ function sample_to_BPS(mpsSample, momSample, model, coeffs, modeSectors)
     virtSpaces = vcat(U1Space(0 => 1),
                       [U1Space(sum(momSample[1:(linkIdx + 1)]) => 1)
                        for linkIdx in 1:(length(momSample)) if linkIdx % 2 == 0])
-    blockState = Vector{TensorMap}(undef, length(virtSpaces))
+    blockState = Vector{TensorMap{ComplexF64}}(undef, length(virtSpaces))
     i = 1
 
     for siteIdx in 1:length(mpsSample)

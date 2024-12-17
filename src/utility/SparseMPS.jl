@@ -7,15 +7,15 @@
 abstract type AbstractMPS end
 abstract type AbstractFiniteMPS <: AbstractMPS end
 
-struct SparseMPS{A<:AbstractTensorMap} <: AbstractFiniteMPS
+struct SparseMPS{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPS
     mpsTensors::Vector{A}
 
-    function SparseMPS{A}(mpsTensors::Vector{A}) where {A<:AbstractTensorMap}
+    function SparseMPS{A}(mpsTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
         return new{A}(mpsTensors)
     end
 
     function SparseMPS(mpsTensors::Vector{A};
-                       normalizeMPS::Bool = false) where {A<:AbstractTensorMap}
+                       normalizeMPS::Bool = false) where {A<:AbstractTensorMap{ComplexF64}}
 
         # bring MPS into right canonical form
         for siteIdx in length(mpsTensors):-1:1
@@ -102,7 +102,7 @@ function SparseMPS(physSpaces::Vector{<:Union{S,CompositeSpace{S}}},
     # construct MPS
     numSites = length(inputState)
     chainCenter = Int((numSites + 1) / 2)
-    mpsTensors = Vector{TensorMap}(undef, numSites)
+    mpsTensors = Vector{TensorMap{ComplexF64}}(undef, numSites)
     for siteIdx in 1:numSites
         initTensor = 1e-0 * convert(Array, inputState[siteIdx])
         siteTensor = randn(ComplexF64,
@@ -237,7 +237,7 @@ function Base.:+(mpsA::SparseMPS, mpsB::SparseMPS)
         throw(DimensionMismatch("lengths of MPS A ($NA) and MPS B ($NB) do not match"))
 
     # add MPSs from left to right
-    MPSC = Vector{TensorMap}(undef, NA)
+    MPSC = Vector{TensorMap{ComplexF64}}(undef, NA)
     if NA == 1
 
         # combine single tensor

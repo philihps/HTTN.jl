@@ -51,7 +51,7 @@ virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR;
                                  removeDegeneracy = true);
 
 # initialize random MPS
-initialTensors = Vector{TensorMap}(undef, length(physSpaces));
+initialTensors = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces));
 for siteIdx in eachindex(physSpaces)
     physSpace = physSpaces[siteIdx]
     initialTensors[siteIdx] = randn(ComplexF64, virtSpaces[siteIdx] ⊗ physSpace,

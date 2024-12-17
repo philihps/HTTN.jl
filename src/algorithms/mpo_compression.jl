@@ -1,6 +1,6 @@
 
 """
-    function compress_MPO(vecTensor::Vector{TensorMap}; truncError = 1e-14)
+    function compress_MPO(vecTensor::Vector{TensorMap{ComplexF64}}; truncError = 1e-14)
 
     Function to compress an MPO with truncError the singular values
 """
@@ -34,7 +34,7 @@ function compress_MPO(vecTensor::Vector{Array{TensorMap}}; truncError::Float64 =
 end
 
 """
-    function convert_MPO_33block(vecTensor::Vector{TensorMap})
+    function convert_MPO_33block(vecTensor::Vector{TensorMap{ComplexF64}})
 
     Converts a MPO represented by a vector of TensorMap into a matrix of MPO representations
     On all sites, we build a 3x3 matrix
@@ -80,14 +80,14 @@ function convert_MPO_33block(vecTensor::SparseMPO)
         localVector[3, 3] = TensorKit.id(U1Space(0 => 1) ⊗ physSpace)
 
         # set local zero blocks
-        localVector[1, 3] = TensorMap(zeros, Float64, U1Space(0 => 1) ⊗ physSpace,
+        localVector[1, 3] = TensorMap(zeros, ComplexF64, U1Space(0 => 1) ⊗ physSpace,
                                       U1Space(0 => 1) ⊗ physSpace)
-        localVector[3, 1] = TensorMap(zeros, Float64, U1Space(0 => 1) ⊗ physSpace,
+        localVector[3, 1] = TensorMap(zeros, ComplexF64, U1Space(0 => 1) ⊗ physSpace,
                                       U1Space(0 => 1) ⊗ physSpace)
         for x in [1, 3]
-            localVector[x, 2] = TensorMap(zeros, Float64, U1Space(0 => 1) ⊗ physSpace,
+            localVector[x, 2] = TensorMap(zeros, ComplexF64, U1Space(0 => 1) ⊗ physSpace,
                                           virtSpaceR ⊗ physSpace)
-            localVector[2, x] = TensorMap(zeros, Float64, virtSpaceL ⊗ physSpace,
+            localVector[2, x] = TensorMap(zeros, ComplexF64, virtSpaceL ⊗ physSpace,
                                           U1Space(0 => 1) ⊗ physSpace)
         end
 

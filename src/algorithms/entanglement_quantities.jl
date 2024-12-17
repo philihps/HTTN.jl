@@ -110,7 +110,7 @@ function compute_mutual_information(momentumModes::Vector{Int64}, finiteMPS::Spa
     mutualInformationMatrix = zeros(Float64, length(momentumModes), length(momentumModes))
 
     # compute reduced density matrix and self information for each mode
-    storeReducedDensityMatrices = Vector{TensorMap}(undef, length(momentumModes))
+    storeReducedDensityMatrices = Vector{TensorMap{ComplexF64}}(undef, length(momentumModes))
     for (siteIdx, momentumVal) in enumerate(momentumModes)
         reducedDensityMatrix = compute_arbitrary_bipartition(finiteMPS, [siteIdx])
         _, eigVals = tsvd(reducedDensityMatrix; trunc = truncbelow(svCutOff))
