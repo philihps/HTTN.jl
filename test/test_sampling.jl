@@ -54,8 +54,8 @@ nTrials = 100
         testMPS = Vector{TensorMap}(undef, length(physSpaces))
         for siteIdx in eachindex(physSpaces)
             physSpace = physSpaces[siteIdx]
-            testMPS[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
-                                         virtSpaces[siteIdx + 1])
+            testMPS[siteIdx] = randn(ComplexF64, virtSpaces[siteIdx] ⊗ physSpace,
+                                     virtSpaces[siteIdx + 1])
         end
 
         testMPS = SparseMPS(testMPS; normalizeMPS = true)

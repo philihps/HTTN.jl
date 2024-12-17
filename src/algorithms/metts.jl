@@ -446,7 +446,7 @@ function metts_basis!(finiteMPS::SparseMPS,
                       sqZero::Bool = true)
     """
     METTS sampling with randomly mixed basis
-    
+
     Params:
     - sqZero: to squeeze or not to squeeze the zero mode, that is the question
 
@@ -509,7 +509,7 @@ function metts_basis!(finiteMPS::SparseMPS,
         end
 
         # do basis transformation at each step
-        finiteMPS, sqOps = transform_basis!(finiteMPS, model, sqZero = sqZero)
+        finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = sqZero)
 
         # collapse to a new state with local basis defined by mpsSample and momSample
         mpsSample, momSample = sample_MPS!(finiteMPS)

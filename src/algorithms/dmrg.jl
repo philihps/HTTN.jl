@@ -236,8 +236,8 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS in eachindex(finiteMPS)
                     finiteMPS[idxMPS] += 0.1 *
-                                         TensorMap(randn, codomain(finiteMPS[idxMPS]),
-                                                   domain(finiteMPS[idxMPS]))
+                                         randn(ComplexF64, codomain(finiteMPS[idxMPS]),
+                                               domain(finiteMPS[idxMPS]))
                 end
                 finiteMPS = normalizeMPS(finiteMPS)
                 finiteMPS = applyMPO(finiteMPO, finiteMPS; truncErr = 1e-3,
@@ -718,8 +718,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS in eachindex(finiteMPS)
                     finiteMPS[idxMPS] += 0.1 *
-                                         TensorMap(randn, codomain(finiteMPS[idxMPS]),
-                                                   domain(finiteMPS[idxMPS]))
+                                         randn(ComplexF64, codomain(finiteMPS[idxMPS]),
+                                               domain(finiteMPS[idxMPS]))
                 end
                 finiteMPS = normalizeMPS(finiteMPS)
                 finiteMPS = applyMPO(finiteMPO, finiteMPS; truncErr = 1e-3,
@@ -987,8 +987,8 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS in eachindex(finiteMPS)
                     finiteMPS[idxMPS] += 0.1 *
-                                         TensorMap(randn, codomain(finiteMPS[idxMPS]),
-                                                   domain(finiteMPS[idxMPS]))
+                                         randn(ComplexF64, codomain(finiteMPS[idxMPS]),
+                                               domain(finiteMPS[idxMPS]))
                 end
                 finiteMPS = normalizeMPS(finiteMPS)
                 finiteMPS = applyMPO(finiteMPO, finiteMPS; truncErr = 1e-3,
@@ -1505,8 +1505,8 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS in eachindex(finiteMPS)
                     finiteMPS[idxMPS] += 0.1 *
-                                         TensorMap(randn, codomain(finiteMPS[idxMPS]),
-                                                   domain(finiteMPS[idxMPS]))
+                                         randn(ComplexF64, codomain(finiteMPS[idxMPS]),
+                                               domain(finiteMPS[idxMPS]))
                 end
                 finiteMPS = normalizeMPS(finiteMPS)
                 finiteMPS = applyMPO(finiteMPO, finiteMPS; truncErr = 1e-3,
