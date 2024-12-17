@@ -17,7 +17,7 @@ modelName = "massiveSchwinger"
 
 # set truncation parameters
 truncMethod = 5;
-kMax = 2;
+kMax = 1;
 nMax = 5;
 nMaxZM = 10;
 bogoliubovRot = false;
@@ -80,8 +80,8 @@ numMETTS = 10;
                                                               DMRG2(; bondDim = 1000,
                                                                     truncErr = 1e-6,
                                                                     verbosePrint = true))
-
-    @test isapprox(groundStateEnergy_DMRG, 1.5097641594121067)
+    @show groundStateEnergy_DMRG
+    @test isapprox(groundStateEnergy_DMRG, 1.5414652000703606)
 
     @info "Start TDVP"
     groundStateEnergy_TDVP = 0

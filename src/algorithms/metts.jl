@@ -310,7 +310,7 @@ function sample_MPS_block!(finiteMPS::SparseMPS, eigStates)
     return sampleResult, sampleMomentum
 end
 
-function transform_basis!(finiteMPS, model; paramRange::Tuple = (-0.15, 0.15), sqZero)
+function transform_basis!(finiteMPS, model; sqZero, paramRange::Tuple = (-0.15, 0.15))
     """
     Transform momentum pair mode with squeezing operator defined 
     for parameters within paramRange
