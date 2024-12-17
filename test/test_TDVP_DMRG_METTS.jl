@@ -9,16 +9,11 @@ using Printf
 using TensorKit
 using Test
 
-modelName = "sineGordon"
-
 # set display parameters
 modeOrdering = true;
 
 # set modelName
 modelName = "massiveSchwinger"
-
-# set display parameters
-modeOrdering = true;
 
 # set truncation parameters
 truncMethod = 5;
@@ -57,16 +52,13 @@ virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
                                  removeDegeneracy = true);
 
 # initialize random MPS
-# initialTensors = Vector{TensorMap}(undef, length(physSpaces));
-# for siteIdx in eachindex(physSpaces)
-#     physSpace = physSpaces[siteIdx]
-#     initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
-#                                         virtSpaces[siteIdx + 1])
-# end
-# initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
-
-vacuumMPS = initializeVacuumMPS(mS; modeOrdering = modeOrdering)
-initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
+initialTensors = Vector{TensorMap}(undef, length(physSpaces));
+for siteIdx in eachindex(physSpaces)
+    physSpace = physSpaces[siteIdx]
+    initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
+                                        virtSpaces[siteIdx + 1])
+end
+initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 
 # set DMRG parameters
 bondDim = 128;
@@ -110,7 +102,7 @@ numMETTS = 10;
                                     METTS2(; numWarmUp = 10,
                                            numMETTS = numMETTS,
                                            numMETTSMin = 10,
-                                           doBasisExtend = true,
+                                           doBasisExtend = false,
                                            tol = 1.0))
 
     _, av_E_last, err_E_last = energies[end, :]

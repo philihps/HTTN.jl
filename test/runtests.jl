@@ -5,6 +5,8 @@ Ti = time()
 include("test_METTS_aux.jl")
 include("test_TDVP_DMRG_METTS.jl")
 include("test_utility.jl")
+include("test_sampling.jl")
+
 Tf = time()
 printstyled("Finished all tests in ",
             string(round((Tf - Ti) / 60; sigdigits = 3)),
