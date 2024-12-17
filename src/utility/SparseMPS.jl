@@ -15,7 +15,7 @@ struct SparseMPS{A<:AbstractTensorMap} <: AbstractFiniteMPS
     end
 
     function SparseMPS(mpsTensors::Vector{A};
-                       normalizeMPS = false) where {A<:AbstractTensorMap}
+                       normalizeMPS::Bool = false) where {A<:AbstractTensorMap}
 
         # bring MPS into right canonical form
         for siteIdx in length(mpsTensors):-1:1
