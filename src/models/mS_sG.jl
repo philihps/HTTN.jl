@@ -348,8 +348,8 @@ function initializeMPS(Model::Union{MassiveSchwingerModel,SineGordonModel},
     for siteIdx in 1:numSites
         initTensor = 1e-0 * convert(Array, initMPS[siteIdx])
         siteTensor = randn(Float64,
-                        virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
-                        virtSpaces[siteIdx + 1])
+                           virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
+                           virtSpaces[siteIdx + 1])
         if siteIdx == zeroSitePos
             siteTensor = 1e-2 * convert(Array, siteTensor)
         else
