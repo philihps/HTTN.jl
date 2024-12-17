@@ -1,7 +1,6 @@
 using HTTN
 using TensorKit
 using JLD2
-using Revise
 
 OUTPUT_PATH = "/home/"
 
@@ -60,6 +59,7 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 numTimeStep = 500 # 1000
 numMETTS = 100
 inverseT = 50
+SLURM_ARRAY_JOB_ID = "test"
 FILE_INFO = "$(modelName)_m_$(fermionMass)_invT_$(inverseT)_$(SLURM_ARRAY_JOB_ID)"
 
 println("System info: kMax=$kMax, nMax=$nMax, nMaxZM=$nMaxZM, truncMethod=$truncMethod, theta=$θ, M=$M, L=$L, fermionMass=$fermionMass")
@@ -70,7 +70,8 @@ warmup_energies, energies, truncErrs, totalNumMETTS = metts_basis(initialMPS, ha
                                                                          numWarmUp = 50,
                                                                          numMETTS = numMETTS,
                                                                          doBasisExtend = true,
-                                                                         tol = 1.0))
+                                                                         tol = 1.0);
+                                                                  sqZero = false)
 
 @save OUTPUT_PATH * FILE_INFO * "_warmup_energies.jld2" warmup_energies
 @save OUTPUT_PATH * FILE_INFO * "_energies.jld2" energies

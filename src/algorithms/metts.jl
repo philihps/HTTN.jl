@@ -442,8 +442,8 @@ function metts_basis!(finiteMPS::SparseMPS,
                       model,
                       numTimeStep::Int64,
                       finalBeta::Union{Int64,Float64},
-                      alg::METTS2;
-                      sqZero::Bool = true)
+                      alg::METTS2,
+                      sqZero::Bool)
     """
     METTS sampling with randomly mixed basis
 
@@ -571,11 +571,13 @@ function metts_basis(finiteMPS::SparseMPS,
                      model,
                      numTimeStep::Int64,
                      finalBeta::Union{Int64,Float64},
-                     alg::METTS2)
+                     alg::METTS2;
+                     sqZero::Bool = true)
     return metts_basis!(deepcopy(finiteMPS),
                         finiteMPO::SparseMPO,
                         model,
                         numTimeStep::Int64,
                         finalBeta::Union{Int64,Float64},
-                        alg::METTS2)
+                        alg::METTS2,
+                        sqZero)
 end

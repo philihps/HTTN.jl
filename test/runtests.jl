@@ -15,5 +15,5 @@ println()
 
 @testset "Run all tests" verbose = true begin
     using Aqua
-    Aqua.test_all(HTTN)
+    Aqua.test_all(HTTN; persistent_tasks = false)
 end

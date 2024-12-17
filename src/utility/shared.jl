@@ -1,4 +1,4 @@
-function LinearAlgebra.diag(T::AbstractTensorMap)
+function diagTM(T::AbstractTensorMap)
     """ Overloading of LinearAlgebra function diag for TensorMap type """
 
     diagElements = Vector{Float64}()
