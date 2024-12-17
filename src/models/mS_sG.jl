@@ -221,7 +221,7 @@ function modelSetup(modelParameters::Union{MassiveSchwingerParameters,SineGordon
     numSites = length(momentumModes)
 
     # sort momentumModes according to abs value
-    if modeOrdering == 1
+    if modeOrdering
         momentumModes = sort(momentumModes; by = abs)
     end
 
@@ -300,7 +300,7 @@ function constructPhysSpaces(modelParameters::Union{MassiveSchwingerParameters,
 end
 
 function initializeVacuumMPS(Model::Union{MassiveSchwingerModel,SineGordonModel};
-                             modeOrdering::Int64 = 1)
+                             modeOrdering::Bool = true)
     """ construct vacuum MPS tensor with physSpaces and virtSpaces """
 
     # get physSpaces
@@ -327,7 +327,7 @@ end
 
 function initializeMPS(Model::Union{MassiveSchwingerModel,SineGordonModel},
                        initMPS::SparseMPS;
-                       modeOrdering::Int64 = 1,)
+                       modeOrdering::Bool = true,)
     """ construct random MPS tensor with physVecSpaces and virtVecSpaces """
 
     # construct physical and virtual vector spaces for the MPS
@@ -339,11 +339,12 @@ function initializeMPS(Model::Union{MassiveSchwingerModel,SineGordonModel},
 
     numSites = length(physSpaces)
     mpsTensors = Vector{TensorMap}(undef, numSites)
-    if modeOrdering == 0
-        zeroSitePos = Int((numSites - 1) / 2 + 1)
-    elseif modeOrdering == 1
+    if modeOrdering
         zeroSitePos = 1
+    else
+        zeroSitePos = Int((numSites - 1) / 2 + 1)
     end
+
     for siteIdx in 1:numSites
         initTensor = 1e-0 * convert(Array, initMPS[siteIdx])
         siteTensor = TensorMap(randn,
@@ -512,6 +513,9 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
                             modeOccupations::Matrix{Int64},
                             physSpaces::Vector{<:Union{ElementarySpace,
                                                        CompositeSpace{ElementarySpace}}})
+    """
+    Compute 2 . ∑_{k>0} E_k . μ_k + ν_k . [b†_{-k} b†_{+k} + b_{+k} b_{-k}]
+    """
 
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters
@@ -569,24 +573,19 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal)]
 
-        # μ = real(cosh(abs(ξ)));
-        # ν = real(sinh(abs(ξ)));
-        # mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * (2 * μ * ν);
-        # mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * (2 * μ * ν);
-        mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * sinh(2 * ξ)
-        mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * sinh(2 * ξ)
-        # mpoAnAn[1 + 2 * (kIdx - 1) + 1] *= -1 * modeEnergy(kVal, L, M) * sinh(2 * ξ);
-        # mpoCrCr[1 + 2 * (kIdx - 1) + 1] *= -1 * modeEnergy(kVal, L, M) * sinh(2 * ξ);
+        mpoAnAn *= modeEnergy(kVal, L, M) * sinh(2 * ξ)
+        mpoCrCr *= modeEnergy(kVal, L, M) * sinh(2 * ξ)
 
         # store sum of MPOs
         storeIndividualMPOs[kIdx] = mpoAnAn + mpoCrCr
     end
 
-    # add together all MPOs
+    # add together all MPOs #XXX: better sum?
     mpo_H0_Part_B = copy(storeIndividualMPOs[1])
     for kIdx in 2:length(storeIndividualMPOs)
         mpo_H0_Part_B += storeIndividualMPOs[kIdx]
     end
+    # mpo_H0_Part_B = sum(storeIndividualMPOs) ###XXX: Check
     return mpo_H0_Part_B
 end
 
@@ -897,12 +896,16 @@ function local_number_operators(Model::Union{MassiveSchwingerModel,SineGordonMod
     # set number operator for every site
     numberOperators = Vector{TensorMap}(undef, length(physSpaces))
     for (siteIdx, maxOccupation) in enumerate(modeOccupations[2, :])
-
         # get physical vector space
         physSpace = physSpaces[siteIdx]
 
         # set individual operators
         numberOperator = getNumberOperator(maxOccupation)
+        if Model isa SineGordonModel
+            if siteIdx == 1
+                numberOperator = abs.(LinearAlgebra.diagm(collect((-maxOccupation):maxOccupation)))
+            end
+        end
         numberOperators[siteIdx] = TensorMap(numberOperator, physSpace, physSpace)
     end
     return numberOperators

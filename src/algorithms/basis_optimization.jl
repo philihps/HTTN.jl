@@ -36,6 +36,12 @@ function squeezingOp(ξ::Union{Int64,Float64,ComplexF64},
                      kR::Int64,
                      PL::ElementarySpace,
                      PR::ElementarySpace)
+    """
+    S = e^{-tanh(ξ) . K_A_plus} . e^{-2 . log(cosh(ξ)) . K_A_0} . e^{tanh(ξ) . K_A_min}
+    K_A_0 = (1/2) * (N_{-k} + N_k + Id)
+    K_A_plus = Cr_k . Cr_{-k}
+    K_A_min = An_{-k} . An_k
+    """
 
     # construct two-site operators
     CrCr = convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
@@ -46,50 +52,43 @@ function squeezingOp(ξ::Union{Int64,Float64,ComplexF64},
     NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
     IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
 
-    # compute μ and ν
-    # μ = cosh(abs(ξ));
-    # ν = exp(1im * angle(ξ)) * sinh(abs(ξ));
-    # compute μ and ν
-    # μ = cosh(abs(ξ));
-    # ν = sign(ξ) * sinh(abs(ξ));
-    # μ = cosh(ξ);
-    # ν = sinh(ξ);
-
-    # # construct K0, K1 and K2
-    # K0 = -log(μ) * (NuId + IdNu + IdId);
-    # K1 = conj(ν)/μ * AnAn;
-    # K2 = -ν/μ * CrCr;
-    K0 = -1 * log(cosh(ξ)) * (NuId + IdNu + IdId)
-    K1 = +1 * tanh(ξ) * AnAn
-    K2 = -1 * tanh(ξ) * CrCr
-
-    # K0 = -log(μ) * (NuId + IdNu + IdId);
-    # K1 = tanh(ξ) * AnAn;
-    # K2 = -tanh(ξ) * CrCr;
-
-    # # compute eigenvalue decomposition
-    # D1, U1 = eigen(CrCr + AnAn);
-    # D2, U2  = eig(NuId + IdNu + IdId);
-    # D3, U2 = eig(AnAn);
-    # display(CrCr)
-    # matCrCr = convert(Array, CrCr);
-    # matCrCr = reshape(matCrCr, size(matCrCr, 1) * size(matCrCr, 2), size(matCrCr, 3) * size(matCrCr, 4));
-    # display(matCrCr)
-    # display(real(D1))
-    # display(norm(U1 * D1 * inv(U1) - (CrCr + AnAn)))
-
-    # COMM = CrCr * AnAn - AnAn * CrCr;
-    # COMM = K2 * K0 - K0 * K2;
-    # matCOMM = convert(Array, COMM);
-    # matCOMM = reshape(matCOMM, size(matCOMM, 1) * size(matCOMM, 2), size(matCOMM, 3) * size(matCOMM, 4));
-    # display(matCOMM)
+    K_A_0 = 1 / 2 * (NuId + IdNu + IdId)
+    K_A_min = AnAn
+    K_A_plus = CrCr
 
     # construct squeezing operator
-    S = matrixExponentialSeries(K2, nMax) *
-        matrixExponentialSeries(K0, nMax) *
-        matrixExponentialSeries(K1, nMax)
-    # S = matrixExponentialSeries(K2, min(nMax, 10)) * matrixExponentialSeries(K0, 10) * matrixExponentialSeries(K1, min(nMax, 10));
-    # S = exp(K2) * exp(K0) * exp(K1);
+    S = matrixExponentialSeries(-1 * tanh(ξ) * K_A_plus, nMax) *
+        matrixExponentialSeries(-2 * log(cosh(ξ)) * K_A_0, nMax) *
+        matrixExponentialSeries(tanh(ξ) * K_A_min, nMax)
+    return S
+end
+
+function singleSqueezingOp(ξ::Union{Int64,Float64,ComplexF64},
+                           nMax::Int64,
+                           physSpace::ElementarySpace)
+    """
+    S = e^{-tanh(ξ) . K_A_plus} . e^{-2 . log(cosh(ξ)) . K_A_0} . e^{tanh(ξ) . K_A_min}
+    K_A_0 = (1/2) * (N_{-k} + N_k + Id)
+    K_A_plus = Cr_k . Cr_{-k}
+    K_A_min = An_{-k} . An_k
+    """
+
+    # construct one-site operators
+    Cr = TensorMap(getCreationOperator(nMax), physSpace, physSpace)
+    @tensor CrCr[-1; -2] := Cr[-1, 1] * Cr[1, -2]
+    An = TensorMap(getAnnihilationOperator(nMax), physSpace, physSpace)
+    @tensor AnAn[-1; -2] := An[-1, 1] * An[1, -2]
+    numberOp = TensorMap(getNumberOperator(nMax), physSpace, physSpace)
+    idOp = TensorMap(getIdentityOperator(dim(physSpace)), physSpace, physSpace)
+
+    K_A_0 = numberOp + (1 / 2) * idOp
+    K_A_min = AnAn
+    K_A_plus = CrCr
+
+    # construct squeezing operator
+    S = matrixExponentialSeries(-1 * tanh(ξ) * K_A_plus, nMax) *
+        matrixExponentialSeries(-2 * log(cosh(ξ)) * K_A_0, nMax) *
+        matrixExponentialSeries(tanh(ξ) * K_A_min, nMax)
     return S
 end
 

@@ -1,13 +1,3 @@
-#!/usr/bin/env julia
-
-# clear console
-Base.run(`clear`)
-
-using Pkg
-using Revise
-
-Pkg.activate(".")
-using JLD
 using HTTN
 using LaTeXStrings
 using Plots
@@ -23,19 +13,19 @@ colorPal = palette(:tab10)
 modelName = "sineGordon"
 
 # set display parameters
-modeOrdering = 1;
+modeOrdering = false;
 
 # set truncation parameters
 truncMethod = 5;
-kMax = 4;
-nMax = 4;
+kMax = 2;
+nMax = 3;
 nMaxZM = 10;
 bogoliubovRot = false;
 bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13];
 bogParameters = bogParameters[1:kMax];
 
 # set model parameters
-β = 1.0 * sqrt(4 * π);
+β = 0.25 * sqrt(4 * π); # frequency unit
 λ = 1.0;
 L = 15.0;
 
@@ -72,44 +62,43 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 
 # construct sineGordon MPO
 hamMPO = generate_MPO_sG(sG);
-numTimeStep = 100;
-finalBeta = 20.0;
-numMETTS = 5;
-energies, truncErrs = metts(initialMPS, hamMPO, numTimeStep, finalBeta,
-                            METTS2(; numMETTS = numMETTS, doBasisExtend = false, tol = 5.0)); # energies = -0.1997
 
-# aplot = plot();
-# plot!((1:numMETTS),energies[:, 1], label="concurrent");
-# plot!((1:numMETTS),energies[:, 2], yerror=energies[:,3], label="average");
-# plot!(;
-#     xlabel="No. of METTS samples",
-#     ylabel=L"E_{\mathrm{thermal}}",
-#     legend=:topleft,
-#     title=L"\beta=%$(finalBeta), \tau=%$timeStep"
-# )
-# savefig(aplot, OUTPUT_PATH * "low_T_METTS.pdf")
+groundStateMPS, groundStateEnergy_DMRG = find_groundstate(initialMPS, hamMPO,
+                                                          DMRG2(; bondDim = 1000,
+                                                                truncErr = 1e-6,
+                                                                verbosePrint = true))
+
+# metts parameters
+numTimeSteps = 500 # 1000
+inverseTs = [50, 10, 0.5];
+
+numMETTS = 100;
+finalEnergies = zeros(Float64, length(inverseTs), 2)
+finalTs = [1 / i for i in inverseTs]
+
+for (i, inverseT) in enumerate(inverseTs)
+    @show inverseT
+    warmup_energies, energies, truncErrs, totalNumMETTS = metts_basis(initialMPS, hamMPO,
+                                                                      sG, numTimeSteps,
+                                                                      inverseT,
+                                                                      METTS2(;
+                                                                             numMETTS = numMETTS,
+                                                                             doBasisExtend = true,
+                                                                             tol = 1.0)) # energies = -0.1997
+
+    _, av_E_last, err_E_last = energies[end, :]
+    finalEnergies[i, :] = [av_E_last, err_E_last]
+end
+
+aplot = plot();
+plot!([finalTs[1]; finalTs[end]], [groundStateEnergy_DMRG, groundStateEnergy_DMRG];
+      label = "Ground state energy")
+plot!(finalTs, finalEnergies[:, 1]; xaxis = :log, yerr = finalEnergies[:, 2],
+      seriestype = :scatter, ls = :dot, label = "");
+plot!(;
+      xlabel = L"T",
+      ylabel = L"E_{\mathrm{thermal}}",
+      title = L"\beta=0.25")
+savefig(aplot, OUTPUT_PATH * "low_T_METTS_test.pdf")
 
 nothing
-numTimeStep = 10
-finalBeta = 2.0;
-energies = metts(initialMPS,
-                 hamMPO,
-                 numTimeStep,
-                 finalBeta,
-                 METTS2(; numMETTS = numTimeStep, doBasisExtend = true));
-
-plotSamples = plot(energies[:, 1];
-                   linewidth = 2.0,
-                   frame = :box,
-                   xlabel = "METTS sample",
-                   ylabel = L"E_{\mathrm{thermal}}",
-                   label = "",);
-plot!(plotSamples, energies[:, 2]; color = :black, linewidth = 1.5, label = "");
-# plot!(plotSamples, sum(energies)/length(energies) * ones(length(energies)), color = :black, linewidth = 1.5);
-display(plotSamples)
-# println("ok")
-
-# sampleResult, sampleMomentum = sample_from_MPS!(initialMPS);
-# display(reshape(sampleResult, 1, :))
-# display(reshape(sampleMomentum, 1, :))
-# println("sum of sampled momenta = ", sum(sampleMomentum))

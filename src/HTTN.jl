@@ -9,7 +9,7 @@ using LinearAlgebra: LinearAlgebra
 using LinearAlgebra: diag, diagm
 
 using FFTW
-using JLD
+using JLD2
 using KrylovKit
 # using OptimKit
 using Printf
@@ -18,7 +18,8 @@ using Plots
 using Roots
 using SpecialFunctions
 using TensorKit
-# using Zygote
+
+import Distributions: Normal
 
 # export states
 export SparseMPS, normMPS
@@ -46,7 +47,7 @@ export find_groundstate, find_excitedstate
 export DMRG2, DMRG2BO
 export perform_timestep!
 export TDVP2, TDVP2BO
-export metts
+export metts, metts_basis, transform_basis!
 export METTS2
 
 # export mpo compression functions
@@ -62,30 +63,34 @@ export compute_entanglement_spectra,
 export compute_phase_distribution
 
 # export utility functions
+export normalizeMPS, normalizeMPO
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export infimum_larger_deg
 export diag
-export sample_from_MPS!, sample_to_CPS
+export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
 export save_to_file, load_from_file
 
+# export Bogoliubov transformation functions
+export squeezingOp, singleSqueezingOp
+
 # include source files
-include("states/SparseMPS.jl")
-include("operators/SparseMPO.jl")
-include("environments/utils_environments.jl")
-
-include("models/qft_models.jl")
-# include("models/mS.jl")
-# include("models/sG.jl")
-include("models/mS_sG.jl")
-include("models/utils.jl")
-
-include("models/qft_models.jl")
-include("models/mS_sG.jl")
-include("models/utils.jl")
-
-include("algorithms/mpo_compression.jl")
-
 include("utility/bosonOperators.jl")
 include("utility/vectorSpaces.jl")
+include("utility/SparseMPS.jl")
+include("utility/SparseMPO.jl")
+include("utility/environments.jl")
+
+include("models/qft_models.jl")
+include("models/mS_sG.jl")
+include("models/utils.jl")
+
+include("algorithms/dmrg.jl")
+include("algorithms/tdvp.jl")
+include("algorithms/metts.jl")
+include("algorithms/basis_optimization.jl")
+include("algorithms/expectation_values.jl")
+include("algorithms/entanglement_quantities.jl")
+include("algorithms/full_counting_statistics.jl")
+include("algorithms/mpo_compression.jl")
 
 end

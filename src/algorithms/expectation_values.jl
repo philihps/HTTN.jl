@@ -1,4 +1,4 @@
-function expectation_value_mpo(finiteMPS::SparseMPS, finiteMPO::SparseMPO)
+function expectation_value_mpo(finiteMPS, finiteMPO)
     """ Computes expectation value for MPS and MPO """
 
     # contract from left to right
