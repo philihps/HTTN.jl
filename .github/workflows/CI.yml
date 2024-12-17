@@ -64,8 +64,7 @@ jobs:
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@latest
-        env:
-          JULIA_PROJECT: ${{ github.workspace }} # Set JULIA_PROJECT to the repo root
+      - run: julia --project=${{ github.workspace }} -e 'using Pkg; Pkg.activate(); Pkg.instantiate()'
       - uses: julia-actions/julia-runtest@latest
         env:
           JULIA_NUM_THREADS: 4
