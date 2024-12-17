@@ -38,7 +38,8 @@ function variance_mpo(finiteMPS::SparseMPS, finiteMPO::SparseMPO)
     return energyVariance
 end
 
-function expectation_values(finiteMPS::SparseMPS, onsiteOperators::Vector{TensorMap{ComplexF64}})
+function expectation_values(finiteMPS::SparseMPS,
+                            onsiteOperators::Vector{TensorMap{ComplexF64}})
     """ Computes the expectation value < psi | onsiteOp | psi > for all sites of the MPS """
 
     fMPS = copy(finiteMPS)

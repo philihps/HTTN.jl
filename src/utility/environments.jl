@@ -39,7 +39,8 @@ function initializeMPOEnvironments(finiteMPS::SparseMPS, finiteMPO::SparseMPO;
     # initialize end-points of mpoEnvL and mpoEnvR
     mpoEnvL[1] = TensorMap(ones, ComplexF64, space(finiteMPS[1], 1),
                            space(finiteMPO[1], 1) ⊗ space(finiteMPS[1], 1))
-    mpoEnvR[N] = TensorMap(ones, ComplexF64, space(finiteMPS[N], 3)' ⊗ space(finiteMPO[N], 3)',
+    mpoEnvR[N] = TensorMap(ones, ComplexF64,
+                           space(finiteMPS[N], 3)' ⊗ space(finiteMPO[N], 3)',
                            space(finiteMPS[N], 3)')
 
     # compute mpoEnvL up to (centerPos - 1)

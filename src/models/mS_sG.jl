@@ -779,7 +779,8 @@ function localVertexOp(k::Int64,
 
         # fill interactionTensor
         w = α / sqrt(2 * modeEnergy(k, L, M) * L)
-        interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dimAuxVecSpace)
+        interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
+                                  dimAuxVecSpace)
         for nBra in 0:(dimPhyVecSpace - 1), nKet in 0:(dimPhyVecSpace - 1)
             braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra))
             ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet))
