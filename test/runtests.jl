@@ -11,9 +11,9 @@ Tf = time()
 printstyled("Finished all tests in ",
             string(round((Tf - Ti) / 60; sigdigits = 3)),
             " minutes."; bold = true, color = Base.info_color())
-# println()
+println()
 
-# @testset "Run all tests" verbose = true begin
-#     using Aqua
-#     Aqua.test_all(HTTN)
-# end
+@testset "Run all tests" verbose = true begin
+    using Aqua
+    Aqua.test_all(HTTN)
+end

@@ -1,9 +1,3 @@
-"""
-Test ground state calculation by TDVP, DMRG, and METTS algorithm
-"""
-
-using Pkg
-
 using HTTN
 using Printf
 using TensorKit

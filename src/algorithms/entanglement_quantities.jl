@@ -1,14 +1,3 @@
-function LinearAlgebra.diag(T::AbstractTensorMap)
-    """ Overloading of LinearAlgebra function diag for TensorMap type """
-
-    diagElements = Vector{eltype(T)}()
-    blockSectors = blocksectors(T)
-    for blockIdx in blockSectors
-        append!(diagElements, diag(block(T, blockIdx)))
-    end
-    return diagElements
-end
-
 function compute_entanglement_spectra(finiteMPS::SparseMPS; svCutOff::Float64 = 1e-12)
     """ Returns a vector of entanglement spectra for successive bipartitions of the MPS """
 
