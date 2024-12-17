@@ -1,4 +1,4 @@
-using Pkg
+import Pkg
 Pkg.activate(ENV["JULIA_PROJECT"])
 
 using HTTN
