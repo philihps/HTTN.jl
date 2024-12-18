@@ -93,9 +93,9 @@ numMETTS = 10;
 
     @info "Start METTS"
     _, energies, _, _ = metts_basis(initialMPS, hamMPO, mS, numTimeStep, finalBeta,
-                                    METTS2(; numWarmUp = 10,
+                                    METTS2(; numWarmUp = 3,
                                            numMETTS = numMETTS,
-                                           numMETTSMin = 10,
+                                           numMETTSMin = 3,
                                            doBasisExtend = false,
                                            tol = 1.0))
 
