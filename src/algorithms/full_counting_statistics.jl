@@ -60,7 +60,7 @@ function compute_phase_distribution(mS::MassiveSchwingerModel,
         verbosePrint && @printf("λ step %d/%d\n", idxL, length(lambdaValues))
 
         # construct local vertex operator V_{λ, 0}(0, 0)
-        localOperators = Vector{TensorMap}(undef, numSites)
+        localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites)
         for (siteIdx, momentumVal) in enumerate(momentumModes)
             physSpace = physSpaces[siteIdx]
             if momentumVal == 0

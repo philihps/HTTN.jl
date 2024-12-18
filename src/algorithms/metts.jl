@@ -162,12 +162,12 @@ function sample_to_CPS(mpsSample, momSample, model)
                       [U1Space(sum(momSample[1:linkIdx]) => 1)
                        for linkIdx in 1:(length(momSample))])
     # create new classical product state from mpsSample
-    initialTensors = Vector{TensorMap}(undef, length(mpsSample))
+    initialTensors = Vector{TensorMap{ComplexF64}}(undef, length(mpsSample))
     physSpaces = model.physSpaces
     for siteIdx in 1:length(mpsSample)
         virtSpaceL = virtSpaces[siteIdx + 0]
         virtSpaceR = virtSpaces[siteIdx + 1]
-        initTensor = zeros(Float64, dim(virtSpaceL), dim(physSpaces[siteIdx]),
+        initTensor = zeros(ComplexF64, dim(virtSpaceL), dim(physSpaces[siteIdx]),
                            dim(virtSpaceR))
         initTensor[1, mpsSample[siteIdx], 1] = 1.0
         initialTensors[siteIdx] = TensorMap(initTensor, virtSpaceL ⊗ physSpaces[siteIdx],
@@ -180,7 +180,7 @@ function sample_to_BPS(mpsSample, momSample, model, coeffs, modeSectors)
     virtSpaces = vcat(U1Space(0 => 1),
                       [U1Space(sum(momSample[1:(linkIdx + 1)]) => 1)
                        for linkIdx in 1:(length(momSample)) if linkIdx % 2 == 0])
-    blockState = Vector{TensorMap}(undef, length(virtSpaces))
+    blockState = Vector{TensorMap{ComplexF64}}(undef, length(virtSpaces))
     i = 1
 
     for siteIdx in 1:length(mpsSample)
@@ -310,9 +310,9 @@ function sample_MPS_block!(finiteMPS::SparseMPS, eigStates)
     return sampleResult, sampleMomentum
 end
 
-function transform_basis!(finiteMPS, model; paramRange::Tuple = (-0.15, 0.15))
+function transform_basis!(finiteMPS, model; sqZero, paramRange::Tuple = (-0.15, 0.15))
     """
-    Transform non-zero momentum pair mode with squeezing operator defined 
+    Transform momentum pair mode with squeezing operator defined 
     for parameters within paramRange
 
     Returns:
@@ -329,7 +329,7 @@ function transform_basis!(finiteMPS, model; paramRange::Tuple = (-0.15, 0.15))
         nMaxk = model.modeOccupations[2, :][siteIdx]
         ξ = normal_in_interval(paramRange[1] * nMaxk, paramRange[2] * nMaxk)
 
-        if siteIdx == 1
+        if siteIdx == 1 && sqZero
             physSpace = space(finiteMPS[1], 2)
             singleSqOp = singleSqueezingOp(ξ, nMaxk, physSpace)
             ξs[1] = ξ
@@ -442,14 +442,18 @@ function metts_basis!(finiteMPS::SparseMPS,
                       model,
                       numTimeStep::Int64,
                       finalBeta::Union{Int64,Float64},
-                      alg::METTS2)
+                      alg::METTS2,
+                      sqZero::Bool)
     """
     METTS sampling with randomly mixed basis
 
+    Params:
+    - sqZero: to squeeze or not to squeeze the zero mode, that is the question
+
     Returns:
     - energies: energies[:, 1] -> energy at time step i
-        energies[:, 2] -> average energy up to time step i
-        energies[:, 3] -> standard error up to time step i
+                energies[:, 2] -> average energy up to time step i
+                energies[:, 3] -> standard error up to time step i
     """
 
     timeRanges = range(0; stop = finalBeta / 2, length = numTimeStep + 1)
@@ -505,7 +509,7 @@ function metts_basis!(finiteMPS::SparseMPS,
         end
 
         # do basis transformation at each step
-        finiteMPS, sqOps = transform_basis!(finiteMPS, model)
+        finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = sqZero)
 
         # collapse to a new state with local basis defined by mpsSample and momSample
         mpsSample, momSample = sample_MPS!(finiteMPS)
@@ -514,7 +518,7 @@ function metts_basis!(finiteMPS::SparseMPS,
         finiteMPS = sample_to_CPS(mpsSample, momSample, model)
 
         for siteIdx in eachindex(finiteMPS)
-            if siteIdx == 1
+            if siteIdx == 1 && sqZero
                 sqOp = sqOps[1]
                 @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
 
@@ -567,11 +571,13 @@ function metts_basis(finiteMPS::SparseMPS,
                      model,
                      numTimeStep::Int64,
                      finalBeta::Union{Int64,Float64},
-                     alg::METTS2)
+                     alg::METTS2;
+                     sqZero::Bool = true)
     return metts_basis!(deepcopy(finiteMPS),
                         finiteMPO::SparseMPO,
                         model,
                         numTimeStep::Int64,
                         finalBeta::Union{Int64,Float64},
-                        alg::METTS2)
+                        alg::METTS2,
+                        sqZero)
 end

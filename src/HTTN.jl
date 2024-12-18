@@ -11,15 +11,15 @@ using LinearAlgebra: diag, diagm
 using FFTW
 using JLD2
 using KrylovKit
-# using OptimKit
 using Printf
 using LaTeXStrings
-using Plots
 using Roots
 using SpecialFunctions
 using TensorKit
 
 import Distributions: Normal
+
+using PackageExtensionCompat
 
 # export states
 export SparseMPS, normMPS
@@ -27,9 +27,6 @@ export SparseMPS, normMPS
 # export operators
 export SparseMPO
 export SparseEXP
-
-# export environments
-export SparseENV
 
 # export models
 export SineGordonParameters
@@ -58,15 +55,14 @@ export expectation_value_mpo, expectation_values
 export compute_entanglement_spectra,
        compute_entanglement_entropies,
        compute_arbitrary_bipartition,
-       compute_mutual_information,
-       compute_mutual_information_pairs
+       compute_mutual_information
 export compute_phase_distribution
 
 # export utility functions
 export normalizeMPS, normalizeMPO
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export infimum_larger_deg
-export diag
+export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
 export save_to_file, load_from_file
 
@@ -75,6 +71,7 @@ export squeezingOp, singleSqueezingOp
 
 # include source files
 include("utility/bosonOperators.jl")
+include("utility/shared.jl")
 include("utility/vectorSpaces.jl")
 include("utility/SparseMPS.jl")
 include("utility/SparseMPO.jl")

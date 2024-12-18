@@ -1,15 +1,3 @@
-
-function LinearAlgebra.diag(T::AbstractTensorMap)
-    """ Overloading of LinearAlgebra function diag for TensorMap type """
-
-    diagElements = Vector{Float64}()
-    blockSectors = blocksectors(T)
-    for blockIdx in blockSectors
-        append!(diagElements, real.(diag(block(T, blockIdx))))
-    end
-    return sort(diagElements; rev = true)
-end
-
 function removeDegeneracyQN(vecSpace; degenCutOff::Int64 = 1)
     """ Function to remove degeneracies of QNs """
 
@@ -143,10 +131,10 @@ function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace,
                   for siteIdx in 1:(numSites + 1)]
 
     # construct MPS with physSpaces and virtSpaces
-    deltaMPS = Vector{TensorMap}(undef, numSites)
+    deltaMPS = Vector{TensorMap{ComplexF64}}(undef, numSites)
     for siteIdx in 1:numSites
         deltaMPS[siteIdx] = TensorMap(ones,
-                                      Float64,
+                                      ComplexF64,
                                       virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
                                       virtSpaces[siteIdx + 1])
     end

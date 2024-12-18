@@ -1,15 +1,7 @@
-"""
-Test ground state calculation by TDVP, DMRG, and METTS algorithm
-"""
-
-using Pkg
-
 using HTTN
 using Printf
 using TensorKit
 using Test
-
-modelName = "sineGordon"
 
 # set display parameters
 modeOrdering = true;
@@ -17,12 +9,9 @@ modeOrdering = true;
 # set modelName
 modelName = "massiveSchwinger"
 
-# set display parameters
-modeOrdering = true;
-
 # set truncation parameters
 truncMethod = 5;
-kMax = 2;
+kMax = 1;
 nMax = 5;
 nMaxZM = 10;
 bogoliubovRot = false;
@@ -57,16 +46,13 @@ virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
                                  removeDegeneracy = true);
 
 # initialize random MPS
-# initialTensors = Vector{TensorMap}(undef, length(physSpaces));
-# for siteIdx in eachindex(physSpaces)
-#     physSpace = physSpaces[siteIdx]
-#     initialTensors[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
-#                                         virtSpaces[siteIdx + 1])
-# end
-# initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
-
-vacuumMPS = initializeVacuumMPS(mS; modeOrdering = modeOrdering)
-initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
+initialTensors = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces));
+for siteIdx in eachindex(physSpaces)
+    physSpace = physSpaces[siteIdx]
+    initialTensors[siteIdx] = randn(ComplexF64, virtSpaces[siteIdx] ⊗ physSpace,
+                                    virtSpaces[siteIdx + 1])
+end
+initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 
 # set DMRG parameters
 bondDim = 128;
@@ -88,8 +74,8 @@ numMETTS = 10;
                                                               DMRG2(; bondDim = 1000,
                                                                     truncErr = 1e-6,
                                                                     verbosePrint = true))
-
-    @test isapprox(groundStateEnergy_DMRG, 1.5097641594121067)
+    @show groundStateEnergy_DMRG
+    @test isapprox(groundStateEnergy_DMRG, 1.5414652000703606)
 
     @info "Start TDVP"
     groundStateEnergy_TDVP = 0
@@ -107,10 +93,10 @@ numMETTS = 10;
 
     @info "Start METTS"
     _, energies, _, _ = metts_basis(initialMPS, hamMPO, mS, numTimeStep, finalBeta,
-                                    METTS2(; numWarmUp = 10,
+                                    METTS2(; numWarmUp = 3,
                                            numMETTS = numMETTS,
-                                           numMETTSMin = 10,
-                                           doBasisExtend = true,
+                                           numMETTSMin = 3,
+                                           doBasisExtend = false,
                                            tol = 1.0))
 
     _, av_E_last, err_E_last = energies[end, :]

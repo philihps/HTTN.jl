@@ -3,7 +3,7 @@ using TensorKit
 using Test
 
 # set modelName
-modelName = "sineGordon"
+modelName = "massiveSchwinger"
 
 # set display parameters
 modeOrdering = true;
@@ -51,15 +51,15 @@ nTrials = 100
     for trial in (1:nTrials)
 
         # initialize random MPS
-        testMPS = Vector{TensorMap}(undef, length(physSpaces))
+        testMPS = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces))
         for siteIdx in eachindex(physSpaces)
             physSpace = physSpaces[siteIdx]
-            testMPS[siteIdx] = TensorMap(randn, virtSpaces[siteIdx] ⊗ physSpace,
-                                         virtSpaces[siteIdx + 1])
+            testMPS[siteIdx] = randn(ComplexF64, virtSpaces[siteIdx] ⊗ physSpace,
+                                     virtSpaces[siteIdx + 1])
         end
 
         testMPS = SparseMPS(testMPS; normalizeMPS = true)
-        testMPS, sqOps = transform_basis!(testMPS, mS)
+        testMPS, sqOps = transform_basis!(testMPS, mS; sqZero = false)
         testMPS_1 = deepcopy(testMPS)
 
         mpsSample, momSample = sample_MPS!(testMPS)

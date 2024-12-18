@@ -47,7 +47,7 @@ function applyH2_X(X, siteIdx, EL, MPO, ER, PLs, Y, PRs, penaltyWeights::Vector{
     end
 
     # compute ω0 P0|ψexcited⟩, ω1 P1|ψexcited⟩, ... 
-    projOverlaps = Vector{TensorMap}(undef, length(Y))
+    projOverlaps = Vector{TensorMap{ComplexF64}}(undef, length(Y))
     for orthIdx in eachindex(Y)
         @tensor XO[-1 -2; -3 -4] := conj(PLs[orthIdx][siteIdx][1, -1]) *
                                     Y[orthIdx][1, -2, -3, 4] *
@@ -236,8 +236,8 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS in eachindex(finiteMPS)
                     finiteMPS[idxMPS] += 0.1 *
-                                         TensorMap(randn, codomain(finiteMPS[idxMPS]),
-                                                   domain(finiteMPS[idxMPS]))
+                                         randn(ComplexF64, codomain(finiteMPS[idxMPS]),
+                                               domain(finiteMPS[idxMPS]))
                 end
                 finiteMPS = normalizeMPS(finiteMPS)
                 finiteMPS = applyMPO(finiteMPO, finiteMPS; truncErr = 1e-3,
@@ -718,8 +718,8 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS in eachindex(finiteMPS)
                     finiteMPS[idxMPS] += 0.1 *
-                                         TensorMap(randn, codomain(finiteMPS[idxMPS]),
-                                                   domain(finiteMPS[idxMPS]))
+                                         randn(ComplexF64, codomain(finiteMPS[idxMPS]),
+                                               domain(finiteMPS[idxMPS]))
                 end
                 finiteMPS = normalizeMPS(finiteMPS)
                 finiteMPS = applyMPO(finiteMPO, finiteMPS; truncErr = 1e-3,
@@ -798,7 +798,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
                                  (3, 4))
 
                 # construct thetas for orthStates
-                thetasO = Vector{TensorMap}(undef, length(previoMPS))
+                thetasO = Vector{TensorMap{ComplexF64}}(undef, length(previoMPS))
                 for orthMPO in eachindex(previoMPS)
                     thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] *
                                                permute(previoMPS[orthMPO][siteIdx + 1],
@@ -881,7 +881,7 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
                                  (3, 4))
 
                 # construct thetas for orthStates
-                thetasO = Vector{TensorMap}(undef, length(previoMPS))
+                thetasO = Vector{TensorMap{ComplexF64}}(undef, length(previoMPS))
                 for orthMPO in eachindex(previoMPS)
                     thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] *
                                                permute(previoMPS[orthMPO][siteIdx + 1],
@@ -987,8 +987,8 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS in eachindex(finiteMPS)
                     finiteMPS[idxMPS] += 0.1 *
-                                         TensorMap(randn, codomain(finiteMPS[idxMPS]),
-                                                   domain(finiteMPS[idxMPS]))
+                                         randn(ComplexF64, codomain(finiteMPS[idxMPS]),
+                                               domain(finiteMPS[idxMPS]))
                 end
                 finiteMPS = normalizeMPS(finiteMPS)
                 finiteMPS = applyMPO(finiteMPO, finiteMPS; truncErr = 1e-3,
@@ -1073,7 +1073,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                                  (3, 4))
 
                 # construct thetas for orthStates
-                thetasO = Vector{TensorMap}(undef, length(previoMPS))
+                thetasO = Vector{TensorMap{ComplexF64}}(undef, length(previoMPS))
                 for orthMPO in eachindex(previoMPS)
                     thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] *
                                                permute(previoMPS[orthMPO][siteIdx + 1],
@@ -1274,7 +1274,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                                  (3, 4))
 
                 # construct thetas for orthStates
-                thetasO = Vector{TensorMap}(undef, length(previoMPS))
+                thetasO = Vector{TensorMap{ComplexF64}}(undef, length(previoMPS))
                 for orthMPO in eachindex(previoMPS)
                     thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] *
                                                permute(previoMPS[orthMPO][siteIdx + 1],
@@ -1505,8 +1505,8 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                 @printf("\nre-randomizing MPS...\n")
                 for idxMPS in eachindex(finiteMPS)
                     finiteMPS[idxMPS] += 0.1 *
-                                         TensorMap(randn, codomain(finiteMPS[idxMPS]),
-                                                   domain(finiteMPS[idxMPS]))
+                                         randn(ComplexF64, codomain(finiteMPS[idxMPS]),
+                                               domain(finiteMPS[idxMPS]))
                 end
                 finiteMPS = normalizeMPS(finiteMPS)
                 finiteMPS = applyMPO(finiteMPO, finiteMPS; truncErr = 1e-3,
