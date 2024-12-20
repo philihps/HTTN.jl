@@ -21,6 +21,8 @@ For more information on METTS, see the following references:
     truncErrM::Float64 = 1e-10 # from basis extension
     tol::Float64 = 1.0
     doBasisExtend::Bool = true
+    sqZero::Bool = true
+    transfRange::Tuple = (-0.15, 0.15)
     verbosePrint = false
 end
 """
@@ -310,10 +312,10 @@ function sample_MPS_block!(finiteMPS::SparseMPS, eigStates)
     return sampleResult, sampleMomentum
 end
 
-function transform_basis!(finiteMPS, model; sqZero, paramRange::Tuple = (-0.15, 0.15))
+function transform_basis!(finiteMPS, model; sqZero, transfRange)
     """
     Transform momentum pair mode with squeezing operator defined 
-    for parameters within paramRange
+    for parameters within transfRange
 
     Returns:
     - finiteMPS: transformed MPS
@@ -327,7 +329,7 @@ function transform_basis!(finiteMPS, model; sqZero, paramRange::Tuple = (-0.15, 
     for siteIdx in eachindex(finiteMPS)
         k = abs(siteIdx ÷ 2)
         nMaxk = model.modeOccupations[2, :][siteIdx]
-        ξ = normal_in_interval(paramRange[1] * nMaxk, paramRange[2] * nMaxk)
+        ξ = normal_in_interval(transfRange[1] * nMaxk, transfRange[2] * nMaxk)
 
         if siteIdx == 1 && sqZero
             physSpace = space(finiteMPS[1], 2)
@@ -442,8 +444,7 @@ function metts_basis!(finiteMPS::SparseMPS,
                       model,
                       numTimeStep::Int64,
                       finalBeta::Union{Int64,Float64},
-                      alg::METTS2,
-                      sqZero::Bool)
+                      alg::METTS2)
     """
     METTS sampling with randomly mixed basis
 
@@ -509,7 +510,7 @@ function metts_basis!(finiteMPS::SparseMPS,
         end
 
         # do basis transformation at each step
-        finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = sqZero)
+        finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = alg.sqZero, transfRange = alg.transfRange)
 
         # collapse to a new state with local basis defined by mpsSample and momSample
         mpsSample, momSample = sample_MPS!(finiteMPS)
@@ -518,7 +519,7 @@ function metts_basis!(finiteMPS::SparseMPS,
         finiteMPS = sample_to_CPS(mpsSample, momSample, model)
 
         for siteIdx in eachindex(finiteMPS)
-            if siteIdx == 1 && sqZero
+            if siteIdx == 1 && alg.sqZero
                 sqOp = sqOps[1]
                 @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
 
@@ -570,14 +571,13 @@ function metts_basis(finiteMPS::SparseMPS,
                      finiteMPO::SparseMPO,
                      model,
                      numTimeStep::Int64,
-                     finalBeta::Union{Int64,Float64},
-                     alg::METTS2;
-                     sqZero::Bool = true)
+                     finalBeta::Union{Int64,Float64};
+                     alg::METTS2
+                     )
     return metts_basis!(deepcopy(finiteMPS),
-                        finiteMPO::SparseMPO,
+                        finiteMPO,
                         model,
-                        numTimeStep::Int64,
-                        finalBeta::Union{Int64,Float64},
-                        alg::METTS2,
-                        sqZero)
+                        numTimeStep,
+                        finalBeta,
+                        alg)
 end
