@@ -67,13 +67,14 @@ warmup_energies, energies, truncErrs, totalNumMETTS = metts_basis(initialMPS, ha
                                                                   mS, numTimeStep,
                                                                   inverseT;
                                                                   alg = METTS2(;
-                                                                         numWarmUp = 3,
-                                                                         numMETTS = numMETTS,
-                                                                         numMETTSMin = 3,
-                                                                         doBasisExtend = false,
-                                                                         sqZero = false,
-                                                                         transfRange = (-0.2, 0.2),
-                                                                         tol = 1.0))
+                                                                               numWarmUp = 3,
+                                                                               numMETTS = numMETTS,
+                                                                               numMETTSMin = 3,
+                                                                               doBasisExtend = false,
+                                                                               sqZero = false,
+                                                                               transfRange = (-0.2,
+                                                                                              0.2),
+                                                                               tol = 1.0))
 
 @save OUTPUT_PATH * FILE_INFO * "_warmup_energies.jld2" warmup_energies
 @save OUTPUT_PATH * FILE_INFO * "_energies.jld2" energies

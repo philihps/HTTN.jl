@@ -510,7 +510,8 @@ function metts_basis!(finiteMPS::SparseMPS,
         end
 
         # do basis transformation at each step
-        finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = alg.sqZero, transfRange = alg.transfRange)
+        finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = alg.sqZero,
+                                            transfRange = alg.transfRange)
 
         # collapse to a new state with local basis defined by mpsSample and momSample
         mpsSample, momSample = sample_MPS!(finiteMPS)
@@ -572,8 +573,7 @@ function metts_basis(finiteMPS::SparseMPS,
                      model,
                      numTimeStep::Int64,
                      finalBeta::Union{Int64,Float64};
-                     alg::METTS2
-                     )
+                     alg::METTS2)
     return metts_basis!(deepcopy(finiteMPS),
                         finiteMPO,
                         model,
