@@ -22,7 +22,7 @@ For more information on METTS, see the following references:
     tol::Float64 = 1.0
     doBasisExtend::Bool = true
     sqZero::Bool = true
-    transfRange::Tuple = (-0.15, 0.15)
+    transfWidth::Float64 = 0.1
     verbosePrint = false
 end
 """
@@ -312,10 +312,10 @@ function sample_MPS_block!(finiteMPS::SparseMPS, eigStates)
     return sampleResult, sampleMomentum
 end
 
-function transform_basis!(finiteMPS, model; sqZero, transfRange)
+function transform_basis!(finiteMPS, model; sqZero, transfWidth)
     """
     Transform momentum pair mode with squeezing operator defined 
-    for parameters within transfRange
+    for ξ ∈ Normal(μ = 0.0, σ = transfWidth)
 
     Returns:
     - finiteMPS: transformed MPS
@@ -329,8 +329,8 @@ function transform_basis!(finiteMPS, model; sqZero, transfRange)
     for siteIdx in eachindex(finiteMPS)
         k = abs(siteIdx ÷ 2)
         nMaxk = model.modeOccupations[2, :][siteIdx]
-        ξ = normal_in_interval(transfRange[1] * nMaxk, transfRange[2] * nMaxk)
-
+        # ξ = normal_in_interval(transfRange[1] * nMaxk, transfRange[2] * nMaxk)
+        ξ = rand(Normal(0.0,transfWidth * nMaxk))
         if siteIdx == 1 && sqZero
             physSpace = space(finiteMPS[1], 2)
             singleSqOp = singleSqueezingOp(ξ, nMaxk, physSpace)
@@ -511,7 +511,7 @@ function metts_basis!(finiteMPS::SparseMPS,
 
         # do basis transformation at each step
         finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = alg.sqZero,
-                                            transfRange = alg.transfRange)
+                                            transfWidth = alg.transfWidth)
 
         # collapse to a new state with local basis defined by mpsSample and momSample
         mpsSample, momSample = sample_MPS!(finiteMPS)

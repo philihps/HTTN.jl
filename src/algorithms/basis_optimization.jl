@@ -67,6 +67,8 @@ function singleSqueezingOp(ξ::Union{Int64,Float64,ComplexF64},
                            nMax::Int64,
                            physSpace::ElementarySpace)
     """
+    Squeezing operator for zero mode
+        
     S = e^{-tanh(ξ) . K_A_plus} . e^{-2 . log(cosh(ξ)) . K_A_0} . e^{tanh(ξ) . K_A_min}
     K_A_0 = (1/2) * (N_{-k} + N_k + Id)
     K_A_plus = Cr_k . Cr_{-k}

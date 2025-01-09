@@ -72,8 +72,6 @@ warmup_energies, energies, truncErrs, totalNumMETTS = metts_basis(initialMPS, ha
                                                                                numMETTSMin = 3,
                                                                                doBasisExtend = false,
                                                                                sqZero = false,
-                                                                               transfRange = (-0.2,
-                                                                                              0.2),
                                                                                tol = 1.0))
 
 @save OUTPUT_PATH * FILE_INFO * "_warmup_energies.jld2" warmup_energies

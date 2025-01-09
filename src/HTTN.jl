@@ -34,7 +34,7 @@ export SineGordonModel
 export MassiveSchwingerParameters
 export MassiveSchwingerModel
 export initializeVacuumMPS, initializeMPS
-export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG
+export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG, constructSinCos
 export updateBogoliubovParameters
 export local_number_operators
 export pairing_operators
