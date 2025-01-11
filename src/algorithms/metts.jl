@@ -330,7 +330,7 @@ function transform_basis!(finiteMPS, model; sqZero, transfWidth)
         k = abs(siteIdx ÷ 2)
         nMaxk = model.modeOccupations[2, :][siteIdx]
         # ξ = normal_in_interval(transfRange[1] * nMaxk, transfRange[2] * nMaxk)
-        ξ = rand(Normal(0.0,transfWidth * nMaxk))
+        ξ = rand(Normal(0.0, transfWidth * nMaxk))
         if siteIdx == 1 && sqZero
             physSpace = space(finiteMPS[1], 2)
             singleSqOp = singleSqueezingOp(ξ, nMaxk, physSpace)
@@ -552,6 +552,36 @@ function metts_basis!(finiteMPS::SparseMPS,
     end
 
     return warmup_energies, energies, truncErrs, totalNumMETTS
+end
+
+function metts_ZM!(finiteMPS::SparseMPS,
+                   finiteMPO::SparseMPO,
+                   model,
+                   numTimeStep::Int64,
+                   finalBeta::Union{Int64,Float64},
+                   alg::METTS2)
+    """
+    METTS sampling with randomly mixed basis for the zero mode
+    """
+    timeRanges = range(0; stop = finalBeta / 2, length = numTimeStep + 1)
+    timeStep = 1im * (timeRanges[2] - timeRanges[1])
+    println("Running METTS algorithm for: timestep=$(timeStep), finalT=$(1/finalBeta)")
+
+    numMETTS = max(alg.numMETTS, alg.numMETTSMax)
+    energies = zeros(Float64, 0, 3)
+    warmup_energies = zeros(Float64, 0, 3)
+    totalNumMETTS = 0
+
+    for step in 1:(alg.numWarmUp + numMETTS)
+        if step <= alg.numWarmUp
+            println("Making warmup METTS number $step")
+        else
+            println("Making actual METTS number $(step - alg.numWarmUp)")
+        end
+        # perform time step with ED
+        for _ in eachindex(timeRanges)
+        end
+    end
 end
 
 function metts(finiteMPS::SparseMPS,

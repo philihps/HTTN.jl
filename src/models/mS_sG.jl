@@ -418,20 +418,24 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
 
                 # set modeFactor
                 modeFactor = M
-
-                if siteIdx == 1
-                    mpoBlock = zeros(ComplexF64, 1, dimHS, 2, dimHS)
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
-                    mpoBlock[1, :, 2, :] = modeFactor * getNumberOperator(dimHS - 1)
-                elseif siteIdx == numSites
-                    mpoBlock = zeros(ComplexF64, 2, dimHS, 1, dimHS)
-                    mpoBlock[1, :, 1, :] = modeFactor * getNumberOperator(dimHS - 1)
-                    mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS)
+                if numSites != 1
+                    if siteIdx == 1
+                        mpoBlock = zeros(ComplexF64, 1, dimHS, 2, dimHS)
+                        mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
+                        mpoBlock[1, :, 2, :] = modeFactor * getNumberOperator(dimHS - 1)
+                    elseif siteIdx == numSites
+                        mpoBlock = zeros(ComplexF64, 2, dimHS, 1, dimHS)
+                        mpoBlock[1, :, 1, :] = modeFactor * getNumberOperator(dimHS - 1)
+                        mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS)
+                    else
+                        mpoBlock = zeros(ComplexF64, 2, dimHS, 2, dimHS)
+                        mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
+                        mpoBlock[1, :, 2, :] = modeFactor * getNumberOperator(dimHS - 1)
+                        mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
+                    end
                 else
-                    mpoBlock = zeros(ComplexF64, 2, dimHS, 2, dimHS)
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
-                    mpoBlock[1, :, 2, :] = modeFactor * getNumberOperator(dimHS - 1)
-                    mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
+                    mpoBlock = zeros(ComplexF64, 1, dimHS, 1, dimHS)
+                    mpoBlock[1, :, 1, :] = modeFactor * getNumberOperator(dimHS - 1)
                 end
             end
             if modelParameters isa SineGordonParameters
@@ -443,19 +447,24 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
                 # compute occupation per site for the zeroMode
                 nMaxZM = Int(0.5 * (dimHS - 1))
                 # Section 5 Appendix
-                if siteIdx == 1
-                    mpoBlock = zeros(ComplexF64, 1, dimHS, 2, dimHS)
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
-                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
-                elseif siteIdx == numSites
-                    mpoBlock = zeros(ComplexF64, 2, dimHS, 1, dimHS)
-                    mpoBlock[1, :, 1, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
-                    mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS)
+                if numSites != 1
+                    if siteIdx == 1
+                        mpoBlock = zeros(ComplexF64, 1, dimHS, 2, dimHS)
+                        mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
+                        mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
+                    elseif siteIdx == numSites
+                        mpoBlock = zeros(ComplexF64, 2, dimHS, 1, dimHS)
+                        mpoBlock[1, :, 1, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
+                        mpoBlock[2, :, 1, :] = getIdentityOperator(dimHS)
+                    else
+                        mpoBlock = zeros(ComplexF64, 2, dimHS, 2, dimHS)
+                        mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
+                        mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
+                        mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
+                    end
                 else
-                    mpoBlock = zeros(ComplexF64, 2, dimHS, 2, dimHS)
-                    mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
-                    mpoBlock[1, :, 2, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
-                    mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
+                    mpoBlock = zeros(ComplexF64, 1, dimHS, 1, dimHS)
+                    mpoBlock[1, :, 1, :] = modeFactor * generateOperatorΠ0(nMaxZM, R)^2
                 end
             end
 
@@ -962,7 +971,7 @@ function pairing_operators(Model::Union{MassiveSchwingerModel,SineGordonModel})
 end
 
 function constructSinCos(model::Union{MassiveSchwingerModel,
-                                    SineGordonModel})
+                                      SineGordonModel})
     # get truncationParameters
     truncationParameters = model.modelParameters.truncationParameters
     kMax = truncationParameters[:kMax]
@@ -1029,8 +1038,7 @@ function constructSinCos(model::Union{MassiveSchwingerModel,
     end
 
     cosineOp = V_pos + V_neg
-    sineOp = 1/1im * (V_pos + -1*V_neg)
+    sineOp = 1 / 1im * (V_pos + -1 * V_neg)
 
     return sineOp, cosineOp
-    
 end
