@@ -25,7 +25,7 @@ function computeEntropy(twoSiteTensor::TensorMap)
 end
 
 function matrixExponentialSeries(operator::TensorMap, nMax::Int64)
-    matrixExp = sum([1 / factorial(n) * operator^n for n in collect(0:nMax)])
+    matrixExp = sum([1 / Float64(factorial(big(n))) * operator^n for n in collect(0:nMax)])
     return matrixExp
 end
 

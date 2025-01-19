@@ -919,13 +919,6 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
 
     ### I added the 1/2 factor here. 
-    ###XXX: Which version?
-    # new
-    # V_neg = 1 / 2 * L *
-    #         convertLocalOperatorsToMPO(expOperator_neg, kroneckerDeltaMPS)
-    # V_pos = 1 / 2 * L *
-    #         convertLocalOperatorsToMPO(expOperator_pos, kroneckerDeltaMPS)
-    # old
     V_neg = 1 / 2 *
             convertLocalOperatorsToMPO(expOperator_neg, kroneckerDeltaMPS)
     V_pos = 1 / 2 *
@@ -1035,11 +1028,6 @@ function constructSinCos(model::Union{MassiveSchwingerModel,
                                       SineGordonModel})
     # get truncationParameters
     truncationParameters = model.modelParameters.truncationParameters
-    kMax = truncationParameters[:kMax]
-    nMax = truncationParameters[:nMax]
-    nMaxZM = truncationParameters[:nMaxZM]
-    truncMethod = truncationParameters[:truncMethod]
-    modeOrdering = truncationParameters[:modeOrdering]
     bogoliubovRot = truncationParameters[:bogoliubovRot]
     if bogoliubovRot
         bogParameters = truncationParameters[:bogParameters]

@@ -12,7 +12,7 @@ For more information on METTS, see the following references:
     numWarmUp::Int64 = 10
     numMETTS::Int64 = 500
     numMETTSMin::Int64 = 20
-    numMETTSMax::Int64 = 10000
+    numMETTSMax::Int64 = 3000
     krylovDim::Int = 2
     bondDim::Int = 1000
     compressionAlg::String = "zipUp"
@@ -465,7 +465,6 @@ function metts_basis!(finiteMPS::SparseMPS,
     energies = zeros(Float64, 0, 3)
     warmup_energies = zeros(Float64, 0, 3)
     truncErrs = zeros(Float64, alg.numWarmUp + numMETTS)
-    totalNumMETTS = 0
 
     # main METTS loop
     for step in 1:(alg.numWarmUp + numMETTS)
@@ -501,12 +500,11 @@ function metts_basis!(finiteMPS::SparseMPS,
                     err_E,
                     av_E - err_E,
                     av_E + err_E)
-            if step - alg.numWarmUp > alg.numMETTSMin && err_E > 0 &&
-               abs(err_E / av_E) * 100 <= alg.tol
-                totalNumMETTS = step - alg.numWarmUp
-                println("Standard error is within $(alg.tol)% of the average observable at METTS number $(totalNumMETTS)")
-                break
-            end
+            # if step - alg.numWarmUp > alg.numMETTSMin && err_E > 0 &&
+            #    abs(err_E / av_E) * 100 <= alg.tol
+            #     println("Standard error is within $(alg.tol)% of the average observable at METTS number $(totalNumMETTS)")
+            #     break
+            # end
         end
 
         # do basis transformation at each step
@@ -552,7 +550,7 @@ function metts_basis!(finiteMPS::SparseMPS,
         println("The observable does not converge within $numMETTS iterations.")
     end
 
-    return warmup_energies, energies, truncErrs, totalNumMETTS
+    return warmup_energies, energies, truncErrs
 end
 
 function metts_ZM!(finiteMPS::SparseMPS,
@@ -568,7 +566,6 @@ function metts_ZM!(finiteMPS::SparseMPS,
     numMETTS = max(alg.numMETTS, alg.numMETTSMax)
     energies = zeros(Float64, 0, 3)
     warmup_energies = zeros(Float64, 0, 3)
-    totalNumMETTS = 0
 
     for step in 1:(alg.numWarmUp + numMETTS)
         if step <= alg.numWarmUp
@@ -584,7 +581,6 @@ function metts_ZM!(finiteMPS::SparseMPS,
                               U1Space(0 => zeroDim))
         @tensor finiteMPS[1][-1 -2; -3] := hamMPOExp[-2, 1] * finiteMPS[1][-1, 1, -3]
         finiteMPS[1] /= norm(finiteMPS[1])
-
         # measure properties after >= alg.numWarmUp METTS have been made
         mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
         if abs(imag(mpoExpVal)) < 1e-12
@@ -605,17 +601,16 @@ function metts_ZM!(finiteMPS::SparseMPS,
                     err_E,
                     av_E - err_E,
                     av_E + err_E)
-            if step - alg.numWarmUp > alg.numMETTSMin && err_E > 0 &&
-               abs(err_E / av_E) * 100 <= alg.tol
-                totalNumMETTS = step - alg.numWarmUp
-                println("Standard error is within $(alg.tol)% of the average observable at METTS number $(totalNumMETTS)")
-                break
-            end
+            # if step - alg.numWarmUp > alg.numMETTSMin && err_E > 0 &&
+            #    abs(err_E / av_E) * 100 <= alg.tol
+            #     totalNumMETTS = step - alg.numWarmUp
+            #     println("Standard error is within $(alg.tol)% of the average observable at METTS number $(totalNumMETTS)")
+            #     break
+            # end
         end
-
         # do basis transformation at each step
         finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = alg.sqZero,
-                                            transfWidth = alg.transfWidth)
+                                            transfWidth = alg.transfWidth) # normalized
 
         # collapse to a new state with local basis defined by mpsSample and momSample
         mpsSample, momSample = sample_MPS!(finiteMPS)
@@ -627,16 +622,16 @@ function metts_ZM!(finiteMPS::SparseMPS,
         if alg.sqZero
             sqOp = sqOps[1]
             @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
-            finiteMPS[1] = localTensor
+            finiteMPS[1] = localTensor / norm(localTensor)
         end
-        finiteMPS = normalizeMPS(finiteMPS)
     end
+
     _, av_E_last, err_E_last = energies[end, :]
     if abs(err_E_last / av_E_last) * 100 > alg.tol
         println("The observable does not converge within $numMETTS iterations.")
     end
 
-    return warmup_energies, energies, totalNumMETTS
+    return warmup_energies, energies
 end
 
 function metts(finiteMPS::SparseMPS,
