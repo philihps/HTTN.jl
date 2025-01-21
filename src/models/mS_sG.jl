@@ -949,7 +949,7 @@ function localDisplacementOp(k::Int64,
         if M == 0.0
 
             # fill interactionTensor of massless zero mode: this is a "free particle" instead of a harmonic mode, so the exponential is a jump operator between the levels 
-            interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace,
+            interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
                                       dimAuxVecSpace)
             if s == 0
                 for rk in 1:dimPhyVecSpace
@@ -969,7 +969,7 @@ function localDisplacementOp(k::Int64,
 
             # fill interactionTensor for massive zero mode: this is now a harmonic mode (independently of whether it is massless or massive, there is no quantum number constraint for the zero mode, so it should be costructed differently from the nonzero modes) 
             w = α / sqrt(2 * modeEnergy(k, L, M) * L)
-            interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace,
+            interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
                                       dimAuxVecSpace)
             for nBra in 0:(dimPhyVecSpace - 1), nKet in 0:(dimPhyVecSpace - 1)
                 ### interactionTensor[nBra + 1, nKet + 1, 1] = convert(Float64, sum([F_mS(nBra, nKet, j, momentumVal, α, L, M) for j = max(0, nBra - nKet) : nBra]));
@@ -982,10 +982,11 @@ function localDisplacementOp(k::Int64,
         # create non-symmetric displacement operator
         nMax = dimPhyVecSpace - 1
         if bogoliubovRot
-            displacementOp = exp(abs(μ * α - ν * conj(α))^2 / 2) *
-                             getDisplacementOperator(nMax, μ * α - ν * conj(α))
+            # displacementOp = exp(-abs(μ * α - ν * conj(α))^2 / 2) * getDisplacementOperator(nMax, μ * α - ν * conj(α))
+            displacementOp = getDisplacementOperator(nMax, μ * α - ν * conj(α))
         else
-            displacementOp = exp(abs(α)^2 / 2) * getDisplacementOperator(nMax, α)
+            # displacementOp = exp(-abs(α)^2 / 2) * getDisplacementOperator(nMax, α)
+            displacementOp = exp(abs(α)^2 / 2) * getDisplacementOperator(nMax, (1im * α))
         end
 
         # get ordering of QNs in physVecSpace and kronDelSpace
