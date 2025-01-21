@@ -65,6 +65,7 @@ export infimum_larger_deg
 export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
 export save_to_file, load_from_file
+export compute_average
 
 # export Bogoliubov transformation functions
 export squeezingOp, singleSqueezingOp
@@ -76,6 +77,7 @@ include("utility/vectorSpaces.jl")
 include("utility/SparseMPS.jl")
 include("utility/SparseMPO.jl")
 include("utility/environments.jl")
+include("utility/statAnalysis.jl")
 
 include("models/qft_models.jl")
 include("models/mS_sG.jl")
