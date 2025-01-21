@@ -19,6 +19,12 @@ function getCreationOperator(numBosons::Int64)
     return bosonOp
 end
 
+function getDisplacementOperator(nMax::Int64, α::Number)
+    displacementOp = exp(-abs(α)^2 / 2) * exp(α * getCreationOperator(nMax)) *
+                     exp(-conj(α) * getAnnihilationOperator(nMax))
+    return displacementOp
+end
+
 function localAnnihilationOp(k::Int64, physVecSpace::GradedSpace)
     """ Construct a(k) for a momentum-conserving MPO """
 
