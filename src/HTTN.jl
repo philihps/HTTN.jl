@@ -37,6 +37,7 @@ export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG
 export updateBogoliubovParameters
 export local_number_operators
 export pairing_operators
+export getMomentumModes
 
 # export algorithms
 export find_groundstate, find_excitedstate
