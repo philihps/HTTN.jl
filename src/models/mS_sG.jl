@@ -712,27 +712,16 @@ function generate_H0(modelParameters::Union{MassiveSchwingerParameters,
     return mpo_H0
 end
 
-function G(nBra::Int64, nKet::Int64, w::Float64)::Float64
+### new definition 
+function G(nBra::Int64, nKet::Int64, w::Number)::Number
     """ Matrix element of the k-factor of V_{(±1, 0)}(x = 0, t = 0) for compactification radius R=sqrt(4π) in a massive mode basis of mass M """
 
-    matElem = sqrt(factorial(big(nBra)) * factorial(big(nKet))) *
-              sum([(-1)^(j + nKet - nBra) * w^(2 * j + nKet - nBra) /
-                   factorial(big(j)) /
-                   factorial(big(nBra - j)) / factorial(big(j + nKet - nBra))
-                   for j in max(0, nBra - nKet):nBra])
-    return convert(Float64, matElem)
-end
-
-function G_new(nBra::Int64, nKet::Int64, w::Float64)::Float64
-    """ Based on Eq. (A39)  of HTTN_corrected.pdf"""
-
-    matElem = sqrt(factorial(big(nBra)) * factorial(big(nKet))) *
-              (1im * w)^(nBra - nKet) *
-              sum([(-1)^m * w^(2 * m) /
-                   (factorial(big(m)) *
-                    factorial(big(nKet - m)) * factorial(big(nBra - nKet + m)))
-                   for m in max(0, nKet - nBra):nKet])
-    return convert(Float64, matElem)
+    matEL = sqrt(factorial(big(nBra)) * factorial(big(nKet))) *
+            sum([(-1)^(j + nKet - nBra) * w^(2 * j + nKet - nBra) / factorial(big(j)) /
+                 factorial(big(nBra - j)) / factorial(big(j + nKet - nBra))
+                 for
+                 j in max(0, nBra - nKet):nBra])
+    return convert(ComplexF64, matEL)
 end
 
 ### copied from sG 
@@ -767,8 +756,7 @@ function localVertexOp(k::Int64,
                        physVecSpace::Union{ElementarySpace,
                                            CompositeSpace{ElementarySpace}},
                        s::Int64, β::Float64, M::Float64, L::Float64,
-                       bogoliubovRot::Bool = false,
-                       ξ::Union{Int64,Float64} = 0.0)
+                       bogoliubovRot::Bool = false, ξ::Number = 0.0)
     """ Construct local vertex operator, to be combined with kroneckerDeltaMPS to form full MPO """
 
     # construct kroneckerDelta space
@@ -782,9 +770,9 @@ function localVertexOp(k::Int64,
     # compute vertex operator coefficient α
     α = convert(Float64, s * β)
 
-    # get Bogoliubov coefficients
-    μ = cosh(ξ)
-    ν = sinh(ξ)
+    # # get Bogoliubov coefficients
+    # μ = cosh(ξ)
+    # ν = sinh(ξ)
 
     # construct local interaction for k = 0 or k ≂̸ 0
     if k == 0
@@ -863,7 +851,7 @@ function localDisplacementOp(k::Int64,
                              physVecSpace::Union{ElementarySpace,
                                                  CompositeSpace{ElementarySpace}},
                              s::Int64, β::Float64, M::Float64, L::Float64,
-                             bogoliubovRot::Bool = false, ξ::Union{Int64,Float64} = 0.0)
+                             bogoliubovRot::Bool = false, ξ::Number = 0.0)
     """ Construct local displacement operator, to be combined with kroneckerDeltaMPS to form full MPO """
 
     # construct kroneckerDelta space
@@ -877,8 +865,6 @@ function localDisplacementOp(k::Int64,
     α = convert(Float64, s * β)
 
     # get Bogoliubov coefficients
-    # μ = cosh(ξ)
-    # ν = sinh(ξ)
     μ = cosh(abs(ξ))
     ν = sinh(abs(ξ)) * ξ / abs(ξ)
 
@@ -919,12 +905,11 @@ function localDisplacementOp(k::Int64,
 
         # create non-symmetric displacement operator
         nMax = dimPhyVecSpace - 1
+        w = α / sqrt(2 * modeEnergy(k, L, M) * L)
         if bogoliubovRot
-            # displacementOp = exp(-abs(μ * α - ν * conj(α))^2 / 2) * getDisplacementOperator(nMax, μ * α - ν * conj(α))
-            displacementOp = getDisplacementOperator(nMax, μ * α - ν * conj(α))
+            displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax, μ * (1im * w) - ν * conj(1im * w))
         else
-            # displacementOp = exp(-abs(α)^2 / 2) * getDisplacementOperator(nMax, α)
-            displacementOp = exp(abs(α)^2 / 2) * getDisplacementOperator(nMax, (1im * α))
+            displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax, (1im * w))
         end
 
         # get ordering of QNs in physVecSpace and kronDelSpace
