@@ -531,7 +531,7 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
                 kIdx = abs(momentumVal)
                 ξ = bogParameters[kIdx]
                 μ = cosh(abs(ξ))
-                ν = sinh(abs(ξ)) * ξ / abs(ξ)
+                ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
                 modeFactor *= (μ^2 + abs(ν)^2)
             end
 
