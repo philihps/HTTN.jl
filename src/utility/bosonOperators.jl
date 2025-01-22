@@ -70,7 +70,7 @@ function localIdentityOp(physVecSpace::GradedSpace)
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
     auxVecSpace = U1Space(0 => 1)
-    interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
     interactionTensor[:, :, 1] = diagm(ones(dimPhyVecSpace))
     interactionTensor = TensorMap(interactionTensor, physVecSpace,
                                   physVecSpace ⊗ auxVecSpace)
