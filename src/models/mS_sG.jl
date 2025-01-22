@@ -503,10 +503,8 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
             if bogoliubovRot
                 kIdx = abs(momentumVal)
                 ξ = bogParameters[kIdx]
-                # μ = cosh(ξ)
-                # ν = sinh(ξ)
                 μ = cosh(abs(ξ))
-                ν = sinh(abs(ξ)) * ξ / abs(ξ)
+                ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
                 modeFactor *= (μ^2 + abs(ν)^2)
             end
 
@@ -604,7 +602,7 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal)]
         μ = cosh(abs(ξ))
-        ν = sinh(abs(ξ)) * ξ / abs(ξ)
+        ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
 
         # mpoCrCr *= modeEnergy(kVal, L, M) * sinh(2 * ξ)
         # mpoAnAn *= modeEnergy(kVal, L, M) * sinh(2 * ξ)
@@ -669,8 +667,8 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal)]
-        μ = cosh(ξ)
-        ν = sinh(ξ)
+        μ = cosh(abs(ξ))
+        ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
         mpoIdId[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * 2 * abs(ν)^2
 
         # store MPO
