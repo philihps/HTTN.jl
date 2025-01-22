@@ -153,14 +153,14 @@ function generate_H0(Model::Union{MassiveSchwingerModel,SineGordonModel})
 end
 
 function generate_H1(Model::Union{MassiveSchwingerModel,SineGordonModel};
-                     localOp::String = "vertexOp")
+                     localOp::String = "displacementOp")
     modeOccupations, physSpaces = constructPhysSpaces(Model.modelParameters)
     mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces;
                          localOp = localOp)
     return mpo_H1
 end
 
-function generate_MPO_mS(Model::MassiveSchwingerModel)
+function generate_MPO_mS(Model::MassiveSchwingerModel; localOp::String = "displacementOp")
 
     # get hamiltonianParameters
     θ = Model.modelParameters.hamiltonianParameters[:θ]
@@ -171,7 +171,7 @@ function generate_MPO_mS(Model::MassiveSchwingerModel)
     # construct MPOs
     modeOccupations, physSpaces = constructPhysSpaces(Model.modelParameters)
     mpo_H0 = generate_H0(Model.modelParameters, modeOccupations, physSpaces)
-    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces)
+    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces, localOp = localOp)
 
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     if m == 0
@@ -185,7 +185,7 @@ function generate_MPO_mS(Model::MassiveSchwingerModel)
     return mpo_mS
 end
 
-function generate_MPO_sG(sGModel::SineGordonModel)
+function generate_MPO_sG(sGModel::SineGordonModel; localOp::String = "displacementOp")
 
     # get hamiltonianParameters
     β = sGModel.modelParameters.hamiltonianParameters[:β]
@@ -528,7 +528,11 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
 
             # get Bogoliubov rotation parameters
             if bogoliubovRot
-                modeFactor *= (μ^2 + ν^2)
+                kIdx = abs(momentumVal)
+                ξ = bogParameters[kIdx]
+                μ = cosh(abs(ξ))
+                ν = sinh(abs(ξ)) * ξ / abs(ξ)
+                modeFactor *= (μ^2 + abs(ν)^2)
             end
 
             if siteIdx == 1
@@ -633,7 +637,7 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
 
         else
             # construct momentum-preserving MPO for [A(-k).A(+k)]
-            localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites) #XXX: Why is k=0 included?
+            localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites)
             for (siteIdx, momentumVal) in enumerate(momentumModes)
                 if abs(momentumVal) == kVal
                     localOperators[siteIdx] = localAnnihilationOp(momentumVal,
@@ -669,6 +673,7 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             # store sum of MPOs
             storeIndividualMPOs[kIdx] = mpoAnAn + mpoCrCr
         end
+
     end
 
     mpo_H0_Part_B = sum(storeIndividualMPOs)
@@ -720,12 +725,13 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal) + 1]
-        ν = sinh(ξ)
+        ν = sinh(abs(ξ)) * ξ / abs(ξ)
         if kVal == 0
-            mpoIdId *= M * ν^2
+            mpoIdId *= modeEnergy(kVal, L, M) * abs(ν)^2
         else
-            mpoIdId *= modeEnergy(kVal, L, M) * 2 * ν^2
+            mpoIdId *= 2 * modeEnergy(kVal, L, M) * abs(ν)^2
         end
+
         # store MPO
         storeIndividualMPOs[kIdx] = mpoIdId
     end
@@ -1178,6 +1184,8 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
             localOperators_pos[siteIdx] = localDisplacementOp(momentumVal, physVecSpace, +1,
                                                               β, M, L, bogoliubovRot,
                                                               bogParameter)
+        else
+            error("localOp must be either 'vertexOp' or 'displacementOp'")
         end
     end
 
