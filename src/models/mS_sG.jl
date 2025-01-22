@@ -769,7 +769,8 @@ function generate_H0(modelParameters::Union{MassiveSchwingerParameters,
     return mpo_H0
 end
 
-function G(nBra::Int64, nKet::Int64, w::Float64)::Float64
+### new definition 
+function G(nBra::Int64, nKet::Int64, w::Number)::Number
     """ Matrix element of the k-factor of V_{(±1, 0)}(x = 0, t = 0) for compactification radius R=sqrt(4π) in a massive mode basis of mass M """
 
     matElem = sqrt(factorial(big(nBra)) * factorial(big(nKet))) *
@@ -925,7 +926,7 @@ function localDisplacementOp(k::Int64,
                              physVecSpace::Union{ElementarySpace,
                                                  CompositeSpace{ElementarySpace}},
                              s::Int64, β::Float64, M::Float64, L::Float64,
-                             bogoliubovRot::Bool = false, ξ::Union{Int64,Float64} = 0.0)
+                             bogoliubovRot::Bool = false, ξ::Number = 0.0)
     """ Construct local displacement operator, to be combined with kroneckerDeltaMPS to form full MPO """
 
     # construct kroneckerDelta space
@@ -939,8 +940,6 @@ function localDisplacementOp(k::Int64,
     α = convert(Float64, s * β)
 
     # get Bogoliubov coefficients
-    # μ = cosh(ξ)
-    # ν = sinh(ξ)
     μ = cosh(abs(ξ))
     ν = sinh(abs(ξ)) * ξ / abs(ξ)
 
@@ -981,12 +980,11 @@ function localDisplacementOp(k::Int64,
 
         # create non-symmetric displacement operator
         nMax = dimPhyVecSpace - 1
+        w = α / sqrt(2 * modeEnergy(k, L, M) * L)
         if bogoliubovRot
-            # displacementOp = exp(-abs(μ * α - ν * conj(α))^2 / 2) * getDisplacementOperator(nMax, μ * α - ν * conj(α))
-            displacementOp = getDisplacementOperator(nMax, μ * α - ν * conj(α))
+            displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax, μ * (1im * w) - ν * conj(1im * w))
         else
-            # displacementOp = exp(-abs(α)^2 / 2) * getDisplacementOperator(nMax, α)
-            displacementOp = exp(abs(α)^2 / 2) * getDisplacementOperator(nMax, (1im * α))
+            displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax, (1im * w))
         end
 
         # get ordering of QNs in physVecSpace and kronDelSpace
