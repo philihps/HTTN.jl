@@ -22,9 +22,9 @@ truncMethod = 5;
 kMax = 1;
 nMax = 10;
 nMaxZM = 20;
-modeOrdering = 1;
-bogoliubovR = 1;
-useBasisOptimization = 1;
+modeOrdering = true;
+bogoliubovRot = true;
+useBasisOptimization = 0;
 
 # # truncMethod = 5, nMax = 10
 # bogParameters = [0.21, 0.18];
@@ -43,6 +43,8 @@ optimalBogParameters = [[0.21300345504641333],
                          0.14403652093220048]];
 bogParameters = convert.(Float64, optimalBogParameters[kMax]);
 # bogParameters = randn(kMax);
+
+bogParameters = [0.1 + 0.2im]
 
 # set model parameters
 θ = 1.0 * π;
@@ -91,7 +93,7 @@ for (idxM, m) in enumerate(fermionMasses)
                             nMaxZM = nMaxZM,
                             truncMethod = truncMethod,
                             modeOrdering = modeOrdering,
-                            bogoliubovR = bogoliubovR,
+                            bogoliubovRot = bogoliubovRot,
                             bogParameters = bogParameters)
     hamiltonianParameters = (θ = θ, m = m, M = M, L = L)
 
@@ -110,7 +112,8 @@ for (idxM, m) in enumerate(fermionMasses)
     if useBasisOptimization == 0
 
         # construct massiveSchwinger MPO
-        hamMPO = generate_MPO_mS(mS)
+        # hamMPO = generate_MPO_mS(mS, localOp = "vertexOp")
+        hamMPO = generate_MPO_mS(mS, localOp = "displacementOp")
         println(getLinkDimsMPO(hamMPO))
         # display(hamMPO)
 
@@ -201,7 +204,7 @@ for (idxM, m) in enumerate(fermionMasses)
                   "/modeOrdering_" *
                   string(modeOrdering) *
                   "/bogoliubovRot_" *
-                  string(bogoliubovR) *
+                  string(bogoliubovRot) *
                   "/truncMethod_" *
                   string(truncMethod)
 
@@ -362,7 +365,7 @@ for (idxM, m) in enumerate(fermionMasses)
 
     # @printf("energy gap Δ = %0.8f\n", excitedStateEnergy - groundStateEnergy)
 end
-display(entanglementEntropyPlot)
+# display(entanglementEntropyPlot)
 
 # mpsEntanglementEntropies = compute_entanglement_entropies(excitedStateMPS);
 # println(mpsEntanglementEntropies)

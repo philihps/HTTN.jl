@@ -459,16 +459,17 @@ function applyMPO(finiteMPO::SparseMPO,
     return compressedMPS
 end
 
-#--------------------------------------------------------------
-# SparseMPO save and load functions
-#--------------------------------------------------------------
 
-function save_to_file(fileName::String, sparseMPO::SparseMPO; dictKey::String = "sparseMPO")
-    sparseMPO = convert.(Dict, sparseMPO)
-    return JLD2.save(fileName, dictKey, sparseMPO)
-end
+# #--------------------------------------------------------------
+# # SparseMPO save and load functions
+# #--------------------------------------------------------------
 
-function load_from_file(fileName::String, dictKey::String = "sparseMPO")
-    sparseMPO = JLD2.load(fileName, dictKey)
-    return sparseMPO = SparseMPO(convert.(TensorMap, sparseMPO))
-end
+# function save_to_file(fileName::String, sparseMPO::SparseMPO; dictKey::String = "sparseMPO")
+#     sparseMPO = convert.(Dict, sparseMPO)
+#     return JLD2.save(fileName, dictKey, sparseMPO)
+# end
+
+# function load_from_file(fileName::String, dictKey::String = "sparseMPO")
+#     sparseMPO = JLD2.load(fileName, dictKey)
+#     return sparseMPO = SparseMPO(convert.(TensorMap, sparseMPO))
+# end

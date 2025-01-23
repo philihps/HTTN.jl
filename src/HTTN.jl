@@ -1,5 +1,5 @@
 
-__precompile__(false)
+# __precompile__(false)
 module HTTN
 
 # include external packages
@@ -11,11 +11,13 @@ using LinearAlgebra: diag, diagm
 using FFTW
 using JLD2
 using KrylovKit
+using OptimKit
 using Printf
 using LaTeXStrings
 using Roots
 using SpecialFunctions
 using TensorKit
+using Zygote
 
 import Distributions: Normal
 

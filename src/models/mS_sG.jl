@@ -196,7 +196,7 @@ function generate_MPO_sG(sGModel::SineGordonModel; localOp::String = "displaceme
     # construct MPOs
     modeOccupations, physSpaces = constructPhysSpaces(sGModel.modelParameters)
     mpo_H0 = generate_H0(sGModel.modelParameters, modeOccupations, physSpaces)
-    mpo_H1 = generate_H1(sGModel.modelParameters, modeOccupations, physSpaces)
+    mpo_H1 = generate_H1(sGModel.modelParameters, modeOccupations, physSpaces, localOp = localOp)
 
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     if λ == 0
@@ -947,7 +947,7 @@ function localDisplacementOp(k::Int64,
 
     # get Bogoliubov coefficients
     μ = cosh(abs(ξ))
-    ν = sinh(abs(ξ)) * ξ / abs(ξ)
+    ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
 
     # construct local interaction for k = 0 or k ≂̸ 0
     if k == 0

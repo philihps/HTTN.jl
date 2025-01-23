@@ -339,108 +339,6 @@ function perform_timestep!(finiteMPS::SparseMPS,
                                         AC2,
                                         Lanczos())
 
-        # ------------------------------------------------------------
-        # perform local basis optimization to reduce entanglement
-
-        if mod(siteIdx, 2) == 0
-
-            # get physVecSpaces for squeezing operator
-            PL = space(finiteMPS[siteIdx + 0], 2)
-            PR = space(finiteMPS[siteIdx + 1], 2)
-            nMax = Int(0.5 * (dim(PL) - 1 + dim(PR) - 1))
-
-            # set kL and kR
-            kL = -1 * Int(siteIdx / 2)
-            kR = +1 * Int(siteIdx / 2)
-            # display([kL  kR])
-
-            # compute cost function pre optimization
-            costFuncPre = computeRenyiEntropy(newAC2)
-            # vNEntropyPre = computeEntropy(newAC2);
-
-            # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
-            if alg.verbosePrint == 2
-                listOfXiValues = collect(-0.6:0.05:+0.6)
-                storeEntanglementEntropy = zeros(Float64, length(listOfXiValues))
-                storeAnalyticGradient = zeros(Float64, length(listOfXiValues))
-                for (idx, ξ) in enumerate(listOfXiValues)
-                    sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-                    storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp,
-                                                                                                   newAC2))
-                    storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL,
-                                                                              kR, PL, PR,
-                                                                              newAC2)
-                end
-
-                titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
-                titleString = latexstring(titleString)
-                renyiEntropyPlot = plot(listOfXiValues,
-                                        storeEntanglementEntropy;
-                                        linewidth = 2.0,
-                                        xlabel = L"\xi",
-                                        ylabel = L"S",
-                                        label = L"S(\xi)",
-                                        frame = :box,
-                                        title = titleString,)
-                plot!(renyiEntropyPlot,
-                      listOfXiValues,
-                      storeAnalyticGradient;
-                      linewidth = 2.0,
-                      label = L"\partial S(\xi)/\partial \xi",)
-                display(renyiEntropyPlot)
-            end
-
-            # find optimimal ξ by roots of gradient
-            # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newAC2), -0.5, +0.5);
-            optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR,
-                                                                    newAC2), 0.0)
-            @show optimalXi
-
-            if any(abs.(optimalXi) .> 1e-3)
-
-                # check acceptance of optimalXi
-                newCostFunction = zeros(Float64, length(optimalXi))
-                for (idx, ξ) in enumerate(optimalXi)
-
-                    # transform newAC2 with optimalS
-                    optimalS = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-                    optimizedTheta = applyTwoModeTransformation(optimalS, newAC2)
-
-                    # compute cost function post optimiization
-                    costFuncPost = computeRenyiEntropy(optimizedTheta)
-                    # vNEntropyPost = computeEntropy(optimizedTheta);
-                    display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                    # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
-                    # println()
-
-                    newCostFunction[idx] = costFuncPost
-                end
-
-                # select optimalXi corresponding to lowest costFuncPost
-                costFuncPost, minIdx = findmin(newCostFunction)
-                optimalXi = optimalXi[minIdx]
-
-                # decompose optimizedTheta
-                if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
-
-                    # update two site tensor
-                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
-                    newAC2 = applyTwoModeTransformation(optimalS, newAC2)
-                    println("new optimal ξ = ", optimalXi)
-
-                    # update QFTModel with new bogParameters
-                    bogParameters[kR] -= optimalXi
-                    QFTModel = updateBogoliubovParameters(QFTModel, bogParameters)
-                    println(bogParameters, "\n")
-
-                    # recreate modified MPO
-                    finiteMPO = mpoHandle(QFTModel)
-                end
-            end
-        end
-
-        # ------------------------------------------------------------
-
         #  perform SVD and truncate to desired bond dimension
         U, S, V, ϵ = tsvd(newAC2,
                           ((1, 2),
@@ -490,109 +388,6 @@ function perform_timestep!(finiteMPS::SparseMPS,
                                         AC2,
                                         Lanczos())
 
-        # ------------------------------------------------------------
-        # perform local basis optimization to reduce entanglement
-
-        if mod(siteIdx, 2) == 0
-
-            # get physVecSpaces for squeezing operator
-            PL = space(finiteMPS[siteIdx + 0], 2)
-            PR = space(finiteMPS[siteIdx + 1], 2)
-            nMax = Int(0.5 * (dim(PL) - 1 + dim(PR) - 1))
-
-            # set kL and kR
-            kL = -1 * Int(siteIdx / 2)
-            kR = +1 * Int(siteIdx / 2)
-            # display([kL  kR])
-
-            # compute cost function pre optimization
-            costFuncPre = computeRenyiEntropy(newAC2)
-            # vNEntropyPre = computeEntropy(newAC2);
-
-            # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
-            if alg.verbosePrint == 2
-                listOfXiValues = collect(-0.6:0.05:+0.6)
-                storeEntanglementEntropy = zeros(Float64, length(listOfXiValues))
-                storeAnalyticGradient = zeros(Float64, length(listOfXiValues))
-                for (idx, ξ) in enumerate(listOfXiValues)
-                    sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-                    storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp,
-                                                                                                   newAC2))
-                    storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL,
-                                                                              kR, PL, PR,
-                                                                              newAC2)
-                end
-
-                titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
-                titleString = latexstring(titleString)
-                renyiEntropyPlot = plot(listOfXiValues,
-                                        storeEntanglementEntropy;
-                                        linewidth = 2.0,
-                                        xlabel = L"\xi",
-                                        ylabel = L"S",
-                                        label = L"S(\xi)",
-                                        frame = :box,
-                                        title = titleString,)
-                plot!(renyiEntropyPlot,
-                      listOfXiValues,
-                      storeAnalyticGradient;
-                      linewidth = 2.0,
-                      label = L"\partial S(\xi)/\partial \xi",)
-                display(renyiEntropyPlot)
-            end
-
-            # find optimimal ξ by roots of gradient
-            # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, newAC2), -0.5, +0.5);
-            optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR,
-                                                                    newAC2), 0.0)
-            @show optimalXi
-
-            if any(abs.(optimalXi) .> 1e-3)
-
-                # check acceptance of optimalXi
-                newCostFunction = zeros(Float64, length(optimalXi))
-                for (idx, ξ) in enumerate(optimalXi)
-
-                    # transform newAC2 with optimalS
-                    optimalS = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-                    optimizedTheta = applyTwoModeTransformation(optimalS, newAC2)
-
-                    # compute cost function post optimiization
-                    costFuncPost = computeRenyiEntropy(optimizedTheta)
-                    # vNEntropyPost = computeEntropy(optimizedTheta);
-                    display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                    # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
-                    # println()
-
-                    newCostFunction[idx] = costFuncPost
-                end
-
-                # select optimalXi corresponding to lowest costFuncPost
-                costFuncPost, minIdx = findmin(newCostFunction)
-                optimalXi = optimalXi[minIdx]
-                # @show optimalXi
-
-                # decompose optimizedTheta
-                if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
-
-                    # update two site tensor
-                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
-                    newAC2 = applyTwoModeTransformation(optimalS, newAC2)
-                    println("new optimal ξ = ", optimalXi)
-
-                    # update QFTModel with new bogParameters
-                    bogParameters[kR] -= optimalXi
-                    QFTModel = updateBogoliubovParameters(QFTModel, bogParameters)
-                    println(bogParameters, "\n")
-
-                    # recreate modified MPO
-                    finiteMPO = mpoHandle(QFTModel)
-                end
-            end
-        end
-
-        # ------------------------------------------------------------
-
         #  perform SVD and truncate to desired bond dimension
         U, S, V, ϵ = tsvd(newAC2,
                           ((1, 2),
@@ -624,6 +419,244 @@ function perform_timestep!(finiteMPS::SparseMPS,
                                                             finiteMPS[siteIdx + 0],
                                                             Lanczos())
         end
+    end
+
+
+    # ------------------------------------------------------------
+    # perform local basis optimization to reduce entanglement
+
+    # sweep L ---> R
+    for siteIdx in 1:+1:(length(finiteMPS) - 1)
+
+        # construct initial AC
+        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)), (1, 2), (3, 4))
+
+        if mod(siteIdx, 2) == 0
+
+            # get physVecSpaces for squeezing operator
+            PL = space(finiteMPS[siteIdx + 0], 2)
+            PR = space(finiteMPS[siteIdx + 1], 2)
+            nMax = Int(0.5 * (dim(PL) - 1 + dim(PR) - 1))
+
+            # set kL and kR
+            kL = -1 * Int(siteIdx / 2)
+            kR = +1 * Int(siteIdx / 2)
+            # display([kL  kR])
+
+            # compute cost function pre optimization
+            costFuncPre = computeRenyiEntropy(AC2)
+            # vNEntropyPre = computeEntropy(AC2);
+
+            # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
+            if alg.verbosePrint == 2
+                listOfXiValues = collect(-0.6:0.05:+0.6)
+                storeEntanglementEntropy = zeros(Float64, length(listOfXiValues))
+                storeAnalyticGradient = zeros(Float64, length(listOfXiValues))
+                for (idx, ξ) in enumerate(listOfXiValues)
+                    sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
+                    storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp,
+                                                                                                   AC2))
+                    storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL,
+                                                                              kR, PL, PR,
+                                                                              AC2)
+                end
+
+                titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
+                titleString = latexstring(titleString)
+                renyiEntropyPlot = plot(listOfXiValues,
+                                        storeEntanglementEntropy;
+                                        linewidth = 2.0,
+                                        xlabel = L"\xi",
+                                        ylabel = L"S",
+                                        label = L"S(\xi)",
+                                        frame = :box,
+                                        title = titleString,)
+                plot!(renyiEntropyPlot,
+                      listOfXiValues,
+                      storeAnalyticGradient;
+                      linewidth = 2.0,
+                      label = L"\partial S(\xi)/\partial \xi",)
+                display(renyiEntropyPlot)
+            end
+
+            # # find optimimal ξ by roots of gradient
+            # # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, AC2), -0.5, +0.5);
+            # optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, AC2), 0.0)
+            # @show optimalXi
+
+            # vecξ = [real(bogParameters[kR]), imag(bogParameters[kR])]
+            # fval, gval = value_and_gradient(vecξ, nMax, kL, kR, PL, PR, AC2)
+            # println(fval)
+            # println(gval)
+
+            # optimize twoSiteUnitary
+            # vecξ = [real(bogParameters[kR]), imag(bogParameters[kR])]
+            optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2), bogParameters[kR], 
+                LBFGS(8, verbosity = 1, maxiter  = 25, gradtol = 1e-6), 
+                scale! = _scale!, 
+                add! = _add!, 
+                inner = _real_inner, 
+            );
+            optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
+
+            if any(abs.(optimalXi) .> 1e-3)
+
+                # check acceptance of optimalXi
+                newCostFunction = zeros(Float64, length(optimalXi))
+                for (idx, ξ) in enumerate(optimalXi)
+
+                    # transform AC2 with optimalS
+                    optimalS = squeezingOp(ξ, nMax, kL, kR, PL, PR)
+                    optimizedTheta = applyTwoModeTransformation(optimalS, AC2)
+
+                    # compute cost function post optimiization
+                    costFuncPost = computeRenyiEntropy(optimizedTheta)
+                    # vNEntropyPost = computeEntropy(optimizedTheta);
+                    display([costFuncPre costFuncPost costFuncPre > costFuncPost])
+                    # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                    # println()
+
+                    newCostFunction[idx] = costFuncPost
+                end
+
+                # select optimalXi corresponding to lowest costFuncPost
+                costFuncPost, minIdx = findmin(newCostFunction)
+                optimalXi = optimalXi[minIdx]
+
+                # decompose optimizedTheta
+                if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
+
+                    # update two site tensor
+                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                    AC2 = applyTwoModeTransformation(optimalS, AC2)
+                    println("new optimal ξ = ", optimalXi)
+
+                    # update QFTModel with new bogParameters
+                    bogParameters[kR] -= optimalXi
+                    QFTModel = updateBogoliubovParameters(QFTModel, bogParameters)
+                    println(bogParameters, "\n")
+
+                    # recreate modified MPO
+                    finiteMPO = mpoHandle(QFTModel)
+                end
+            end
+        end
+
+    end
+
+    # sweep L <--- R
+    for siteIdx in (length(finiteMPS) - 1):-1:1
+
+        # construct initial AC
+        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)), (1, 2), (3, 4))
+
+        if mod(siteIdx, 2) == 0
+
+            # get physVecSpaces for squeezing operator
+            PL = space(finiteMPS[siteIdx + 0], 2)
+            PR = space(finiteMPS[siteIdx + 1], 2)
+            nMax = Int(0.5 * (dim(PL) - 1 + dim(PR) - 1))
+
+            # set kL and kR
+            kL = -1 * Int(siteIdx / 2)
+            kR = +1 * Int(siteIdx / 2)
+            # display([kL  kR])
+
+            # compute cost function pre optimization
+            costFuncPre = computeRenyiEntropy(AC2)
+            # vNEntropyPre = computeEntropy(AC2);
+
+            # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
+            if alg.verbosePrint == 2
+                listOfXiValues = collect(-0.6:0.05:+0.6)
+                storeEntanglementEntropy = zeros(Float64, length(listOfXiValues))
+                storeAnalyticGradient = zeros(Float64, length(listOfXiValues))
+                for (idx, ξ) in enumerate(listOfXiValues)
+                    sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
+                    storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp,
+                                                                                                   AC2))
+                    storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL,
+                                                                              kR, PL, PR,
+                                                                              AC2)
+                end
+
+                titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
+                titleString = latexstring(titleString)
+                renyiEntropyPlot = plot(listOfXiValues,
+                                        storeEntanglementEntropy;
+                                        linewidth = 2.0,
+                                        xlabel = L"\xi",
+                                        ylabel = L"S",
+                                        label = L"S(\xi)",
+                                        frame = :box,
+                                        title = titleString,)
+                plot!(renyiEntropyPlot,
+                      listOfXiValues,
+                      storeAnalyticGradient;
+                      linewidth = 2.0,
+                      label = L"\partial S(\xi)/\partial \xi",)
+                display(renyiEntropyPlot)
+            end
+
+            # # find optimimal ξ by roots of gradient
+            # # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, AC2), -0.5, +0.5);
+            # optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, AC2), 0.0)
+            # @show optimalXi
+
+            # optimize twoSiteUnitary
+            # vecξ = [real(bogParameters[kR]), imag(bogParameters[kR])]
+            optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2), bogParameters[kR], 
+                LBFGS(8, verbosity = 1, maxiter  = 25, gradtol = 1e-6), 
+                scale! = _scale!, 
+                add! = _add!, 
+                inner = _real_inner, 
+            );
+            optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
+
+            if any(abs.(optimalXi) .> 1e-3)
+
+                # check acceptance of optimalXi
+                newCostFunction = zeros(Float64, length(optimalXi))
+                for (idx, ξ) in enumerate(optimalXi)
+
+                    # transform AC2 with optimalS
+                    optimalS = squeezingOp(ξ, nMax, kL, kR, PL, PR)
+                    optimizedTheta = applyTwoModeTransformation(optimalS, AC2)
+
+                    # compute cost function post optimiization
+                    costFuncPost = computeRenyiEntropy(optimizedTheta)
+                    # vNEntropyPost = computeEntropy(optimizedTheta);
+                    display([costFuncPre costFuncPost costFuncPre > costFuncPost])
+                    # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                    # println()
+
+                    newCostFunction[idx] = costFuncPost
+                end
+
+                # select optimalXi corresponding to lowest costFuncPost
+                costFuncPost, minIdx = findmin(newCostFunction)
+                optimalXi = optimalXi[minIdx]
+                # @show optimalXi
+
+                # decompose optimizedTheta
+                if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi)
+
+                    # update two site tensor
+                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                    AC2 = applyTwoModeTransformation(optimalS, AC2)
+                    println("new optimal ξ = ", optimalXi)
+
+                    # update QFTModel with new bogParameters
+                    bogParameters[kR] -= optimalXi
+                    QFTModel = updateBogoliubovParameters(QFTModel, bogParameters)
+                    println(bogParameters, "\n")
+
+                    # recreate modified MPO
+                    finiteMPO = mpoHandle(QFTModel)
+                end
+            end
+        end
+
     end
 
     # return optimized finiteMPS

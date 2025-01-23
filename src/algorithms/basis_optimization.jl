@@ -7,8 +7,8 @@ function convertLocalOperatorsToTwoBodyGate(localOperators::Vector{<:AbstractTen
     return twoBodyGate
 end
 
-function applyTwoModeTransformation(twoModeU::AbstractTensorMap,
-                                    twoModeT::AbstractTensorMap)
+function applyTwoModeTransformation(twoModeU::TensorMap,
+                                    twoModeT::TensorMap)
     @tensor twoModeUT[-1 -2 -3; -4] := twoModeU[-2, -3, 2, 3] * twoModeT[-1, 2, 3, -4]
     return twoModeUT
 end
@@ -44,17 +44,20 @@ function squeezingOp(ξ::Union{Int64,Float64,ComplexF64},
     """
 
     # construct two-site operators
-    CrCr = convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
-                                               localCreationOp(kR, PR)])
-    AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
-                                               localAnnihilationOp(kR, PR)])
-    IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
-    NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
-    IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
+    CrCr = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
+                                            localCreationOp(kR, PR)])
+    AnAn = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
+                                            localAnnihilationOp(kR, PR)])
+    IdId = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
+    NuId = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
+    IdNu = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
 
     K_A_0 = 1 / 2 * (NuId + IdNu + IdId)
     K_A_min = AnAn
     K_A_plus = CrCr
+
+    # # construct complex parameter
+    # ξ = vecξ[1] + 1im * vecξ[2]
 
     # construct squeezing operator
     S = matrixExponentialSeries(-1 * tanh(ξ) * K_A_plus, nMax) *
@@ -100,20 +103,21 @@ function findDisentanglingRotation(ξ::Union{Int64,Float64,ComplexF64},
                                    PR::ElementarySpace,
                                    twoSiteTensor::TensorMap)
     twoSiteSqueezingOperator = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-    costFunction = computeRenyiEntropy(applyTwoModeTransformation(twoSiteSqueezingOperator,
-                                                                  twoSiteTensor))
+    costFunction = computeRenyiEntropy(applyTwoModeTransformation(twoSiteSqueezingOperator, twoSiteTensor))
     return costFunction
 end
 
-# function value_and_gradient(ξ::Union{Int64, Float64, ComplexF64}, nMax::Int64, kL::Int64, kR::Int64, PL::ElementarySpace, PR::ElementarySpace, twoSiteTensor::TensorMap)
-#     fval = findDisentanglingRotation(ξ, nMax, kL, kR, PL, PR, twoSiteTensor);
-#     gval = Zygote.gradient(x -> findDisentanglingRotation(x, nMax, kL, kR, PL, PR, twoSiteTensor), ξ)[1];
-#     return real(fval), gval;
-# end
+function value_and_gradient(ξ::Union{Int64,Float64,ComplexF64}, nMax::Int64, kL::Int64, kR::Int64, PL::ElementarySpace, PR::ElementarySpace, twoSiteTensor::TensorMap)
+    fval = findDisentanglingRotation(ξ, nMax, kL, kR, PL, PR, twoSiteTensor);
+    gval = Zygote.gradient(x -> findDisentanglingRotation(x, nMax, kL, kR, PL, PR, twoSiteTensor), ξ)[1];
+    return fval, gval;
+end
 
-# # OptimKit functions for optimization of Float64 values
-# _scale!(v, α) = v * α;
-# _add!(vdst, vsrc, α) = vdst += vsrc * α;
+# OptimKit functions for optimization of ComplexF64 values
+_inner(x, ξ_1, ξ_2) = dot(real(ξ_1), real(ξ_2)) + dot(imag(ξ_1), imag(ξ_2))
+_real_inner(_, η₁, η₂) = real(dot(η₁, η₂))
+_scale!(v, α) = v * α;
+_add!(vdst, vsrc, α) = vdst += vsrc * α;
 
 #---------------------------------------------------------------------------
 # analytic gradient for basis optimization
