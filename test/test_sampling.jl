@@ -59,7 +59,7 @@ nTrials = 100
         end
 
         testMPS = SparseMPS(testMPS; normalizeMPS = true)
-        testMPS, sqOps = transform_basis!(testMPS, mS; sqZero = false)
+        testMPS, sqOps = transform_basis!(testMPS, mS; sqZero = false, transfWidth = 0.1)
         testMPS_1 = deepcopy(testMPS)
 
         mpsSample, momSample = sample_MPS!(testMPS)
