@@ -12,7 +12,7 @@ function auto_corr(A, tau::Int64)
     return res
 end
 
-function int_autocorr_time(autoCorrs; cutoff = 0.05)
+function int_autocorr_time(autoCorrs; cutoff = 0.0005)
     """
     Computes the integrated autocorrelation time τ_int 
     from an array of autocorrelation values 
@@ -43,7 +43,12 @@ function compute_average(A)
     taus = collect(1:(N ÷ 2))
     autoCorrs = [auto_corr(A, tau) for tau in taus]
     corrTime = int_autocorr_time(autoCorrs)
-    stDev = sqrt(1 / N * (sum(A .^ 2) / N - mean_A^2))
+    println("Autocorrelation time is $(corrTime)")
+    var = 1 / N * (sum(A .^ 2) / N - mean_A^2)
+    if abs(var - 0) < 1e-8
+        var = 0
+    end
+    stDev = sqrt(var)
 
     return mean_A, stDev * sqrt(1 + 2 * corrTime)
 end

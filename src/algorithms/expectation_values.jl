@@ -2,17 +2,17 @@ function expectation_value_mpo(finiteMPS, finiteMPO)
     """ Computes expectation value for MPS and MPO """
 
     # contract from left to right
-    boundaryL = TensorMap(ones, space(finiteMPS[1], 1),
-                          space(finiteMPO[1], 1) ⊗ space(finiteMPS[1], 1))
+    boundaryL = ones(ComplexF64, space(finiteMPS[1], 1),
+                     space(finiteMPO[1], 1) ⊗ space(finiteMPS[1], 1))
     for siteIdx in 1:+1:length(finiteMPS)
         @tensor boundaryL[-1; -2 -3] := boundaryL[1, 3, 5] *
                                         finiteMPS[siteIdx][5, 4, -3] *
                                         finiteMPO[siteIdx][3, 2, -2, 4] *
                                         conj(finiteMPS[siteIdx][1, 2, -1])
     end
-    boundaryR = TensorMap(ones,
-                          space(finiteMPS[end], 3)' ⊗ space(finiteMPO[end], 3)',
-                          space(finiteMPS[end], 3)')
+    boundaryR = ones(ComplexF64,
+                     space(finiteMPS[end], 3)' ⊗ space(finiteMPO[end], 3)',
+                     space(finiteMPS[end], 3)')
 
     # contact to get expectation value
     expectationVal = @tensor boundaryL[1, 2, 3] * boundaryR[3, 2, 1]

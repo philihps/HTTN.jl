@@ -10,9 +10,7 @@ For more information on METTS, see the following references:
 =#
 @kwdef struct METTS2
     numWarmUp::Int64 = 10
-    numMETTS::Int64 = 500
-    numMETTSMin::Int64 = 20
-    numMETTSMax::Int64 = 3000
+    numMETTS::Int64 = 3000
     krylovDim::Int = 2
     bondDim::Int = 1000
     compressionAlg::String = "zipUp"
@@ -91,7 +89,7 @@ function sample_non_ZM(localTensor, physSpace)
 
     while n <= dimPhysSpace
         targetQN = U1Space(physSpaceQNs[n] => 1)
-        projVector = TensorMap(ones, targetQN, physSpace)
+        projVector = ones(ComplexF64, targetQN, physSpace)
 
         @tensor An[-1 -2; -3] := projVector[-2, 2] * localTensor[-1, 2, -3]
         pn = real(tr(An' * An))
@@ -352,11 +350,11 @@ function transform_basis!(finiteMPS, model; sqZero, transfWidth)
                                                finiteMPS[siteIdx + 0][-1, 1, 2] *
                                                finiteMPS[siteIdx + 1][2, 3, -4]
 
-            U, S, V, _ = tsvd(localBond, (1, 2), (3, 4))
+            U, S, V, _ = tsvd(localBond, ((1, 2), (3, 4)))
 
             S /= norm(S)
-            U = permute(U, (1, 2), (3,))
-            V = permute(S * V, (1, 2), (3,))
+            U = permute(U, ((1, 2), (3,)))
+            V = permute(S * V, ((1, 2), (3,)))
 
             finiteMPS[siteIdx + 0] = U
             finiteMPS[siteIdx + 1] = V
@@ -461,13 +459,12 @@ function metts_basis!(finiteMPS::SparseMPS,
     timeStep = 1im * (timeRanges[2] - timeRanges[1])
     println("Running METTS algorithm for: timestep=$(timeStep), finalT=$(1/finalBeta)")
 
-    numMETTS = max(alg.numMETTS, alg.numMETTSMax)
     energies = zeros(Float64, 0, 3)
     warmup_energies = zeros(Float64, 0, 3)
-    truncErrs = zeros(Float64, alg.numWarmUp + numMETTS)
+    truncErrs = zeros(Float64, alg.numWarmUp + alg.numMETTS)
 
     # main METTS loop
-    for step in 1:(alg.numWarmUp + numMETTS)
+    for step in 1:(alg.numWarmUp + alg.numMETTS)
         if step <= alg.numWarmUp
             println("Making warmup METTS number $step")
         else
@@ -532,11 +529,11 @@ function metts_basis!(finiteMPS::SparseMPS,
                                                    finiteMPS[siteIdx + 0][-1, 1, 2] *
                                                    finiteMPS[siteIdx + 1][2, 3, -4]
 
-                U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))
+                U, S, V, ϵ = tsvd(localBond, ((1, 2), (3, 4)))
 
                 S /= norm(S)
-                U = permute(U, (1, 2), (3,))
-                V = permute(S * V, (1, 2), (3,))
+                U = permute(U, ((1, 2), (3,)))
+                V = permute(S * V, ((1, 2), (3,)))
 
                 finiteMPS[siteIdx + 0] = U
                 finiteMPS[siteIdx + 1] = V
@@ -547,7 +544,7 @@ function metts_basis!(finiteMPS::SparseMPS,
 
     _, av_E_last, err_E_last = energies[end, :]
     if abs(err_E_last / av_E_last) * 100 > alg.tol
-        println("The observable does not converge within $numMETTS iterations.")
+        println("The observable does not converge within $(alg.numMETTS) iterations.")
     end
 
     return warmup_energies, energies, truncErrs
@@ -563,11 +560,10 @@ function metts_ZM!(finiteMPS::SparseMPS,
     """
     zeroDim = model.physSpaces[1].dims.values[1]
 
-    numMETTS = max(alg.numMETTS, alg.numMETTSMax)
     energies = zeros(Float64, 0, 3)
     warmup_energies = zeros(Float64, 0, 3)
 
-    for step in 1:(alg.numWarmUp + numMETTS)
+    for step in 1:(alg.numWarmUp + alg.numMETTS)
         if step <= alg.numWarmUp
             println("Making warmup METTS number $step")
         else
@@ -628,7 +624,7 @@ function metts_ZM!(finiteMPS::SparseMPS,
 
     _, av_E_last, err_E_last = energies[end, :]
     if abs(err_E_last / av_E_last) * 100 > alg.tol
-        println("The observable does not converge within $numMETTS iterations.")
+        println("The observable does not converge within $(alg.numMETTS) iterations.")
     end
 
     return warmup_energies, energies

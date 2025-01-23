@@ -11,11 +11,12 @@ function compute_entanglement_spectra(finiteMPS::SparseMPS; svCutOff::Float64 = 
         orthogonalizeMPS!(finiteMPS, siteIdx)
 
         # construct initial theta
-        theta = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                        (1, 2), (3, 4))
+        theta = permute(finiteMPS[siteIdx] *
+                        permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                        ((1, 2), (3, 4)))
 
         #  perform SVD and truncate to desired bond dimension
-        U, S, V, ϵ = tsvd(theta, (1, 2), (3, 4); trunc = truncbelow(svCutOff))
+        U, S, V, ϵ = tsvd(theta, ((1, 2), (3, 4)); trunc = truncbelow(svCutOff))
         S /= norm(S)
         entanglementSpectra[siteIdx] = real.(diagTM(S))
     end
@@ -38,7 +39,7 @@ function compute_arbitrary_bipartition(finiteMPS::SparseMPS, openPositions::Vect
     N = length(finiteMPS)
 
     # initialize reduced density matrix
-    reducedDensityMatrix = TensorMap(ones, space(finiteMPS[1], 1), space(finiteMPS[1], 1))
+    reducedDensityMatrix = ones(ComplexF64, space(finiteMPS[1], 1), space(finiteMPS[1], 1))
     numberOfOpenPhysicalIndices = 0
     for siteIdx in 1:N
         if siteIdx < N
@@ -83,8 +84,8 @@ function compute_arbitrary_bipartition(finiteMPS::SparseMPS, openPositions::Vect
 
     # permute indices correctly
     reducedDensityMatrix = permute(reducedDensityMatrix,
-                                   Tuple(idx for idx in 1:2:numberOfOpenPhysicalIndices),
-                                   Tuple(idx for idx in 2:2:numberOfOpenPhysicalIndices))
+                                   (Tuple(idx for idx in 1:2:numberOfOpenPhysicalIndices),
+                                    Tuple(idx for idx in 2:2:numberOfOpenPhysicalIndices)))
     return reducedDensityMatrix
 end
 
