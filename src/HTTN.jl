@@ -34,7 +34,7 @@ export SineGordonModel
 export MassiveSchwingerParameters
 export MassiveSchwingerModel
 export initializeVacuumMPS, initializeMPS
-export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG
+export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG, constructSinCos
 export updateBogoliubovParameters
 export local_number_operators
 export pairing_operators
@@ -44,7 +44,7 @@ export find_groundstate, find_excitedstate
 export DMRG2, DMRG2BO
 export perform_timestep!
 export TDVP2, TDVP2BO
-export metts, metts_basis, transform_basis!
+export metts, metts_basis, metts_ZM, transform_basis!
 export METTS2
 
 # export mpo compression functions
@@ -65,6 +65,7 @@ export infimum_larger_deg
 export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
 export save_to_file, load_from_file
+export compute_average
 
 # export Bogoliubov transformation functions
 export squeezingOp, singleSqueezingOp
@@ -76,6 +77,7 @@ include("utility/vectorSpaces.jl")
 include("utility/SparseMPS.jl")
 include("utility/SparseMPO.jl")
 include("utility/environments.jl")
+include("utility/statAnalysis.jl")
 
 include("models/qft_models.jl")
 include("models/mS_sG.jl")

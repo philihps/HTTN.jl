@@ -38,7 +38,7 @@ function constructIdentityMPO(physSpaces::Vector{<:Union{ElementarySpace,
     identityMPO = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces))
     for (siteIdx, physSpace) in enumerate(physSpaces)
         dimPhysSpace = dim(physSpace)
-        localMPO = zeros(Float64, dim(virtVecSpace), dim(physSpace), dim(virtVecSpace),
+        localMPO = zeros(ComplexF64, dim(virtVecSpace), dim(physSpace), dim(virtVecSpace),
                          dim(physSpace))
         localMPO[1, :, 1, :] = diagm(ones(dimPhysSpace))
         identityMPO[siteIdx] = TensorMap(localMPO, virtVecSpace ⊗ physSpace,

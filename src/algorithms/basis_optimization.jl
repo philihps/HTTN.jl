@@ -1,6 +1,6 @@
 function convertLocalOperatorsToTwoBodyGate(localOperators::Vector{<:AbstractTensorMap})
-    kroneckerTensor = TensorMap(ones, space(localOperators[1], 3)',
-                                space(localOperators[2], 3))
+    kroneckerTensor = ones(ComplexF64, space(localOperators[1], 3)',
+                           space(localOperators[2], 3))
     @tensor twoBodyGate[-1 -2; -3 -4] := localOperators[1][-1, -3, 1] *
                                          localOperators[2][-2, -4, 2] *
                                          kroneckerTensor[1, 2]
@@ -14,18 +14,18 @@ function applyTwoModeTransformation(twoModeU::AbstractTensorMap,
 end
 
 function computeRenyiEntropy(twoSiteTensor::TensorMap)
-    _, S, _ = tsvd(twoSiteTensor, (1, 2), (3, 4))
+    _, S, _ = tsvd(twoSiteTensor, ((1, 2), (3, 4)))
     return 2 * log(tr(S))
 end
 
 function computeEntropy(twoSiteTensor::TensorMap)
-    _, S, _ = tsvd(twoSiteTensor, (1, 2), (3, 4))
+    _, S, _ = tsvd(twoSiteTensor, ((1, 2), (3, 4)))
     vnEntropy = abs(-tr(S^2 * log(S^2)))
     return vnEntropy
 end
 
 function matrixExponentialSeries(operator::TensorMap, nMax::Int64)
-    matrixExp = sum([1 / factorial(n) * operator^n for n in collect(0:nMax)])
+    matrixExp = sum([1 / Float64(factorial(big(n))) * operator^n for n in collect(0:nMax)])
     return matrixExp
 end
 
@@ -67,6 +67,8 @@ function singleSqueezingOp(ξ::Union{Int64,Float64,ComplexF64},
                            nMax::Int64,
                            physSpace::ElementarySpace)
     """
+    Squeezing operator for zero mode
+        
     S = e^{-tanh(ξ) . K_A_plus} . e^{-2 . log(cosh(ξ)) . K_A_0} . e^{tanh(ξ) . K_A_min}
     K_A_0 = (1/2) * (N_{-k} + N_k + Id)
     K_A_plus = Cr_k . Cr_{-k}
@@ -127,9 +129,9 @@ function analyticGradientCostFunction(ξ::Union{Int64,Float64,ComplexF64},
                                       twoSiteTensor::TensorMap)
     sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
     SPsi = applyTwoModeTransformation(sqOp, twoSiteTensor)
-    U, S, V = tsvd(SPsi, (1, 2), (3, 4))
+    U, S, V = tsvd(SPsi, ((1, 2), (3, 4)))
     dPsidXi = gradient_squeezed_tensor(ξ, nMax, kL, kR, PL, PR, twoSiteTensor)
-    dPsidXi = permute(dPsidXi, (1, 2), (3, 4))
+    dPsidXi = permute(dPsidXi, ((1, 2), (3, 4)))
     dSVdXi = real(gradient_singular_value_matrix(U, dPsidXi, V))
     analyticGradient = 2 / tr(S) * tr(dSVdXi)
     return analyticGradient

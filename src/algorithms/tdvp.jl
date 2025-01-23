@@ -62,15 +62,15 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
     for siteIdx in N:-1:2
 
         # bring tensor into right-canonical form
-        U, S, Vdag = tsvd(vectorMPS[1][siteIdx], (1,), (2, 3))
+        U, S, Vdag = tsvd(vectorMPS[1][siteIdx], ((1,), (2, 3)))
         @tensor nullSpaceProjector[-1 -2; -3 -4] := Vdag'[-1, -2, 1] * Vdag[1, -3, -4]
         nullSpaceProjector = one(nullSpaceProjector) - nullSpaceProjector
 
         # construct density matrix for Krylov vectors
-        reducedDensityMatrix = TensorMap(zeros, ComplexF64, codomain(nullSpaceProjector),
-                                         domain(nullSpaceProjector))
+        reducedDensityMatrix = zeros(ComplexF64, codomain(nullSpaceProjector),
+                                     domain(nullSpaceProjector))
         for mpsIdx in 2:dimKrylovSpace
-            mpsTensor = permute(vectorMPS[mpsIdx][siteIdx], (1,), (2, 3))
+            mpsTensor = permute(vectorMPS[mpsIdx][siteIdx], ((1,), (2, 3)))
             @tensor rdm[-1 -2; -3 -4] := mpsTensor'[-1, -2, 1] * mpsTensor[1, -3, -4]
             reducedDensityMatrix += rdm
         end
@@ -108,7 +108,7 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
         end
 
         # permute physical index back
-        Bx = permute(Bx, (1, 2), (3,))
+        Bx = permute(Bx, ((1, 2), (3,)))
 
         # shift orthogonality center one site to the left using Bx' and replace tensor at site siteIdx with Bx
         for mpsIdx in 1:dimKrylovSpace
@@ -175,9 +175,9 @@ function perform_timestep!(finiteMPS::SparseMPS,
     for siteIdx in 1:+1:(length(finiteMPS) - 1)
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                      (1, 2),
-                      (3, 4))
+        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                      ((1, 2),
+                       (3, 4)))
 
         # compute H(n, n + 1) and apply it to AC(n, n + 1) to evolve it with exp(-1im * timeStep/2 * H(n, n + 1))
         newAC2, convHist = exponentiate(x -> applyAC2(x,
@@ -191,13 +191,13 @@ function perform_timestep!(finiteMPS::SparseMPS,
 
         #  perform SVD and truncate to desired bond dimension
         U, S, V, ϵ = tsvd(newAC2,
-                          (1, 2),
-                          (3, 4);
+                          ((1, 2),
+                           (3, 4));
                           trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
                           alg = TensorKit.SVD(),)
         S /= norm(S)
-        U = permute(U, (1, 2), (3,))
-        V = permute(S * V, (1, 2), (3,))
+        U = permute(U, ((1, 2), (3,)))
+        V = permute(S * V, ((1, 2), (3,)))
         truncationErrors = vcat(truncationErrors, ϵ)
 
         # assign updated tensors
@@ -224,9 +224,9 @@ function perform_timestep!(finiteMPS::SparseMPS,
     for siteIdx in (length(finiteMPS) - 1):-1:1
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                      (1, 2),
-                      (3, 4))
+        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                      ((1, 2),
+                       (3, 4)))
 
         # compute H(n, n + 1) and apply it to AC(n, n + 1) to evolve it with exp(-1im * timeStep/2 * H(n, n + 1))
         newAC2, convHist = exponentiate(x -> applyAC2(x,
@@ -240,13 +240,13 @@ function perform_timestep!(finiteMPS::SparseMPS,
 
         #  perform SVD and truncate to desired bond dimension
         U, S, V, ϵ = tsvd(newAC2,
-                          (1, 2),
-                          (3, 4);
+                          ((1, 2),
+                           (3, 4));
                           trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
                           alg = TensorKit.SVD(),)
         S /= norm(S)
-        U = permute(U * S, (1, 2), (3,))
-        V = permute(V, (1, 2), (3,))
+        U = permute(U * S, ((1, 2), (3,)))
+        V = permute(V, ((1, 2), (3,)))
         truncationErrors = vcat(truncationErrors, ϵ)
 
         # assign updated tensors
@@ -314,9 +314,9 @@ function perform_timestep!(finiteMPS::SparseMPS,
     for siteIdx in 1:+1:(length(finiteMPS) - 1)
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                      (1, 2),
-                      (3, 4))
+        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                      ((1, 2),
+                       (3, 4)))
 
         # compute H(n, n + 1) and apply it to AC(n, n + 1) to evolve it with exp(-1im * timeStep/2 * H(n, n + 1))
         newAC2, convHist = exponentiate(x -> applyAC2(x,
@@ -432,13 +432,13 @@ function perform_timestep!(finiteMPS::SparseMPS,
 
         #  perform SVD and truncate to desired bond dimension
         U, S, V, ϵ = tsvd(newAC2,
-                          (1, 2),
-                          (3, 4);
+                          ((1, 2),
+                           (3, 4));
                           trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
                           alg = TensorKit.SVD(),)
         S /= norm(S)
-        U = permute(U, (1, 2), (3,))
-        V = permute(S * V, (1, 2), (3,))
+        U = permute(U, ((1, 2), (3,)))
+        V = permute(S * V, ((1, 2), (3,)))
         truncationErrors = vcat(truncationErrors, ϵ)
 
         # assign updated tensors
@@ -465,9 +465,9 @@ function perform_timestep!(finiteMPS::SparseMPS,
     for siteIdx in (length(finiteMPS) - 1):-1:1
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                      (1, 2),
-                      (3, 4))
+        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                      ((1, 2),
+                       (3, 4)))
 
         # compute H(n, n + 1) and apply it to AC(n, n + 1) to evolve it with exp(-1im * timeStep/2 * H(n, n + 1))
         newAC2, convHist = exponentiate(x -> applyAC2(x,
@@ -584,13 +584,13 @@ function perform_timestep!(finiteMPS::SparseMPS,
 
         #  perform SVD and truncate to desired bond dimension
         U, S, V, ϵ = tsvd(newAC2,
-                          (1, 2),
-                          (3, 4);
+                          ((1, 2),
+                           (3, 4));
                           trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
                           alg = TensorKit.SVD(),)
         S /= norm(S)
-        U = permute(U * S, (1, 2), (3,))
-        V = permute(V, (1, 2), (3,))
+        U = permute(U * S, ((1, 2), (3,)))
+        V = permute(V, ((1, 2), (3,)))
         truncationErrors = vcat(truncationErrors, ϵ)
 
         # assign updated tensors

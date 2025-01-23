@@ -101,9 +101,9 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 
                 # construct initial theta
                 theta = permute(finiteMPS[siteIdx] *
-                                permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                                (1, 2),
-                                (3, 4))
+                                permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                                ((1, 2),
+                                 (3, 4)))
 
                 # optimize wave function to get newAC
                 eigenVal, eigenVec = eigsolve(theta,
@@ -123,13 +123,13 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta,
-                                  (1, 2),
-                                  (3, 4);
+                                  ((1, 2),
+                                   (3, 4));
                                   trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
-                U = permute(U, (1, 2), (3,))
-                V = permute(S * V, (1, 2), (3,))
+                U = permute(U, ((1, 2), (3,)))
+                V = permute(S * V, ((1, 2), (3,)))
 
                 # compute error
                 v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
@@ -152,9 +152,9 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 
                 # construct initial theta
                 theta = permute(finiteMPS[siteIdx] *
-                                permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                                (1, 2),
-                                (3, 4))
+                                permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                                ((1, 2),
+                                 (3, 4)))
 
                 # optimize wave function to get newAC
                 eigenVal, eigenVec = eigsolve(theta,
@@ -174,13 +174,13 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta,
-                                  (1, 2),
-                                  (3, 4);
+                                  ((1, 2),
+                                   (3, 4));
                                   trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
-                U = permute(U * S, (1, 2), (3,))
-                V = permute(V, (1, 2), (3,))
+                U = permute(U * S, ((1, 2), (3,)))
+                V = permute(V, ((1, 2), (3,)))
 
                 # compute error
                 v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
@@ -330,9 +330,9 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
 
                 # construct initial theta
                 theta = permute(finiteMPS[siteIdx] *
-                                permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                                (1, 2),
-                                (3, 4))
+                                permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                                ((1, 2),
+                                 (3, 4)))
 
                 # optimize wave function to get newAC
                 eigenVal, eigenVec = eigsolve(theta,
@@ -473,13 +473,13 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta,
-                                  (1, 2),
-                                  (3, 4);
+                                  ((1, 2),
+                                   (3, 4));
                                   trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
-                U = permute(U, (1, 2), (3,))
-                V = permute(S * V, (1, 2), (3,))
+                U = permute(U, ((1, 2), (3,)))
+                V = permute(S * V, ((1, 2), (3,)))
 
                 # compute error
                 v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
@@ -507,9 +507,9 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
 
                 # construct initial theta
                 theta = permute(finiteMPS[siteIdx] *
-                                permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                                (1, 2),
-                                (3, 4))
+                                permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                                ((1, 2),
+                                 (3, 4)))
 
                 # optimize wave function to get newAC
                 eigenVal, eigenVec = eigsolve(theta,
@@ -650,13 +650,13 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta,
-                                  (1, 2),
-                                  (3, 4);
+                                  ((1, 2),
+                                   (3, 4));
                                   trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
-                U = permute(U * S, (1, 2), (3,))
-                V = permute(V, (1, 2), (3,))
+                U = permute(U * S, ((1, 2), (3,)))
+                V = permute(V, ((1, 2), (3,)))
 
                 # compute error
                 v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
@@ -793,18 +793,18 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
 
                 # construct initial theta
                 thetaN = permute(finiteMPS[siteIdx] *
-                                 permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                                 (1, 2),
-                                 (3, 4))
+                                 permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                                 ((1, 2),
+                                  (3, 4)))
 
                 # construct thetas for orthStates
                 thetasO = Vector{TensorMap{ComplexF64}}(undef, length(previoMPS))
                 for orthMPO in eachindex(previoMPS)
                     thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] *
                                                permute(previoMPS[orthMPO][siteIdx + 1],
-                                                       (1,), (2, 3)),
-                                               (1, 2),
-                                               (3, 4))
+                                                       ((1,), (2, 3))),
+                                               ((1, 2),
+                                                (3, 4)))
                 end
 
                 # optimize wave function to get newAC
@@ -828,13 +828,13 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta,
-                                  (1, 2),
-                                  (3, 4);
+                                  ((1, 2),
+                                   (3, 4));
                                   trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
-                U = permute(U, (1, 2), (3,))
-                V = permute(S * V, (1, 2), (3,))
+                U = permute(U, ((1, 2), (3,)))
+                V = permute(S * V, ((1, 2), (3,)))
 
                 # compute error
                 v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
@@ -853,14 +853,14 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
 
                 # shift orthogonality center of previoMPS to the right
                 for orthIdx in eachindex(previoMPS)
-                    (Q, R) = leftorth(previoMPS[orthIdx][siteIdx], (1, 2), (3,);
+                    (Q, R) = leftorth(previoMPS[orthIdx][siteIdx], ((1, 2), (3,));
                                       alg = QRpos())
-                    previoMPS[orthIdx][siteIdx + 0] = permute(Q, (1, 2), (3,))
+                    previoMPS[orthIdx][siteIdx + 0] = permute(Q, ((1, 2), (3,)))
                     previoMPS[orthIdx][siteIdx + 1] = permute(R *
                                                               permute(previoMPS[orthIdx][siteIdx + 1],
-                                                                      (1,), (2, 3)),
-                                                              (1, 2),
-                                                              (3,))
+                                                                      ((1,), (2, 3))),
+                                                              ((1, 2),
+                                                               (3,)))
                 end
 
                 # update projEnvsL
@@ -876,18 +876,18 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
 
                 # construct initial theta
                 thetaN = permute(finiteMPS[siteIdx] *
-                                 permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                                 (1, 2),
-                                 (3, 4))
+                                 permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                                 ((1, 2),
+                                  (3, 4)))
 
                 # construct thetas for orthStates
                 thetasO = Vector{TensorMap{ComplexF64}}(undef, length(previoMPS))
                 for orthMPO in eachindex(previoMPS)
                     thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] *
                                                permute(previoMPS[orthMPO][siteIdx + 1],
-                                                       (1,), (2, 3)),
-                                               (1, 2),
-                                               (3, 4))
+                                                       ((1,), (2, 3))),
+                                               ((1, 2),
+                                                (3, 4)))
                 end
 
                 # optimize wave function to get newAC
@@ -911,13 +911,13 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta,
-                                  (1, 2),
-                                  (3, 4);
+                                  ((1, 2),
+                                   (3, 4));
                                   trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
-                U = permute(U * S, (1, 2), (3,))
-                V = permute(V, (1, 2), (3,))
+                U = permute(U * S, ((1, 2), (3,)))
+                V = permute(V, ((1, 2), (3,)))
 
                 # compute error
                 v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
@@ -936,13 +936,13 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
 
                 # shift orthogonality center of previoMPS to the right
                 for orthIdx in eachindex(previoMPS)
-                    (L, Q) = rightorth(previoMPS[orthIdx][siteIdx + 1], (1,), (2, 3);
+                    (L, Q) = rightorth(previoMPS[orthIdx][siteIdx + 1], ((1,), (2, 3));
                                        alg = LQpos())
                     previoMPS[orthIdx][siteIdx + 0] = permute(permute(previoMPS[orthIdx][siteIdx + 0],
-                                                                      (1, 2), (3,)) * L,
-                                                              (1, 2),
-                                                              (3,))
-                    previoMPS[orthIdx][siteIdx + 1] = permute(Q, (1, 2), (3,))
+                                                                      ((1, 2), (3,))) * L,
+                                                              ((1, 2),
+                                                               (3,)))
+                    previoMPS[orthIdx][siteIdx + 1] = permute(Q, ((1, 2), (3,)))
                 end
 
                 # update projEnvsR
@@ -1068,18 +1068,18 @@ function find_excitedstate!(finiteMPS::SparseMPS,
 
                 # construct initial theta
                 thetaN = permute(finiteMPS[siteIdx] *
-                                 permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                                 (1, 2),
-                                 (3, 4))
+                                 permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                                 ((1, 2),
+                                  (3, 4)))
 
                 # construct thetas for orthStates
                 thetasO = Vector{TensorMap{ComplexF64}}(undef, length(previoMPS))
                 for orthMPO in eachindex(previoMPS)
                     thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] *
                                                permute(previoMPS[orthMPO][siteIdx + 1],
-                                                       (1,), (2, 3)),
-                                               (1, 2),
-                                               (3, 4))
+                                                       ((1,), (2, 3))),
+                                               ((1, 2),
+                                                (3, 4)))
                 end
 
                 # optimize wave function to get newAC
@@ -1221,13 +1221,13 @@ function find_excitedstate!(finiteMPS::SparseMPS,
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta,
-                                  (1, 2),
-                                  (3, 4);
+                                  ((1, 2),
+                                   (3, 4));
                                   trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
-                U = permute(U, (1, 2), (3,))
-                V = permute(S * V, (1, 2), (3,))
+                U = permute(U, ((1, 2), (3,)))
+                V = permute(S * V, ((1, 2), (3,)))
 
                 # compute error
                 v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
@@ -1246,14 +1246,14 @@ function find_excitedstate!(finiteMPS::SparseMPS,
 
                 # shift orthogonality center of previoMPS to the right
                 for orthIdx in eachindex(previoMPS)
-                    (Q, R) = leftorth(previoMPS[orthIdx][siteIdx], (1, 2), (3,);
+                    (Q, R) = leftorth(previoMPS[orthIdx][siteIdx], ((1, 2), (3,));
                                       alg = QRpos())
-                    previoMPS[orthIdx][siteIdx + 0] = permute(Q, (1, 2), (3,))
+                    previoMPS[orthIdx][siteIdx + 0] = permute(Q, ((1, 2), (3,)))
                     previoMPS[orthIdx][siteIdx + 1] = permute(R *
                                                               permute(previoMPS[orthIdx][siteIdx + 1],
-                                                                      (1,), (2, 3)),
-                                                              (1, 2),
-                                                              (3,))
+                                                                      ((1,), (2, 3))),
+                                                              ((1, 2),
+                                                               (3,)))
                 end
 
                 # update projEnvsL
@@ -1269,18 +1269,18 @@ function find_excitedstate!(finiteMPS::SparseMPS,
 
                 # construct initial theta
                 thetaN = permute(finiteMPS[siteIdx] *
-                                 permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                                 (1, 2),
-                                 (3, 4))
+                                 permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                                 ((1, 2),
+                                  (3, 4)))
 
                 # construct thetas for orthStates
                 thetasO = Vector{TensorMap{ComplexF64}}(undef, length(previoMPS))
                 for orthMPO in eachindex(previoMPS)
                     thetasO[orthMPO] = permute(previoMPS[orthMPO][siteIdx] *
                                                permute(previoMPS[orthMPO][siteIdx + 1],
-                                                       (1,), (2, 3)),
-                                               (1, 2),
-                                               (3, 4))
+                                                       ((1,), (2, 3))),
+                                               ((1, 2),
+                                                (3, 4)))
                 end
 
                 # optimize wave function to get newAC
@@ -1422,13 +1422,13 @@ function find_excitedstate!(finiteMPS::SparseMPS,
 
                 #  perform SVD and truncate to desired bond dimension
                 U, S, V, ϵ = tsvd(newTheta,
-                                  (1, 2),
-                                  (3, 4);
+                                  ((1, 2),
+                                   (3, 4));
                                   trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
-                U = permute(U * S, (1, 2), (3,))
-                V = permute(V, (1, 2), (3,))
+                U = permute(U * S, ((1, 2), (3,)))
+                V = permute(V, ((1, 2), (3,)))
 
                 # compute error
                 v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
@@ -1447,13 +1447,13 @@ function find_excitedstate!(finiteMPS::SparseMPS,
 
                 # shift orthogonality center of previoMPS to the right
                 for orthIdx in eachindex(previoMPS)
-                    (L, Q) = rightorth(previoMPS[orthIdx][siteIdx + 1], (1,), (2, 3);
+                    (L, Q) = rightorth(previoMPS[orthIdx][siteIdx + 1], ((1,), (2, 3));
                                        alg = LQpos())
                     previoMPS[orthIdx][siteIdx + 0] = permute(permute(previoMPS[orthIdx][siteIdx + 0],
-                                                                      (1, 2), (3,)) * L,
-                                                              (1, 2),
-                                                              (3,))
-                    previoMPS[orthIdx][siteIdx + 1] = permute(Q, (1, 2), (3,))
+                                                                      ((1, 2), (3,))) * L,
+                                                              ((1, 2),
+                                                               (3,)))
+                    previoMPS[orthIdx][siteIdx + 1] = permute(Q, ((1, 2), (3,)))
                 end
 
                 # update projEnvsR

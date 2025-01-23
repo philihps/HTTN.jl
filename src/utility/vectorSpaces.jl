@@ -133,10 +133,9 @@ function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace,
     # construct MPS with physSpaces and virtSpaces
     deltaMPS = Vector{TensorMap{ComplexF64}}(undef, numSites)
     for siteIdx in 1:numSites
-        deltaMPS[siteIdx] = TensorMap(ones,
-                                      ComplexF64,
-                                      virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
-                                      virtSpaces[siteIdx + 1])
+        deltaMPS[siteIdx] = ones(ComplexF64,
+                                 virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
+                                 virtSpaces[siteIdx + 1])
     end
     return SparseMPS(deltaMPS)
 end

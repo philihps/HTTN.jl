@@ -19,15 +19,17 @@ struct SparseMPS{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPS
 
         # bring MPS into right canonical form
         for siteIdx in length(mpsTensors):-1:1
-            (L, Q) = rightorth(mpsTensors[siteIdx], (1,), (2, 3); alg = LQpos())
+            (L, Q) = rightorth(mpsTensors[siteIdx], ((1,), (2, 3)); alg = LQpos())
             normalizeMPS && normalize!(L)
             if siteIdx > 1
-                mpsTensors[siteIdx - 1] = permute(permute(mpsTensors[siteIdx - 1], (1, 2),
-                                                          (3,)) * L, (1, 2), (3,))
-                mpsTensors[siteIdx - 0] = permute(Q, (1, 2), (3,))
+                mpsTensors[siteIdx - 1] = permute(permute(mpsTensors[siteIdx - 1],
+                                                          ((1, 2),
+                                                           (3,))) * L, ((1, 2), (3,)))
+                mpsTensors[siteIdx - 0] = permute(Q, ((1, 2), (3,)))
             else
-                mpsTensors[siteIdx - 0] = permute(L * permute(Q, (1,), (2, 3)), (1, 2),
-                                                  (3,))
+                mpsTensors[siteIdx - 0] = permute(L * permute(Q, ((1,), (2, 3))),
+                                                  ((1, 2),
+                                                   (3,)))
             end
         end
 
@@ -170,18 +172,20 @@ function orthogonalizeMPS!(finiteMPS, orthCenter::Int = 1)
 
     # bring sites 1 to orthCenter - 1 into left-orthogonal form
     for siteIdx in 1:+1:(orthCenter - 1)
-        (Q, R) = leftorth(finiteMPS[siteIdx], (1, 2), (3,); alg = QRpos())
-        finiteMPS[siteIdx + 0] = permute(Q, (1, 2), (3,))
-        finiteMPS[siteIdx + 1] = permute(R * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                                         (1, 2), (3,))
+        (Q, R) = leftorth(finiteMPS[siteIdx], ((1, 2), (3,)); alg = QRpos())
+        finiteMPS[siteIdx + 0] = permute(Q, ((1, 2), (3,)))
+        finiteMPS[siteIdx + 1] = permute(R *
+                                         permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+                                         ((1, 2), (3,)))
     end
 
     # bring sites orthCenter + 1 to N into right-canonical form
     for siteIdx in length(finiteMPS):-1:(orthCenter + 1)
-        (L, Q) = rightorth(finiteMPS[siteIdx], (1,), (2, 3); alg = LQpos())
-        finiteMPS[siteIdx - 1] = permute(permute(finiteMPS[siteIdx - 1], (1, 2), (3,)) * L,
-                                         (1, 2), (3,))
-        finiteMPS[siteIdx - 0] = permute(Q, (1, 2), (3,))
+        (L, Q) = rightorth(finiteMPS[siteIdx], ((1,), (2, 3)); alg = LQpos())
+        finiteMPS[siteIdx - 1] = permute(permute(finiteMPS[siteIdx - 1], ((1, 2), (3,))) *
+                                         L,
+                                         ((1, 2), (3,)))
+        finiteMPS[siteIdx - 0] = permute(Q, ((1, 2), (3,)))
     end
     return finiteMPS
 end
@@ -218,7 +222,7 @@ function dotMPS(mpsA::SparseMPS, mpsB::SparseMPS)
         throw(DimensionMismatch("lengths of MPS A ($N) and MPS B ($length(mpsB)) do not match"))
 
     # initialize overlap
-    overlapMPS = TensorMap(ones, space(mpsA[1], 1), space(mpsB[1], 1))
+    overlapMPS = ones(Float64, space(mpsA[1], 1), space(mpsB[1], 1))
     for siteIdx in 1:N
         @tensor overlapMPS[-1; -2] := overlapMPS[1, 2] * conj(mpsA[siteIdx][1, 3, -1]) *
                                       mpsB[siteIdx][2, 3, -2]

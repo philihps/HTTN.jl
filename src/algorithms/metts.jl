@@ -10,9 +10,7 @@ For more information on METTS, see the following references:
 =#
 @kwdef struct METTS2
     numWarmUp::Int64 = 10
-    numMETTS::Int64 = 500
-    numMETTSMin::Int64 = 20
-    numMETTSMax::Int64 = 10000
+    numMETTS::Int64 = 3000
     krylovDim::Int = 2
     bondDim::Int = 1000
     compressionAlg::String = "zipUp"
@@ -21,6 +19,8 @@ For more information on METTS, see the following references:
     truncErrM::Float64 = 1e-10 # from basis extension
     tol::Float64 = 1.0
     doBasisExtend::Bool = true
+    sqZero::Bool = true
+    transfWidth::Float64 = 0.1
     verbosePrint = false
 end
 """
@@ -89,7 +89,7 @@ function sample_non_ZM(localTensor, physSpace)
 
     while n <= dimPhysSpace
         targetQN = U1Space(physSpaceQNs[n] => 1)
-        projVector = TensorMap(ones, targetQN, physSpace)
+        projVector = ones(ComplexF64, targetQN, physSpace)
 
         @tensor An[-1 -2; -3] := projVector[-2, 2] * localTensor[-1, 2, -3]
         pn = real(tr(An' * An))
@@ -310,10 +310,10 @@ function sample_MPS_block!(finiteMPS::SparseMPS, eigStates)
     return sampleResult, sampleMomentum
 end
 
-function transform_basis!(finiteMPS, model; sqZero, paramRange::Tuple = (-0.15, 0.15))
+function transform_basis!(finiteMPS, model; sqZero, transfWidth)
     """
     Transform momentum pair mode with squeezing operator defined 
-    for parameters within paramRange
+    for ξ ∈ Normal(μ = 0.0, σ = transfWidth)
 
     Returns:
     - finiteMPS: transformed MPS
@@ -327,8 +327,8 @@ function transform_basis!(finiteMPS, model; sqZero, paramRange::Tuple = (-0.15, 
     for siteIdx in eachindex(finiteMPS)
         k = abs(siteIdx ÷ 2)
         nMaxk = model.modeOccupations[2, :][siteIdx]
-        ξ = normal_in_interval(paramRange[1] * nMaxk, paramRange[2] * nMaxk)
-
+        # ξ = normal_in_interval(transfRange[1] * nMaxk, transfRange[2] * nMaxk)
+        ξ = rand(Normal(0.0, transfWidth * nMaxk))
         if siteIdx == 1 && sqZero
             physSpace = space(finiteMPS[1], 2)
             singleSqOp = singleSqueezingOp(ξ, nMaxk, physSpace)
@@ -350,11 +350,11 @@ function transform_basis!(finiteMPS, model; sqZero, paramRange::Tuple = (-0.15, 
                                                finiteMPS[siteIdx + 0][-1, 1, 2] *
                                                finiteMPS[siteIdx + 1][2, 3, -4]
 
-            U, S, V, _ = tsvd(localBond, (1, 2), (3, 4))
+            U, S, V, _ = tsvd(localBond, ((1, 2), (3, 4)))
 
             S /= norm(S)
-            U = permute(U, (1, 2), (3,))
-            V = permute(S * V, (1, 2), (3,))
+            U = permute(U, ((1, 2), (3,)))
+            V = permute(S * V, ((1, 2), (3,)))
 
             finiteMPS[siteIdx + 0] = U
             finiteMPS[siteIdx + 1] = V
@@ -442,8 +442,7 @@ function metts_basis!(finiteMPS::SparseMPS,
                       model,
                       numTimeStep::Int64,
                       finalBeta::Union{Int64,Float64},
-                      alg::METTS2,
-                      sqZero::Bool)
+                      alg::METTS2)
     """
     METTS sampling with randomly mixed basis
 
@@ -460,14 +459,12 @@ function metts_basis!(finiteMPS::SparseMPS,
     timeStep = 1im * (timeRanges[2] - timeRanges[1])
     println("Running METTS algorithm for: timestep=$(timeStep), finalT=$(1/finalBeta)")
 
-    numMETTS = max(alg.numMETTS, alg.numMETTSMax)
     energies = zeros(Float64, 0, 3)
     warmup_energies = zeros(Float64, 0, 3)
-    truncErrs = zeros(Float64, alg.numWarmUp + numMETTS)
-    totalNumMETTS = 0
+    truncErrs = zeros(Float64, alg.numWarmUp + alg.numMETTS)
 
     # main METTS loop
-    for step in 1:(alg.numWarmUp + numMETTS)
+    for step in 1:(alg.numWarmUp + alg.numMETTS)
         if step <= alg.numWarmUp
             println("Making warmup METTS number $step")
         else
@@ -500,16 +497,16 @@ function metts_basis!(finiteMPS::SparseMPS,
                     err_E,
                     av_E - err_E,
                     av_E + err_E)
-            if step - alg.numWarmUp > alg.numMETTSMin && err_E > 0 &&
-               abs(err_E / av_E) * 100 <= alg.tol
-                totalNumMETTS = step - alg.numWarmUp
-                println("Standard error is within $(alg.tol)% of the average observable at METTS number $(totalNumMETTS)")
-                break
-            end
+            # if step - alg.numWarmUp > alg.numMETTSMin && err_E > 0 &&
+            #    abs(err_E / av_E) * 100 <= alg.tol
+            #     println("Standard error is within $(alg.tol)% of the average observable at METTS number $(totalNumMETTS)")
+            #     break
+            # end
         end
 
         # do basis transformation at each step
-        finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = sqZero)
+        finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = alg.sqZero,
+                                            transfWidth = alg.transfWidth)
 
         # collapse to a new state with local basis defined by mpsSample and momSample
         mpsSample, momSample = sample_MPS!(finiteMPS)
@@ -517,8 +514,9 @@ function metts_basis!(finiteMPS::SparseMPS,
         println("Sample of local basis (momentum): $(momSample)")
         finiteMPS = sample_to_CPS(mpsSample, momSample, model)
 
+        # back transformation
         for siteIdx in eachindex(finiteMPS)
-            if siteIdx == 1 && sqZero
+            if siteIdx == 1 && alg.sqZero
                 sqOp = sqOps[1]
                 @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
 
@@ -531,11 +529,11 @@ function metts_basis!(finiteMPS::SparseMPS,
                                                    finiteMPS[siteIdx + 0][-1, 1, 2] *
                                                    finiteMPS[siteIdx + 1][2, 3, -4]
 
-                U, S, V, ϵ = tsvd(localBond, (1, 2), (3, 4))
+                U, S, V, ϵ = tsvd(localBond, ((1, 2), (3, 4)))
 
                 S /= norm(S)
-                U = permute(U, (1, 2), (3,))
-                V = permute(S * V, (1, 2), (3,))
+                U = permute(U, ((1, 2), (3,)))
+                V = permute(S * V, ((1, 2), (3,)))
 
                 finiteMPS[siteIdx + 0] = U
                 finiteMPS[siteIdx + 1] = V
@@ -546,10 +544,90 @@ function metts_basis!(finiteMPS::SparseMPS,
 
     _, av_E_last, err_E_last = energies[end, :]
     if abs(err_E_last / av_E_last) * 100 > alg.tol
-        println("The observable does not converge within $numMETTS iterations.")
+        println("The observable does not converge within $(alg.numMETTS) iterations.")
     end
 
-    return warmup_energies, energies, truncErrs, totalNumMETTS
+    return warmup_energies, energies, truncErrs
+end
+
+function metts_ZM!(finiteMPS::SparseMPS,
+                   finiteMPO::SparseMPO,
+                   model,
+                   finalBeta::Union{Int64,Float64},
+                   alg::METTS2)
+    """
+    METTS sampling with randomly mixed basis for the zero mode
+    """
+    zeroDim = model.physSpaces[1].dims.values[1]
+
+    energies = zeros(Float64, 0, 3)
+    warmup_energies = zeros(Float64, 0, 3)
+
+    for step in 1:(alg.numWarmUp + alg.numMETTS)
+        if step <= alg.numWarmUp
+            println("Making warmup METTS number $step")
+        else
+            println("Making actual METTS number $(step - alg.numWarmUp)")
+        end
+
+        # perform time evolution with ED
+        hamMPOExp = exp(reshape(convert(Array, finiteMPO[1]), (zeroDim, zeroDim)) *
+                        (-1) * finalBeta / 2)
+        hamMPOExp = TensorMap(hamMPOExp, U1Space(0 => zeroDim),
+                              U1Space(0 => zeroDim))
+        @tensor finiteMPS[1][-1 -2; -3] := hamMPOExp[-2, 1] * finiteMPS[1][-1, 1, -3]
+        finiteMPS[1] /= norm(finiteMPS[1])
+        # measure properties after >= alg.numWarmUp METTS have been made
+        mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
+        if abs(imag(mpoExpVal)) < 1e-12
+            mpoExpVal = real(mpoExpVal)
+        else
+            ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
+        end
+
+        if step <= alg.numWarmUp
+            av_E, err_E = avg_stderr(warmup_energies[:, 1])
+            warmup_energies = vcat(warmup_energies, [mpoExpVal av_E err_E])
+        else
+            av_E, err_E = avg_stderr(energies[:, 1])
+            energies = vcat(energies, [mpoExpVal av_E err_E])
+            @printf("Energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
+            @printf("Estimated energy = %0.6f ± %0.6f  /  [%0.6f, %0.6f]\n",
+                    av_E,
+                    err_E,
+                    av_E - err_E,
+                    av_E + err_E)
+            # if step - alg.numWarmUp > alg.numMETTSMin && err_E > 0 &&
+            #    abs(err_E / av_E) * 100 <= alg.tol
+            #     totalNumMETTS = step - alg.numWarmUp
+            #     println("Standard error is within $(alg.tol)% of the average observable at METTS number $(totalNumMETTS)")
+            #     break
+            # end
+        end
+        # do basis transformation at each step
+        finiteMPS, sqOps = transform_basis!(finiteMPS, model; sqZero = alg.sqZero,
+                                            transfWidth = alg.transfWidth) # normalized
+
+        # collapse to a new state with local basis defined by mpsSample and momSample
+        mpsSample, momSample = sample_MPS!(finiteMPS)
+        println("Sample of local basis (index): $(mpsSample)")
+        println("Sample of local basis (momentum): $(momSample)")
+        finiteMPS = sample_to_CPS(mpsSample, momSample, model)
+
+        # back transformation
+        if alg.sqZero
+            sqOp = sqOps[1]
+            @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
+            finiteMPS[1] = localTensor / norm(localTensor)
+        end
+    end
+
+    _, av_E_last, err_E_last = energies[end, :]
+    if abs(err_E_last / av_E_last) * 100 > alg.tol
+        println("The observable does not converge within $(alg.numMETTS) iterations.")
+    end
+
+    return warmup_energies, energies
 end
 
 function metts(finiteMPS::SparseMPS,
@@ -570,14 +648,24 @@ function metts_basis(finiteMPS::SparseMPS,
                      finiteMPO::SparseMPO,
                      model,
                      numTimeStep::Int64,
-                     finalBeta::Union{Int64,Float64},
-                     alg::METTS2;
-                     sqZero::Bool = true)
+                     finalBeta::Union{Int64,Float64};
+                     alg::METTS2)
     return metts_basis!(deepcopy(finiteMPS),
-                        finiteMPO::SparseMPO,
+                        finiteMPO,
                         model,
-                        numTimeStep::Int64,
-                        finalBeta::Union{Int64,Float64},
-                        alg::METTS2,
-                        sqZero)
+                        numTimeStep,
+                        finalBeta,
+                        alg)
+end
+
+function metts_ZM(finiteMPS::SparseMPS,
+                  finiteMPO::SparseMPO,
+                  model,
+                  finalBeta::Union{Int64,Float64};
+                  alg::METTS2)
+    return metts_ZM!(deepcopy(finiteMPS),
+                     finiteMPO,
+                     model,
+                     finalBeta,
+                     alg)
 end

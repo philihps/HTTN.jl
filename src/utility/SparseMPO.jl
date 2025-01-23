@@ -206,19 +206,20 @@ function orthogonalizeMPO!(finiteMPO::SparseMPO, orthCenter::Int)
 
     # bring sites 1 to orthCenter - 1 into left-orthogonal form
     for siteIdx in 1:+1:(orthCenter - 1)
-        (Q, R) = leftorth(finiteMPO[siteIdx], (4, 1, 2), (3,); alg = QRpos())
-        finiteMPO[siteIdx + 0] = permute(Q, (2, 3), (4, 1))
+        (Q, R) = leftorth(finiteMPO[siteIdx], ((4, 1, 2), (3,)); alg = QRpos())
+        finiteMPO[siteIdx + 0] = permute(Q, ((2, 3), (4, 1)))
         finiteMPO[siteIdx + 1] = permute(R *
-                                         permute(finiteMPO[siteIdx + 1], (1,), (2, 3, 4)),
-                                         (1, 2), (3, 4))
+                                         permute(finiteMPO[siteIdx + 1], ((1,), (2, 3, 4))),
+                                         ((1, 2), (3, 4)))
     end
 
     # bring sites orthCenter + 1 to N into right-canonical form
     for siteIdx in length(finiteMPO):-1:(orthCenter + 1)
-        (L, Q) = rightorth(finiteMPO[siteIdx], (1,), (2, 3, 4); alg = LQpos())
-        finiteMPO[siteIdx - 1] = permute(permute(finiteMPO[siteIdx - 1], (4, 1, 2), (3,)) *
-                                         L, (2, 3), (4, 1))
-        finiteMPO[siteIdx - 0] = permute(Q, (1, 2), (3, 4))
+        (L, Q) = rightorth(finiteMPO[siteIdx], ((1,), (2, 3, 4)); alg = LQpos())
+        finiteMPO[siteIdx - 1] = permute(permute(finiteMPO[siteIdx - 1],
+                                                 ((4, 1, 2), (3,))) *
+                                         L, ((2, 3), (4, 1)))
+        finiteMPO[siteIdx - 0] = permute(Q, ((1, 2), (3, 4)))
     end
     return finiteMPO
 end
@@ -268,12 +269,12 @@ function applyMPO(finiteMPO::SparseMPO,
         mpoEnvR = Vector{TensorMap{ComplexF64}}(undef, N)
 
         # initialize end-points of mpoEnvL and mpoEnvR
-        mpoEnvL[1] = TensorMap(ones, ComplexF64,
-                               space(compressedMPS[1], 1) ⊗ space(finiteMPO[1], 1),
-                               space(finiteMPO[1], 1) ⊗ space(compressedMPS[1], 1))
-        mpoEnvR[N] = TensorMap(ones, ComplexF64,
-                               space(compressedMPS[N], 3)' ⊗ space(finiteMPO[N], 3)',
-                               oneunit(spacetype(compressedMPS[N])))
+        mpoEnvL[1] = ones(ComplexF64,
+                          space(compressedMPS[1], 1) ⊗ space(finiteMPO[1], 1),
+                          space(finiteMPO[1], 1) ⊗ space(compressedMPS[1], 1))
+        mpoEnvR[N] = ones(ComplexF64,
+                          space(compressedMPS[N], 3)' ⊗ space(finiteMPO[N], 3)',
+                          oneunit(spacetype(compressedMPS[N])))
 
         # compute mpoEnvL
         for siteIdx in 1:(N - 1)
@@ -313,7 +314,7 @@ function applyMPO(finiteMPO::SparseMPO,
             end
 
             # update MPS site
-            compressedMPS[siteIdx] = permute(V, (1, 2), (3,))
+            compressedMPS[siteIdx] = permute(V, ((1, 2), (3,)))
         end
 
     elseif compressionAlg == "zipUp"
@@ -331,12 +332,12 @@ function applyMPO(finiteMPO::SparseMPO,
                                                      compressedMPS[siteIdx][1, 2, -3] *
                                                      finiteMPO[siteIdx][3, -2, -4, 2]
                 U, S, V = tsvd(localTensor,
-                               (1, 2),
-                               (3, 4);
+                               ((1, 2),
+                                (3, 4));
                                trunc = truncdim(maxDim) & truncerr(truncErr),
                                alg = TensorKit.SVD(),)
                 # U, S, V = tsvd(localTensor, (1, 2), (3, 4), trunc = truncerr(truncErr), alg = TensorKit.SVD());
-                compressedMPS[siteIdx] = permute(U, (1, 2), (3,))
+                compressedMPS[siteIdx] = permute(U, ((1, 2), (3,)))
                 isomoL = S * V
             else
                 @tensor compressedMPS[siteIdx][-1 -2; -3] := isomoL[-1, 1, 3] *
@@ -358,12 +359,12 @@ function applyMPO(finiteMPO::SparseMPO,
         mpoEnvR = Vector{TensorMap{ComplexF64}}(undef, N)
 
         # initialize end-points of mpoEnvL and mpoEnvR
-        mpoEnvL[1] = TensorMap(ones,
-                               space(compressedMPS[1], 1),
-                               space(finiteMPO[1], 1) ⊗ space(finiteMPS[1], 1))
-        mpoEnvR[N] = TensorMap(ones,
-                               space(finiteMPS[N], 3)' ⊗ space(finiteMPO[N], 3)',
-                               space(compressedMPS[N], 3)')
+        mpoEnvL[1] = ones(ComplexF64,
+                          space(compressedMPS[1], 1),
+                          space(finiteMPO[1], 1) ⊗ space(finiteMPS[1], 1))
+        mpoEnvR[N] = ones(ComplexF64,
+                          space(finiteMPS[N], 3)' ⊗ space(finiteMPO[N], 3)',
+                          space(compressedMPS[N], 3)')
 
         # compute mpoEnvR, since the MPS is in right-canonical form
         for siteIdx in N:-1:2
@@ -390,12 +391,12 @@ function applyMPO(finiteMPO::SparseMPO,
                                                   mpoEnvR[siteIdx + 1][7, 8, -4]
 
                 #  perform SVD and truncate to desired bond dimension
-                U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4);
+                U, S, V, ϵ = tsvd(newTheta, ((1, 2), (3, 4));
                                   trunc = truncdim(maxDim) & truncerr(truncErr))
                 # U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncerr(truncErr));
                 S /= norm(S)
-                U = permute(U, (1, 2), (3,))
-                V = permute(S * V, (1, 2), (3,))
+                U = permute(U, ((1, 2), (3,)))
+                V = permute(S * V, ((1, 2), (3,)))
 
                 # assign updated tensors
                 compressedMPS[siteIdx + 0] = U
@@ -420,12 +421,12 @@ function applyMPO(finiteMPO::SparseMPO,
                                                   mpoEnvR[siteIdx + 1][7, 8, -4]
 
                 #  perform SVD and truncate to desired bond dimension
-                U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4);
+                U, S, V, ϵ = tsvd(newTheta, ((1, 2), (3, 4));
                                   trunc = truncdim(maxDim) & truncerr(truncErr))
                 # U, S, V, ϵ = tsvd(newTheta, (1, 2), (3, 4), trunc = truncerr(truncErr));
                 S /= norm(S)
-                U = permute(U * S, (1, 2), (3,))
-                V = permute(V, (1, 2), (3,))
+                U = permute(U * S, ((1, 2), (3,)))
+                V = permute(V, ((1, 2), (3,)))
 
                 # assign updated tensors
                 compressedMPS[siteIdx + 0] = U
