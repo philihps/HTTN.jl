@@ -16,19 +16,19 @@ using TensorKit
 # set truncation parameters
 modelName = "sineGordon";
 truncMethod = 5;
-kMax = 2;
-nMax = 8;
+kMax = 1;
+nMax = 3;
 nMaxZM = 10;
-modeOrdering = 1;
-bogoliubovR = 1;
+modeOrdering = true;
+bogoliubovRot = true;
 
 # initialize Bogoliubov rotation parameters
-bogParameters = zeros(Float64, kMax);
+bogParameters = zeros(ComplexF64, kMax);
 
 # set model parameters
-β = 0.5 * sqrt(4 * π);
+β = 0.25 * sqrt(4 * π);
 λ = 1.0;
-L = 25.0;
+L = 15.0;
 R = sqrt(4 * π) / β;
 
 # create NamedTuple for truncation parameters and model parameters
@@ -37,7 +37,7 @@ truncationParameters = (kMax = kMax,
                         nMaxZM = nMaxZM,
                         truncMethod = truncMethod,
                         modeOrdering = modeOrdering,
-                        bogoliubovR = bogoliubovR,
+                        bogoliubovRot = bogoliubovRot,
                         bogParameters = bogParameters);
 hamiltonianParameters = (β = β, R = R, λ = λ, L = L);
 
@@ -81,7 +81,7 @@ storeEnergy = zeros(Float64, 0, 2);
 storeVertexOp = zeros(Float64, 0, 2);
 
 # initialize array to store bogParameters
-storeBogParameters = zeros(Float64, 1, 3);
+storeBogParameters = zeros(ComplexF64, 1, 1 + kMax);
 
 # copy input state
 timeEvolvedMPS = copy(vacuumMPS);
@@ -91,30 +91,16 @@ for timeStep in 0:numTimeSteps
 
     # perform time step
     if timeStep > 0
-        if bogoliubovR == 0
+
+        if bogoliubovRot == false
 
             # perform single time step
-            timeEvolvedMPS, envL, envR, ϵ = perform_timestep(timeEvolvedMPS,
-                                                             hamMPO,
-                                                             δT,
-                                                             TDVP2(;
-                                                                   bondDim = bondDim,
-                                                                   truncErrT = truncErrT,
-                                                                   krylovDim = 2,
-                                                                   verbosePrint = 1,))
+            timeEvolvedMPS, envL, envR, ϵ = perform_timestep!(timeEvolvedMPS, hamMPO, δT, TDVP2(; bondDim = bondDim, truncErrT = truncErrT, krylovDim = 2, verbosePrint = 1, ))
 
-        elseif bogoliubovR == 1
+        elseif bogoliubovRot == true
 
             # perform single time step
-            timeEvolvedMPS, envL, envR, bogParameters, ϵ, hamMPO = perform_timestep(timeEvolvedMPS,
-                                                                                    generate_MPO_sG,
-                                                                                    sG,
-                                                                                    δT,
-                                                                                    TDVP2BO(;
-                                                                                            bondDim = bondDim,
-                                                                                            truncErrT = truncErrT,
-                                                                                            krylovDim = 2,
-                                                                                            verbosePrint = 1,))
+            timeEvolvedMPS, envL, envR, bogParameters, ϵ, hamMPO = perform_timestep!(timeEvolvedMPS, generate_MPO_sG, sG, δT, TDVP2BO(; bondDim = bondDim, truncErrT = truncErrT, krylovDim = 2, verbosePrint = 1, ))
 
             # update QFT model
             sG = updateBogoliubovParameters(sG, bogParameters)
@@ -123,8 +109,7 @@ for timeStep in 0:numTimeSteps
             vertexOperator = generate_H1(sG)
 
             # store bogParameters
-            storeBogParameters = vcat(storeBogParameters,
-                                      hcat(δT * timeStep, reshape(bogParameters, 1, :)))
+            storeBogParameters = vcat(storeBogParameters, hcat(δT * timeStep, reshape(bogParameters, 1, :)))
         end
     end
 
@@ -212,7 +197,7 @@ plot!(plotVertexOperator,
       label = "",)
 display(plotVertexOperator)
 
-if bogoliubovR == 1
+if bogoliubovRot == 1
 
     # initialize plot for the Bogoliubov parameters over time
     plotbogParameters = plot(; xlabel = L"t", ylabel = L"\xi(t)", frame = :box)
@@ -228,4 +213,5 @@ if bogoliubovR == 1
         end
     end
     display(plotbogParameters)
+
 end

@@ -264,7 +264,7 @@ end
 # optimAlg = LBFGS(8, verbosity = 1, maxiter  = 25, gradtol = 1e-6);
 
 # function to check acceptance of new basis
-function checkAcceptance(oldVal::Float64, newVal::Float64, oldXi::Float64, newXi::Float64)
+function checkAcceptance(oldVal::Float64, newVal::Float64, oldXi::Number, newXi::Number)
     if (oldVal - newVal > 1e-6)
         return true
     else
