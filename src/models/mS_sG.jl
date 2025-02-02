@@ -763,8 +763,16 @@ end
 function localVertexOp(modelParameters,
                        physVecSpace::Union{ElementarySpace,
                                            CompositeSpace{ElementarySpace}},
-                       k::Int64, s::Int64, β::Float64, M::Float64, L::Float64)
-    """ Construct local vertex operator, to be combined with kroneckerDeltaMPS to form full MPO """
+                       k::Int64, sgn::Int64, β::Float64, M::Float64, L::Float64)
+    """ 
+    Construct normal-ordered local vertex operator in
+    - Fock basis: V^A(w) = G(w) or
+    - Transformed basis: V^B = exp([1 - (μ + ν)^2]w^2/2) . V^A(w . (μ + ν))
+    for w = sgn . α/√(2 ω_k L)
+
+    :Params:
+    - sgn: ± 1
+    """
 
     # construct kroneckerDelta space
     kronDelSpace = removeDegeneracyQN(fuse(physVecSpace,
@@ -775,7 +783,7 @@ function localVertexOp(modelParameters,
     dimAuxVecSpace = dim(kronDelSpace)
 
     # compute vertex operator coefficient α
-    α = convert(Float64, s * β)
+    α = convert(Float64, sgn * β)
 
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters
@@ -864,7 +872,8 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
                      modeOccupations::Matrix{Int64},
                      physSpaces::Vector{<:Union{ElementarySpace,
                                                 CompositeSpace{ElementarySpace}}})
-    """ Function to generate the interacting part H1 of the Schwinger Hamiltonian """
+    """ Construct the cosine interaction 
+    :cos(βΦ - θ): = 1/2 . [e^{-iθ}:V_β: + e^{iθ}:V_{-β}:]"""
 
     # get hamiltonianParameters
     hamiltonianParameters = modelParameters.hamiltonianParameters
@@ -889,7 +898,7 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     # get number of momentum modes
     numSites = length(momentumModes)
 
-    # construct local vertex operators V_{-1, 0}(0, 0) and V_{+1, 0}(0, 0)
+    # compute :V_β: and :V_{-β}:
     localOperators_neg = Vector{TensorMap{ComplexF64}}(undef, numSites)
     localOperators_pos = Vector{TensorMap{ComplexF64}}(undef, numSites)
     for (siteIdx, momentumVal) in enumerate(momentumModes)
@@ -907,7 +916,7 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     kronDeltaSpaces = [space(localOp, 3)' for localOp in expOperator_neg]
     kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
 
-    ### I added the 1/2 factor here. 
+    # combined with kroneckerDeltaMPS to form full MPO 
     V_neg = 1 / 2 *
             convertLocalOperatorsToMPO(expOperator_neg, kroneckerDeltaMPS)
     V_pos = 1 / 2 *
