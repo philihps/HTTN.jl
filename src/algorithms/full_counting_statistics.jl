@@ -72,7 +72,7 @@ function compute_phase_distribution(mS::MassiveSchwingerModel,
                                                            bogoliubovR)
             end
         end
-        localOperators = SparseEXP(localOperators)
+        localOperators = SparseMPO(localOperators)
 
         # construct vertexMPO
         vertexMPO = convertLocalOperatorsToMPO(localOperators, fullKroneckerDeltaMPS)

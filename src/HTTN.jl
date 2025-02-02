@@ -26,7 +26,6 @@ export SparseMPS, normMPS
 
 # export operators
 export SparseMPO
-export SparseEXP
 
 # export models
 export SineGordonParameters
