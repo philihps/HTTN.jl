@@ -83,7 +83,7 @@ for (i, inverseT) in enumerate(inverseTs)
                                                                       inverseT,
                                                                       METTS2(;
                                                                              numMETTS = numMETTS,
-                                                                             doBasisExtend = true,
+                                                                             extendBasis = true,
                                                                              tol = 1.0)) # energies = -0.1997
 
     _, av_E_last, err_E_last = energies[end, :]

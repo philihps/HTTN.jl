@@ -6,7 +6,7 @@
     truncErrT::Float64 = 1e-6
     truncErrK::Float64 = 1e-8
     truncErrM::Float64 = 1e-10
-    doBasisExtend::Bool = true
+    extendBasis::Bool = true
     verbosePrint::Int64 = 0
 end
 
@@ -17,7 +17,7 @@ end
     truncErrT::Float64 = 1e-6
     truncErrK::Float64 = 1e-8
     truncErrM::Float64 = 1e-10
-    doBasisExtend::Bool = true
+    extendBasis::Bool = true
     verbosePrint::Int64 = 0
 end
 
@@ -125,7 +125,7 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
     return vectorMPS[1]
 end
 
-function basisExtend(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP2,TDVP2BO})
+function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP2,TDVP2BO})
     """ Function to extend the basis of |ψ⟩ by global Krylov vectors H|ψ⟩, (H^2)|ψ⟩, ..., (H^l)|ψ⟩ """
 
     # set maximal bond dimension of finiteMPS
@@ -161,8 +161,8 @@ function perform_timestep!(finiteMPS::SparseMPS,
     end
 
     # make basis extension to include a number of global Krylov vectors
-    if alg.doBasisExtend
-        finiteMPS = basisExtend(finiteMPS, finiteMPO, alg)
+    if alg.extendBasis
+        finiteMPS = extendBasis(finiteMPS, finiteMPO, alg)
     end
 
     # initialize MPO environments
@@ -300,8 +300,8 @@ function perform_timestep!(finiteMPS::SparseMPS,
     println(bogParameters)
 
     # make basis extension to include a number of global Krylov vectors
-    if alg.doBasisExtend
-        finiteMPS = basisExtend(finiteMPS, finiteMPO, alg)
+    if alg.extendBasis
+        finiteMPS = extendBasis(finiteMPS, finiteMPO, alg)
     end
 
     # initialize MPO environments

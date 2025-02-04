@@ -43,7 +43,7 @@ export find_groundstate, find_excitedstate
 export DMRG2, DMRG2BO
 export perform_timestep!
 export TDVP2, TDVP2BO
-export metts, metts_basis, metts_ZM, transform_basis!
+export metts, metts_ZM, transform_basis!
 export METTS2
 
 # export mpo compression functions

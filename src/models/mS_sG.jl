@@ -631,7 +631,6 @@ end
 
 function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
                                                    SineGordonParameters},
-                            modeOccupations::Matrix{Int64},
                             physSpaces::Vector{<:Union{ElementarySpace,
                                                        CompositeSpace{ElementarySpace}}})
     """
@@ -674,7 +673,6 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal) + 1]
-        μ = cosh(ξ)
         ν = sinh(ξ)
         mpoIdId[1 + 2 * (kIdx - 1) + 1] *= modeEnergy(kVal, L, M) * 2 * ν^2
 
@@ -707,7 +705,7 @@ function generate_H0(modelParameters::Union{MassiveSchwingerParameters,
     if bogoliubovRot && kMax > 0
         mpo_H0 += generate_H0_Part_B(modelParameters, modeOccupations,
                                      physSpaces)
-        mpo_H0 += generate_H0_Part_C(modelParameters, modeOccupations,
+        mpo_H0 += generate_H0_Part_C(modelParameters,
                                      physSpaces)
     end
 
@@ -763,15 +761,15 @@ end
 function localVertexOp(modelParameters,
                        physVecSpace::Union{ElementarySpace,
                                            CompositeSpace{ElementarySpace}},
-                       k::Int64, sgn::Int64, β::Float64, M::Float64, L::Float64)
+                       k::Int64, n::Int64, β::Float64, M::Float64, L::Float64)
     """ 
     Construct normal-ordered local vertex operator in
     - Fock basis: V^A(w) = G(w) or
     - Transformed basis: V^B = exp([1 - (μ + ν)^2]w^2/2) . V^A(w . (μ + ν))
-    for w = sgn . α/√(2 ω_k L)
+    for w = n . α/√(2 ω_k L)
 
     :Params:
-    - sgn: ± 1
+    - n: labels eigesntate of Π0
     """
 
     # construct kroneckerDelta space
@@ -783,7 +781,7 @@ function localVertexOp(modelParameters,
     dimAuxVecSpace = dim(kronDelSpace)
 
     # compute vertex operator coefficient α
-    α = convert(Float64, sgn * β)
+    α = convert(Float64, n * β)
 
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters
