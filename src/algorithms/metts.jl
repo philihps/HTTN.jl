@@ -490,7 +490,7 @@ function metts_ZM!(finiteMPS::SparseMPS,
 
     energies = zeros(Float64, 0, 3)
     warmup_energies = zeros(Float64, 0, 3)
-
+  
     for step in 1:(alg.numWarmUp + alg.numMETTS)
         if step <= alg.numWarmUp
             println("Making warmup METTS number $step")

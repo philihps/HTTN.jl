@@ -27,6 +27,7 @@ truncationParameters = (kMax = kMax,
                         truncMethod = truncMethod,
                         modeOrdering = modeOrdering,
                         bogoliubovRot = bogoliubovRot);
+
 hamiltonianParameters = (β = β, λ = λ, L = L);
 
 # construct Sine-Gordon model (with MPO)

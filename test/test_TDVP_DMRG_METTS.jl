@@ -92,6 +92,7 @@ groundStateEnergy_TDVP = 0
                                         extendBasis = false,
                                         tol = 1.0))
 
+
     _, av_E_last, err_E_last = energies[end, :]
     @test abs(groundStateEnergy_TDVP - av_E_last) < 1e-14
 end

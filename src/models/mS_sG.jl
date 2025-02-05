@@ -114,6 +114,7 @@ function updateBogoliubovParameters(Model::Union{MassiveSchwingerModel,
                                                          Vector{ComplexF64}})::Union{MassiveSchwingerModel,
                                                                                      SineGordonModel}
 
+
     # update truncationParameters
     truncationParameters = Model.modelParameters.truncationParameters
     truncationParameters = (kMax = truncationParameters[:kMax],
@@ -471,6 +472,7 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
                         mpoBlock[1, :, 1, :] = modeFactor *
                                                getNumberOperator(dimHS - 1)
                     end
+
                 end
             end
             if modelParameters isa SineGordonParameters
@@ -772,6 +774,7 @@ function localVertexOp(modelParameters,
     - n: labels eigesntate of Π0
     """
 
+
     # construct kroneckerDelta space
     kronDelSpace = removeDegeneracyQN(fuse(physVecSpace,
                                            conj(flip(physVecSpace))))
@@ -790,6 +793,7 @@ function localVertexOp(modelParameters,
         ξ = truncationParameters[:bogParameters][abs(k) + 1]
         factorBCH = exp(-α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy(k, L, M)))
     end
+
 
     # construct local interaction for k = 0 or k ≠ 0
     if k == 0
@@ -826,6 +830,7 @@ function localVertexOp(modelParameters,
                 else
                     interactionTensor[nBra + 1, nKet + 1, 1] = G(nBra, nKet, w)
                 end
+
             end
         end
 
@@ -873,6 +878,7 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     """ Construct the cosine interaction 
     :cos(βΦ - θ): = 1/2 . [e^{-iθ}:V_β: + e^{iθ}:V_{-β}:]"""
 
+
     # get hamiltonianParameters
     hamiltonianParameters = modelParameters.hamiltonianParameters
 
@@ -910,6 +916,7 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     expOperator_neg = SparseMPO(localOperators_neg)
     expOperator_pos = SparseMPO(localOperators_pos)
 
+
     # construct momentum-preserving MPO using a kroneckerDelta MPS
     kronDeltaSpaces = [space(localOp, 3)' for localOp in expOperator_neg]
     kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
@@ -922,6 +929,7 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
 
     V_neg *= exp(+1im * θ)
     V_pos *= exp(-1im * θ)
+
 
     mpo_H1 = V_neg + V_pos
 
@@ -1006,4 +1014,88 @@ function pairing_operators(Model::Union{MassiveSchwingerModel,SineGordonModel})
     end
 
     return mpos_AnAn, mpos_CrCr
+end
+
+function constructSinCos(model::Union{MassiveSchwingerModel,
+                                      SineGordonModel})
+    # get truncationParameters
+    truncationParameters = model.modelParameters.truncationParameters
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
+    if bogoliubovRot
+        bogParameters = truncationParameters[:bogParameters]
+    end
+
+    # get hamiltonianParameters
+    hamiltonianParameters = model.modelParameters.hamiltonianParameters
+    # distinguish between mS and sG model 
+    if model.modelParameters isa MassiveSchwingerParameters
+        θ = hamiltonianParameters[:θ]
+        m = hamiltonianParameters[:m]
+        M = hamiltonianParameters[:M]
+        β = sqrt(4 * pi)    # β = sqrt(4 * pi) for the mS model 
+    # R = 1 / sqrt(4 * pi);    # R is the compactification radius R = 1/β which for the mS model is 1/sqrt(4 * pi)
+    elseif model.modelParameters isa SineGordonParameters
+        θ = 0.0    # default value for sG is 0
+        m = 1.0    # m is the fermion mass of the fermionic equivalent model, which for the sG model is the soliton mass with is 1
+        M = 0.0    # M is the boson mass used to define the harmonic mode frequencies, which for the sG model is 0
+        β = hamiltonianParameters[:β]
+    end
+    L = hamiltonianParameters[:L]
+
+    momentumModes = model.modeOccupations[1, :]
+    numSites = length(momentumModes)
+
+    localOperators_neg = Vector{TensorMap{ComplexF64}}(undef, numSites)
+    localOperators_pos = Vector{TensorMap{ComplexF64}}(undef, numSites)
+    for (siteIdx, momentumVal) in enumerate(momentumModes)
+        physVecSpace = model.physSpaces[siteIdx]
+        if bogoliubovRot
+            momentumVal == 0 ? bogParameter = 0.0 :
+            bogParameter = bogParameters[abs(momentumVal)]
+        else
+            bogParameter = 0.0
+        end
+        localOperators_neg[siteIdx] = localVertexOp(momentumVal, physVecSpace,
+                                                    -1, β, M, L,
+                                                    bogoliubovRot, bogParameter)
+        localOperators_pos[siteIdx] = localVertexOp(momentumVal, physVecSpace,
+                                                    +1, β, M, L,
+                                                    bogoliubovRot, bogParameter)
+    end
+
+    expOperator_neg = SparseEXP(localOperators_neg)
+    expOperator_pos = SparseEXP(localOperators_pos)
+
+    # construct momentum-preserving MPO using a kroneckerDelta MPS
+    kronDeltaSpaces = [space(localOp, 3)' for localOp in expOperator_neg]
+    kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
+    ### I added the 1/2 factor here. 
+    ###XXX: Which version?
+    # new
+    # V_neg = 1 / 2 * L *
+    #         convertLocalOperatorsToMPO(expOperator_neg, kroneckerDeltaMPS)
+    # V_pos = 1 / 2 * L *
+    #         convertLocalOperatorsToMPO(expOperator_pos, kroneckerDeltaMPS)
+    # old
+    V_neg = 1 / 2 *
+            convertLocalOperatorsToMPO(expOperator_neg, kroneckerDeltaMPS)
+    V_pos = 1 / 2 *
+            convertLocalOperatorsToMPO(expOperator_pos, kroneckerDeltaMPS)
+
+    # multiply by θ phase factors and 1/2 for the construction of the cosine 
+    if θ != 0  # this condition is not necessary since for θ == 0 we get factors equal to 1. 
+        ### I think the phase should have opposite sign, at least this is how it's defined in the paper. 
+        ###XXX: Which version?
+        # new
+        # V_neg *= exp(+1im * θ)  # ->  exp(+1im * θ) 
+        # V_pos *= exp(-1im * θ)  # ->  exp(-1im * θ)
+        # old
+        V_neg *= exp(-1im * θ)  # ->  exp(+1im * θ) 
+        V_pos *= exp(+1im * θ)  # ->  exp(-1im * θ)  
+    end
+
+    cosineOp = V_pos + V_neg
+    sineOp = 1 / 1im * (V_pos + -1 * V_neg)
+
+    return sineOp, cosineOp
 end
