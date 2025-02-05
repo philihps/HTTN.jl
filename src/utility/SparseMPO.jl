@@ -9,18 +9,9 @@ abstract type AbstractMPO end
 abstract type AbstractFiniteEXP <: AbstractEXP end
 abstract type AbstractFiniteMPO <: AbstractMPO end
 
-struct SparseEXP{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteEXP
-    expTensors::Vector{A}
-
-    function SparseEXP{A}(expTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(expTensors)
-    end
-
-    function SparseEXP(expTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(expTensors)
-    end
-end
-
+#--------------------------------------------------------------
+# SparseMPO constructors
+#--------------------------------------------------------------
 struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
     mpoTensors::Vector{A}
 
@@ -34,11 +25,7 @@ struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
 end
 
 #--------------------------------------------------------------
-# SparseMPO constructors
-#--------------------------------------------------------------
-
-#--------------------------------------------------------------
-# SparseEXP utilities
+# SparseMPO utilities
 #--------------------------------------------------------------
 
 """
@@ -49,7 +36,7 @@ Returns the Kronecker-Delta space of the EXP tensor at site 'siteIdx'.
 """
 # function getKroneckerDeltaSpace end
 
-function getKroneckerDeltaSpace(E::SparseEXP, siteIdx::Integer)
+function getKroneckerDeltaSpace(E::SparseMPO, siteIdx::Integer)
     return dual(space(E.expTensors[siteIdx], 3))
 end
 
@@ -61,16 +48,14 @@ Returns the physical space of the EXP tensor at site 'siteIdx'.
 """
 # function getPhysicalSpace end
 
-function getPhysicalSpace(E::SparseEXP, siteIdx::Integer)
+function getPhysicalSpace(E::SparseMPO, siteIdx::Integer)
     return space(E.expTensors[siteIdx], 1)
 end
 
-Base.getindex(E::SparseEXP, idx) = E.expTensors[idx];
-Base.size(E::SparseEXP, args...) = size(E.expTensors, args...);
-Base.length(E::SparseEXP) = length(E.expTensors);
-Base.iterate(E::SparseEXP, args...) = iterate(E.expTensors, args...);
-# TensorKit.space(E::EXPTensor, idx) = space(E, idx)
-# TensorKit.space(E::SparseEXP, idx) = space(E.expTensors, idx)
+Base.getindex(E::SparseMPO, idx) = E.expTensors[idx];
+Base.size(E::SparseMPO, args...) = size(E.expTensors, args...);
+Base.length(E::SparseMPO) = length(E.expTensors);
+Base.iterate(E::SparseMPO, args...) = iterate(E.expTensors, args...);
 
 function getLinkDimsMPO(M::SparseMPO)
     return dim.(vcat([getVirtualSpaceL(M, idx) for idx in 1:length(M)],
@@ -260,7 +245,6 @@ function applyMPO(finiteMPO::SparseMPO,
 
     # get length of finiteMPS
     N = length(compressedMPS)
-    chainCenter = Int((N - 1) / 2 + 1)
 
     if compressionAlg == "densityMatrix"
 

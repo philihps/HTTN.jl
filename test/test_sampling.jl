@@ -14,8 +14,6 @@ kMax = 2;
 nMax = 5;
 nMaxZM = 10;
 bogoliubovRot = false;
-bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13];
-bogParameters = bogParameters[1:kMax];
 
 # set model parameters
 θ = 1.0 * π;
@@ -30,8 +28,7 @@ truncationParameters = (kMax = kMax,
                         nMaxZM = nMaxZM,
                         truncMethod = truncMethod,
                         modeOrdering = modeOrdering,
-                        bogoliubovRot = bogoliubovRot,
-                        bogParameters = bogParameters);
+                        bogoliubovRot = bogoliubovRot);
 hamiltonianParameters = (θ = θ, m = fermionMass, M = M, L = L)
 
 mS = MassiveSchwingerModel(truncationParameters, hamiltonianParameters)
@@ -59,7 +56,7 @@ nTrials = 100
         end
 
         testMPS = SparseMPS(testMPS; normalizeMPS = true)
-        testMPS, sqOps = transform_basis!(testMPS, mS; sqZero = false, transfWidth = 0.1)
+        testMPS, sqOps = transform_basis!(testMPS, mS; squeezeZM = false, transfWidth = 0.1)
         testMPS_1 = deepcopy(testMPS)
 
         mpsSample, momSample = sample_MPS!(testMPS)

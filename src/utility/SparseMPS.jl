@@ -189,6 +189,7 @@ function orthogonalizeMPS!(finiteMPS, orthCenter::Int = 1)
     end
     return finiteMPS
 end
+
 function orthogonalizeMPS(finiteMPS, args...)
     newMPS = copy(finiteMPS)
     orthogonalizeMPS!(newMPS, args...)

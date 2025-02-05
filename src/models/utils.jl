@@ -8,12 +8,12 @@ function convertLocalOperatorsToMPO(localOperators::Vector{<:AbstractTensorMap};
     kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaIndices)
 
     # combine local operators and kroneckerDeltaMPS
-    localOperators = SparseEXP(localOperators)
+    localOperators = SparseMPO(localOperators)
     finalMPO = convertLocalOperatorsToMPO(localOperators, kroneckerDeltaMPS)
     return finalMPO
 end
 
-function convertLocalOperatorsToMPO(localOperators::SparseEXP, kroneckerDeltaMPS::SparseMPS)
+function convertLocalOperatorsToMPO(localOperators::SparseMPO, kroneckerDeltaMPS::SparseMPS)
     """ Generates MPO out of three-index local operators using kroneckerDeltaMPS """
 
     # get length of localOperators

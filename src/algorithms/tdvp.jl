@@ -6,7 +6,7 @@
     truncErrT::Float64 = 1e-6
     truncErrK::Float64 = 1e-8
     truncErrM::Float64 = 1e-10
-    doBasisExtend::Bool = true
+    extendBasis::Bool = true
     verbosePrint::Int64 = 0
 end
 
@@ -17,7 +17,7 @@ end
     truncErrT::Float64 = 1e-6
     truncErrK::Float64 = 1e-8
     truncErrM::Float64 = 1e-10
-    doBasisExtend::Bool = true
+    extendBasis::Bool = true
     verbosePrint::Int64 = 0
 end
 
@@ -40,9 +40,19 @@ end
 #-------------------------------------------------
 
 function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
-                   truncErrM::Float64 = 1e-6)
-    """ Given an MPS |ψ(t)⟩ and a collection of Krylov vectors (H^l)|ψ(t)⟩, l = 1 : k, returns an MPS which is equal to |ψ(t)⟩ (has fidelity 1.0 with |ψ(t)⟩) but whose MPS basis
-    is extended to contain a portion of the basis of the Krylov vectors, that is orthogonal to the MPS basis of |ψ(t)⟩ """
+                   truncErrM::Float64 = 1e-6)::SparseMPS
+    """    
+    Implement basis extension using Krylov subspace 
+    (see arXiv:2005.06104v3 - sec IA. & IB.)
+
+    Params:
+    - finiteMPS: a MPS |ψ(t)⟩
+    - krylovVectors: a collection of Krylov vectors (H^l)|ψ(t)⟩, l = 1 : k
+
+    Returns:
+    - vectorMPS[1]: MPS with extended basis of the Krylov vectors which is
+                    orthogonal to basis of |ψ(t)⟩
+    """
 
     # get length of finiteMPS
     N = length(finiteMPS)
@@ -85,7 +95,8 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
             reducedDensityMatrix = nullSpaceProjector * reducedDensityMatrix *
                                    nullSpaceProjector
 
-            # diagonalize projected density matrix to compute UR', which spans part of right basis of the Krylov vectors, which is orthogonal to right basis of |ψ(t)⟩
+            # diagonalize projected density matrix to compute UR', which spans part of right 
+            # basis of the Krylov vectors, which is orthogonal to right basis of |ψ(t)⟩
             UR, SR, VR = tsvd(reducedDensityMatrix; trunc = truncerr(truncErrM),
                               alg = TensorKit.SVD())
 
@@ -125,7 +136,7 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
     return vectorMPS[1]
 end
 
-function basisExtend(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP2,TDVP2BO})
+function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP2,TDVP2BO})
     """ Function to extend the basis of |ψ⟩ by global Krylov vectors H|ψ⟩, (H^2)|ψ⟩, ..., (H^l)|ψ⟩ """
 
     # set maximal bond dimension of finiteMPS
@@ -161,8 +172,8 @@ function perform_timestep!(finiteMPS::SparseMPS,
     end
 
     # make basis extension to include a number of global Krylov vectors
-    if alg.doBasisExtend
-        finiteMPS = basisExtend(finiteMPS, finiteMPO, alg)
+    if alg.extendBasis
+        finiteMPS = extendBasis(finiteMPS, finiteMPO, alg)
     end
 
     # initialize MPO environments
@@ -300,8 +311,8 @@ function perform_timestep!(finiteMPS::SparseMPS,
     println(bogParameters)
 
     # make basis extension to include a number of global Krylov vectors
-    if alg.doBasisExtend
-        finiteMPS = basisExtend(finiteMPS, finiteMPO, alg)
+    if alg.extendBasis
+        finiteMPS = extendBasis(finiteMPS, finiteMPO, alg)
     end
 
     # initialize MPO environments
