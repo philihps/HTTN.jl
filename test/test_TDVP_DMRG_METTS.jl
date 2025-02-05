@@ -62,7 +62,6 @@ timeRanges = range(0; stop = finalBeta, length = numTimeStep + 1)
 timeStep = 1im * (timeRanges[2] - timeRanges[1])
 groundStateEnergy_TDVP = 0
 
-
 @testset "Compare energy" begin
     @info "Start DMRG"
     groundStateMPS, groundStateEnergy_DMRG = find_groundstate(initialMPS, hamMPO,
@@ -88,10 +87,10 @@ groundStateEnergy_TDVP = 0
 
     @info "Start METTS"
     _, energies, _ = metts(initialMPS, hamMPO, mS, numTimeStep, finalBeta;
-                                 alg = METTS2(; numWarmUp = 3,
-                                              numMETTS = 3,
-                                              extendBasis = false,
-                                              tol = 1.0))
+                           alg = METTS2(; numWarmUp = 3,
+                                        numMETTS = 3,
+                                        extendBasis = false,
+                                        tol = 1.0))
 
     _, av_E_last, err_E_last = energies[end, :]
     @test abs(groundStateEnergy_TDVP - av_E_last) < 1e-14

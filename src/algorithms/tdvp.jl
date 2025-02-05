@@ -40,9 +40,19 @@ end
 #-------------------------------------------------
 
 function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
-                   truncErrM::Float64 = 1e-6)
-    """ Given an MPS |ψ(t)⟩ and a collection of Krylov vectors (H^l)|ψ(t)⟩, l = 1 : k, returns an MPS which is equal to |ψ(t)⟩ (has fidelity 1.0 with |ψ(t)⟩) but whose MPS basis
-    is extended to contain a portion of the basis of the Krylov vectors, that is orthogonal to the MPS basis of |ψ(t)⟩ """
+                   truncErrM::Float64 = 1e-6)::SparseMPS
+    """    
+    Implement basis extension using Krylov subspace 
+    (see arXiv:2005.06104v3 - sec IA. & IB.)
+
+    Params:
+    - finiteMPS: a MPS |ψ(t)⟩
+    - krylovVectors: a collection of Krylov vectors (H^l)|ψ(t)⟩, l = 1 : k
+
+    Returns:
+    - vectorMPS[1]: MPS with extended basis of the Krylov vectors which is
+                    orthogonal to basis of |ψ(t)⟩
+    """
 
     # get length of finiteMPS
     N = length(finiteMPS)
@@ -85,7 +95,8 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
             reducedDensityMatrix = nullSpaceProjector * reducedDensityMatrix *
                                    nullSpaceProjector
 
-            # diagonalize projected density matrix to compute UR', which spans part of right basis of the Krylov vectors, which is orthogonal to right basis of |ψ(t)⟩
+            # diagonalize projected density matrix to compute UR', which spans part of right 
+            # basis of the Krylov vectors, which is orthogonal to right basis of |ψ(t)⟩
             UR, SR, VR = tsvd(reducedDensityMatrix; trunc = truncerr(truncErrM),
                               alg = TensorKit.SVD())
 

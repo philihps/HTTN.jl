@@ -25,7 +25,7 @@ For more information on METTS, see the following references:
     verbosePrint = false
 end
 """
-Given a Vector of numbers, returns
+Given a vector of numbers, returns
 the average and the standard error
 (= the width of distribution of the numbers)
 """
@@ -367,11 +367,11 @@ function transform_basis!(finiteMPS, model; squeezeZM, transfWidth)
 end
 
 function metts!(finiteMPS::SparseMPS,
-                      finiteMPO::SparseMPO,
-                      model,
-                      numTimeStep::Int64,
-                      finalBeta::Union{Int64,Float64},
-                      alg::METTS2)
+                finiteMPO::SparseMPO,
+                model,
+                numTimeStep::Int64,
+                finalBeta::Union{Int64,Float64},
+                alg::METTS2)
     """
     METTS sampling with option for randomly mixed basis
 
@@ -452,8 +452,8 @@ function metts!(finiteMPS::SparseMPS,
                     sqOp = sqOps[siteIdx ÷ 2 + 1]
 
                     @tensor localBond[-1 -2 -3; -4] := sqOp'[-2, -3, 1, 3] *
-                                                    finiteMPS[siteIdx + 0][-1, 1, 2] *
-                                                    finiteMPS[siteIdx + 1][2, 3, -4]
+                                                       finiteMPS[siteIdx + 0][-1, 1, 2] *
+                                                       finiteMPS[siteIdx + 1][2, 3, -4]
 
                     U, S, V, ϵ = tsvd(localBond, ((1, 2), (3, 4)))
 
@@ -467,8 +467,7 @@ function metts!(finiteMPS::SparseMPS,
             end
 
             finiteMPS = normalizeMPS(finiteMPS)
-        end 
-
+        end
     end
 
     _, av_E_last, err_E_last = energies[end, :]
@@ -555,17 +554,17 @@ function metts_ZM!(finiteMPS::SparseMPS,
 end
 
 function metts(finiteMPS::SparseMPS,
-                     finiteMPO::SparseMPO,
-                     model,
-                     numTimeStep::Int64,
-                     finalBeta::Union{Int64,Float64};
-                     alg::METTS2)
+               finiteMPO::SparseMPO,
+               model,
+               numTimeStep::Int64,
+               finalBeta::Union{Int64,Float64};
+               alg::METTS2)
     return metts!(deepcopy(finiteMPS),
-                        finiteMPO,
-                        model,
-                        numTimeStep,
-                        finalBeta,
-                        alg)
+                  finiteMPO,
+                  model,
+                  numTimeStep,
+                  finalBeta,
+                  alg)
 end
 
 function metts_ZM(finiteMPS::SparseMPS,
