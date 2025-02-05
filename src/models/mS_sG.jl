@@ -799,15 +799,15 @@ function localVertexOp(modelParameters,
             interactionTensor = zeros(ComplexF64, dimPhysVecSpace,
                                       dimPhysVecSpace,
                                       dimAuxVecSpace)
-            if s == 0
+            if n == 0
                 for rk in 1:dimPhysVecSpace
                     interactionTensor[rk, rk, 1] = 1.0
                 end
-            elseif s > 0
+            elseif n > 0
                 for rk in 1:(dimPhysVecSpace - 1)
                     interactionTensor[(rk + 1), rk, 1] = 1.0
                 end
-            elseif s < 0
+            elseif n < 0
                 for rk in 1:(dimPhysVecSpace - 1)
                     interactionTensor[rk, (rk + 1), 1] = 1.0
                 end
