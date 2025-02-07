@@ -92,21 +92,23 @@ for timeStep in 0:numTimeSteps
 
     # perform time step
     if timeStep > 0
-        
         timeEvolvedMPS, envL, envR, ϵ = perform_timestep!(timeEvolvedMPS, hamMPO, δT,
-            TDVP2(; bondDim = bondDim,
-                truncErrT = truncErrT,
-                krylovDim = 2,
-                verbosePrint = 1,))
+                                                          TDVP2(; bondDim = bondDim,
+                                                                truncErrT = truncErrT,
+                                                                krylovDim = 2,
+                                                                verbosePrint = 1,))
 
         # mode optimization
         if bogoliubovRot
 
             # perform optimization of squeezing parameters
-            timeEvolvedMPS, bogParameters, truncationErrors = perform_basisOptimization!(timeEvolvedMPS, sG, TDVP2(; bondDim = bondDim,
-            truncErrT = truncErrT,
-            krylovDim = 2,
-            verbosePrint = 1,))
+            timeEvolvedMPS, bogParameters, truncationErrors = perform_basisOptimization!(timeEvolvedMPS,
+                                                                                         sG,
+                                                                                         TDVP2(;
+                                                                                               bondDim = bondDim,
+                                                                                               truncErrT = truncErrT,
+                                                                                               krylovDim = 2,
+                                                                                               verbosePrint = 1,))
 
             # update QFT model
             sG = updateBogoliubovParameters(sG, bogParameters)
@@ -118,14 +120,15 @@ for timeStep in 0:numTimeSteps
             vertexOperator = generate_H1(sG)
 
             # store bogParameters
-            storeBogParameters = vcat(storeBogParameters, hcat(δT * timeStep, reshape(bogParameters, 1, :)))
+            storeBogParameters = vcat(storeBogParameters,
+                                      hcat(δT * timeStep, reshape(bogParameters, 1, :)))
         end
-
     end
 
     # compute entanglement entropies
     mpsEntanglementEntropies = compute_entanglement_entropies(timeEvolvedMPS)
-    storeEntanglementEntropy = vcat(storeEntanglementEntropy, reshape(mpsEntanglementEntropies, 1, :))
+    storeEntanglementEntropy = vcat(storeEntanglementEntropy,
+                                    reshape(mpsEntanglementEntropies, 1, :))
     # println(mpsEntanglementEntropies)
 
     # get maximal bond dimension
@@ -209,7 +212,6 @@ plot!(plotVertexOperator,
 display(plotVertexOperator)
 
 if bogoliubovRot == 1
-
     display(storeBogParameters)
 
     # # initialize plot for the Bogoliubov parameters over time
@@ -228,15 +230,14 @@ if bogoliubovRot == 1
     # display(plotbogParameters)
 
     # plot bogParameters in the complex plane
-    plotbogParameters = plot(real.(storeBogParameters[:, 2]), imag.(storeBogParameters[:, 2]),
-        linewidth = 2.5, 
-        markers = :circle, 
-        xlabel = L"\textrm{Re}(\xi(t))", 
-        xlims = (-0.25, +0.25), 
-        ylabel = L"\textrm{Im}(\xi(t))", 
-        ylims = (-0.25, +0.25), 
-        label = L"k = \pm 1", 
-        frame = :box, 
-    )
-
+    plotbogParameters = plot(real.(storeBogParameters[:, 2]),
+                             imag.(storeBogParameters[:, 2]);
+                             linewidth = 2.5,
+                             markers = :circle,
+                             xlabel = L"\textrm{Re}(\xi(t))",
+                             xlims = (-0.25, +0.25),
+                             ylabel = L"\textrm{Im}(\xi(t))",
+                             ylims = (-0.25, +0.25),
+                             label = L"k = \pm 1",
+                             frame = :box)
 end

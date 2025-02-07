@@ -113,7 +113,7 @@ for (idxM, m) in enumerate(fermionMasses)
 
         # construct massiveSchwinger MPO
         # hamMPO = generate_MPO_mS(mS, localOp = "vertexOp")
-        hamMPO = generate_MPO_mS(mS, localOp = "displacementOp")
+        hamMPO = generate_MPO_mS(mS; localOp = "displacementOp")
         println(getLinkDimsMPO(hamMPO))
         # display(hamMPO)
 
