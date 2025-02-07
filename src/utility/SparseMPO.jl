@@ -459,7 +459,6 @@ function applyMPO(finiteMPO::SparseMPO,
     return compressedMPS
 end
 
-
 # #--------------------------------------------------------------
 # # SparseMPO save and load functions
 # #--------------------------------------------------------------

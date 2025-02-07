@@ -171,7 +171,8 @@ function generate_MPO_mS(Model::MassiveSchwingerModel; localOp::String = "displa
     # construct MPOs
     modeOccupations, physSpaces = constructPhysSpaces(Model.modelParameters)
     mpo_H0 = generate_H0(Model.modelParameters, modeOccupations, physSpaces)
-    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces, localOp = localOp)
+    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces;
+                         localOp = localOp)
 
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     if m == 0
@@ -196,7 +197,8 @@ function generate_MPO_sG(sGModel::SineGordonModel; localOp::String = "displaceme
     # construct MPOs
     modeOccupations, physSpaces = constructPhysSpaces(sGModel.modelParameters)
     mpo_H0 = generate_H0(sGModel.modelParameters, modeOccupations, physSpaces)
-    mpo_H1 = generate_H1(sGModel.modelParameters, modeOccupations, physSpaces, localOp = localOp)
+    mpo_H1 = generate_H1(sGModel.modelParameters, modeOccupations, physSpaces;
+                         localOp = localOp)
 
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     if λ == 0
@@ -988,7 +990,8 @@ function localDisplacementOp(k::Int64,
         nMax = dimPhyVecSpace - 1
         w = α / sqrt(2 * modeEnergy(k, L, M) * L)
         if bogoliubovRot
-            displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax, μ * (1im * w) - ν * conj(1im * w))
+            displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax,
+                                                                    μ * (1im * w) - ν * conj(1im * w))
         else
             displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax, (1im * w))
         end
