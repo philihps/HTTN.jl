@@ -83,7 +83,7 @@ function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S;
     end
 
     # combine virtual vector spaces
-    virtSpaces = [infimum_larger_deg(virtSpaces_L[siteIdx], virtSpaces_R[siteIdx])
+    virtSpaces = [infimum(virtSpaces_L[siteIdx], virtSpaces_R[siteIdx])
                   for siteIdx in 1:(numSites + 1)]
 
     return virtSpaces

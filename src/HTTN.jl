@@ -46,6 +46,7 @@ export getMomentumModes
 export find_groundstate, find_excitedstate
 export DMRG2, DMRG2BO
 export perform_timestep!
+export perform_basisOptimization!
 export TDVP2, TDVP2BO
 export metts, metts_basis, metts_ZM, transform_basis!
 export METTS2

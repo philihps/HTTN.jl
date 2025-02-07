@@ -287,7 +287,6 @@ function Base.:+(mpsA::SparseMPS, mpsB::SparseMPS)
 end
 Base.:-(mpsA::SparseMPS, mpsB::SparseMPS) = mpsA + (-1 * mpsB)
 
-
 # #--------------------------------------------------------------
 # # SparseMPS save and load functions
 # #--------------------------------------------------------------

@@ -14,7 +14,7 @@ function applyTwoModeTransformation(twoModeU::TensorMap,
 end
 
 function computeRenyiEntropy(twoSiteTensor::TensorMap)
-    _, S, _ = tsvd(twoSiteTensor, ((1, 2), (3, 4)))
+    _, S, _ = tsvd(twoSiteTensor, ((1, 2), (3, 4)), alg = TensorKit.SVD())
     return 2 * log(tr(S))
 end
 
@@ -30,7 +30,7 @@ function matrixExponentialSeries(operator::TensorMap, nMax::Int64)
 end
 
 # construct squeezing operator
-function squeezingOp(ξ::Union{Int64,Float64,ComplexF64},
+function squeezingOp(ξ::Number,
                      nMax::Int64,
                      kL::Int64,
                      kR::Int64,
@@ -45,28 +45,28 @@ function squeezingOp(ξ::Union{Int64,Float64,ComplexF64},
 
     # construct two-site operators
     CrCr = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
-                                            localCreationOp(kR, PR)])
+                                                              localCreationOp(kR, PR)])
     AnAn = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
-                                            localAnnihilationOp(kR, PR)])
-    IdId = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
-    NuId = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
-    IdNu = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
+                                                              localAnnihilationOp(kR, PR)])
+    IdId = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL),
+                                                              localIdentityOp(PR)])
+    NuId = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL),
+                                                              localIdentityOp(PR)])
+    IdNu = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL),
+                                                              locaNumberOp(PR)])
 
+    # construct K operators
     K_A_0 = 1 / 2 * (NuId + IdNu + IdId)
     K_A_min = AnAn
     K_A_plus = CrCr
 
-    # # construct complex parameter
-    # ξ = vecξ[1] + 1im * vecξ[2]
-
     # construct squeezing operator
-    S = matrixExponentialSeries(-1 * tanh(ξ) * K_A_plus, nMax) *
-        matrixExponentialSeries(-2 * log(cosh(ξ)) * K_A_0, nMax) *
-        matrixExponentialSeries(tanh(ξ) * K_A_min, nMax)
+    # S = matrixExponentialSeries(-1 * tanh(ξ) * K_A_plus, nMax) * matrixExponentialSeries(-2 * log(cosh(ξ)) * K_A_0, nMax) * matrixExponentialSeries(tanh(ξ) * K_A_min, nMax)
+    S = exp(-1 * tanh(ξ) * K_A_plus) * exp(-2 * log(cosh(ξ)) * K_A_0) * exp(tanh(ξ) * K_A_min)
     return S
 end
 
-function singleSqueezingOp(ξ::Union{Int64,Float64,ComplexF64},
+function singleSqueezingOp(ξ::Number,
                            nMax::Int64,
                            physSpace::ElementarySpace)
     """
@@ -86,6 +86,7 @@ function singleSqueezingOp(ξ::Union{Int64,Float64,ComplexF64},
     numberOp = TensorMap(getNumberOperator(nMax), physSpace, physSpace)
     idOp = TensorMap(getIdentityOperator(dim(physSpace)), physSpace, physSpace)
 
+    # construct K operators
     K_A_0 = numberOp + (1 / 2) * idOp
     K_A_min = AnAn
     K_A_plus = CrCr
@@ -97,7 +98,7 @@ function singleSqueezingOp(ξ::Union{Int64,Float64,ComplexF64},
     return S
 end
 
-function findDisentanglingRotation(ξ::Union{Int64,Float64,ComplexF64},
+function findDisentanglingRotation(ξ::Number,
                                    nMax::Int64,
                                    kL::Int64,
                                    kR::Int64,
@@ -105,105 +106,109 @@ function findDisentanglingRotation(ξ::Union{Int64,Float64,ComplexF64},
                                    PR::ElementarySpace,
                                    twoSiteTensor::TensorMap)
     twoSiteSqueezingOperator = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-    costFunction = computeRenyiEntropy(applyTwoModeTransformation(twoSiteSqueezingOperator, twoSiteTensor))
+    costFunction = computeRenyiEntropy(applyTwoModeTransformation(twoSiteSqueezingOperator,
+                                                                  twoSiteTensor))
     return costFunction
 end
 
-function value_and_gradient(ξ::Union{Int64,Float64,ComplexF64}, nMax::Int64, kL::Int64, kR::Int64, PL::ElementarySpace, PR::ElementarySpace, twoSiteTensor::TensorMap)
-    fval = findDisentanglingRotation(ξ, nMax, kL, kR, PL, PR, twoSiteTensor);
-    gval = Zygote.gradient(x -> findDisentanglingRotation(x, nMax, kL, kR, PL, PR, twoSiteTensor), ξ)[1];
-    return fval, gval;
+function value_and_gradient(ξ::Number, nMax::Int64, kL::Int64, kR::Int64,
+                            PL::ElementarySpace, PR::ElementarySpace,
+                            twoSiteTensor::TensorMap)
+    fval = findDisentanglingRotation(ξ, nMax, kL, kR, PL, PR, twoSiteTensor)
+    gval = Zygote.gradient(x -> findDisentanglingRotation(x, nMax, kL, kR, PL, PR,
+                                                          twoSiteTensor), ξ)[1]
+    return fval, gval
 end
 
 # OptimKit functions for optimization of ComplexF64 values
-_inner(x, ξ_1, ξ_2) = dot(real(ξ_1), real(ξ_2)) + dot(imag(ξ_1), imag(ξ_2))
-_real_inner(_, η₁, η₂) = real(dot(η₁, η₂))
-_scale!(v, α) = v * α;
-_add!(vdst, vsrc, α) = vdst += vsrc * α;
+# _inner(x, ξ_1, ξ_2) = dot(real(ξ_1), real(ξ_2)) + dot(imag(ξ_1), imag(ξ_2))
+# _real_inner(_, η₁, η₂) = real(dot(η₁, η₂))
+# _scale!(v, α) = v * α;
+# _add!(vdst, vsrc, α) = vdst += vsrc * α;
 
-#---------------------------------------------------------------------------
-# analytic gradient for basis optimization
+# #---------------------------------------------------------------------------
+# # analytic gradient for basis optimization
 
-function analyticGradientCostFunction(ξ::Union{Int64,Float64,ComplexF64},
-                                      nMax::Int64,
-                                      kL::Int64,
-                                      kR::Int64,
-                                      PL::ElementarySpace,
-                                      PR::ElementarySpace,
-                                      twoSiteTensor::TensorMap)
-    sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-    SPsi = applyTwoModeTransformation(sqOp, twoSiteTensor)
-    U, S, V = tsvd(SPsi, ((1, 2), (3, 4)))
-    dPsidXi = gradient_squeezed_tensor(ξ, nMax, kL, kR, PL, PR, twoSiteTensor)
-    dPsidXi = permute(dPsidXi, ((1, 2), (3, 4)))
-    dSVdXi = real(gradient_singular_value_matrix(U, dPsidXi, V))
-    analyticGradient = 2 / tr(S) * tr(dSVdXi)
-    return analyticGradient
-end
+# function analyticGradientCostFunction(ξ::Number,
+#                                       nMax::Int64,
+#                                       kL::Int64,
+#                                       kR::Int64,
+#                                       PL::ElementarySpace,
+#                                       PR::ElementarySpace,
+#                                       twoSiteTensor::TensorMap)
+#     sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
+#     SPsi = applyTwoModeTransformation(sqOp, twoSiteTensor)
+#     U, S, V = tsvd(SPsi, ((1, 2), (3, 4)))
+#     dPsidXi = gradient_squeezed_tensor(ξ, nMax, kL, kR, PL, PR, twoSiteTensor)
+#     dPsidXi = permute(dPsidXi, ((1, 2), (3, 4)))
+#     dSVdXi = real(gradient_singular_value_matrix(U, dPsidXi, V))
+#     analyticGradient = 2 / tr(S) * tr(dSVdXi)
+#     return analyticGradient
+# end
 
-function gradient_singular_value_matrix(U::TensorMap, dAdXi::TensorMap, V::TensorMap)
-    return 0.5 * (U' * dAdXi * V' + V * dAdXi' * U)
-end
+# function gradient_singular_value_matrix(U::TensorMap, dAdXi::TensorMap, V::TensorMap)
+#     return 0.5 * (U' * dAdXi * V' + V * dAdXi' * U)
+# end
 
-# dμ(ξ) = sign(ξ) * sinh(abs(ξ));
-# dν(ξ) = cosh(abs(ξ));
-dμ(ξ) = sinh(ξ);
-dν(ξ) = cosh(ξ);
+# # dμ(ξ) = sign(ξ) * sinh(abs(ξ));
+# # dν(ξ) = cosh(abs(ξ));
+# dμ(ξ) = sinh(ξ);
+# dν(ξ) = cosh(ξ);
 
-function gradient_squeezing_operator(ξ::Union{Int64,Float64,ComplexF64},
-                                     nMax::Int64,
-                                     kL::Int64,
-                                     kR::Int64,
-                                     PL::ElementarySpace,
-                                     PR::ElementarySpace)
+# function gradient_squeezing_operator(ξ::Number,
+#                                      nMax::Int64,
+#                                      kL::Int64,
+#                                      kR::Int64,
+#                                      PL::ElementarySpace,
+#                                      PR::ElementarySpace)
 
-    # construct two-site operators
-    CrCr = convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
-                                               localCreationOp(kR, PR)])
-    AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
-                                               localAnnihilationOp(kR, PR)])
-    IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
-    NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
-    IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
+#     # construct two-site operators
+#     CrCr = convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
+#                                                localCreationOp(kR, PR)])
+#     AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
+#                                                localAnnihilationOp(kR, PR)])
+#     IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
+#     NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
+#     IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
 
-    # compute μ and ν
-    μ = cosh(ξ)
-    ν = sinh(ξ)
+#     # compute μ and ν
+#     μ = cosh(ξ)
+#     ν = sinh(ξ)
 
-    # construct K0, K1 and K2
-    # K0 = -log(μ) * (NuId + IdNu + IdId);
-    # K1 = conj(ν)/μ * AnAn;
-    # K2 = -ν/μ * CrCr;
-    K0 = -log(μ) * (NuId + IdNu + IdId)
-    K1 = tanh(ξ) * AnAn
-    K2 = -tanh(ξ) * CrCr
+#     # construct K0, K1 and K2
+#     # K0 = -log(μ) * (NuId + IdNu + IdId);
+#     # K1 = conj(ν)/μ * AnAn;
+#     # K2 = -ν/μ * CrCr;
+#     K0 = -log(μ) * (NuId + IdNu + IdId)
+#     K1 = tanh(ξ) * AnAn
+#     K2 = -tanh(ξ) * CrCr
 
-    # construct squeezing operator
-    A = exp(K2)
-    B = exp(K0)
-    C = exp(K1)
-    S = exp(K2) * exp(K0) * exp(K1)
+#     # construct squeezing operator
+#     A = exp(K2)
+#     B = exp(K0)
+#     C = exp(K1)
+#     S = exp(K2) * exp(K0) * exp(K1)
 
-    # construct derivative of squeezing operator
-    dA = -1 * CrCr * (dν(ξ) / μ - ν * dμ(ξ) / μ^2)
-    dB = -1 * (NuId + IdNu + IdId) * dμ(ξ) / μ
-    dC = +1 * AnAn * (dν(ξ) / μ - ν * dμ(ξ) / μ^2)
-    dSdXi = A * dA * B * C + A * B * dB * C + A * B * C * dC
-    # # dSdXi = S * AnAn - CrCr * S;
-    # dSdXi = S * (AnAn - CrCr)
-    return dSdXi
-end
+#     # construct derivative of squeezing operator
+#     dA = -1 * CrCr * (dν(ξ) / μ - ν * dμ(ξ) / μ^2)
+#     dB = -1 * (NuId + IdNu + IdId) * dμ(ξ) / μ
+#     dC = +1 * AnAn * (dν(ξ) / μ - ν * dμ(ξ) / μ^2)
+#     dSdXi = A * dA * B * C + A * B * dB * C + A * B * C * dC
+#     # # dSdXi = S * AnAn - CrCr * S;
+#     # dSdXi = S * (AnAn - CrCr)
+#     return dSdXi
+# end
 
-function gradient_squeezed_tensor(ξ::Union{Int64,Float64,ComplexF64},
-                                  nMax::Int64,
-                                  kL::Int64,
-                                  kR::Int64,
-                                  PL::ElementarySpace,
-                                  PR::ElementarySpace,
-                                  twoSiteTensor::TensorMap)
-    dSdXi = gradient_squeezing_operator(ξ, nMax, kL, kR, PL, PR)
-    dPsiXi = applyTwoModeTransformation(dSdXi, twoSiteTensor)
-    return dPsiXi
-end
+# function gradient_squeezed_tensor(ξ::Number,
+#                                   nMax::Int64,
+#                                   kL::Int64,
+#                                   kR::Int64,
+#                                   PL::ElementarySpace,
+#                                   PR::ElementarySpace,
+#                                   twoSiteTensor::TensorMap)
+#     dSdXi = gradient_squeezing_operator(ξ, nMax, kL, kR, PL, PR)
+#     dPsiXi = applyTwoModeTransformation(dSdXi, twoSiteTensor)
+#     return dPsiXi
+# end
 
 #---------------------------------------------------------------------------
