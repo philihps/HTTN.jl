@@ -722,7 +722,8 @@ end
 # ------------------------------------------------------------
 # perform local basis optimization to reduce entanglement
 
-function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTModel, alg::TDVP2)
+function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTModel,
+                                    alg::TDVP2)
     """ rotates pairs of modes [-k,+k] to optimal basis, such that the Renyi-1/2 entropy is minimized """
 
     # get bogParameters
@@ -739,7 +740,8 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
     for siteIdx in 1:+1:(length(finiteMPS) - 1)
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)), (1, 2), (3, 4))
+        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
+                      (1, 2), (3, 4))
 
         if mod(siteIdx, 2) == 0
 
@@ -794,7 +796,6 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR, PL, PR, AC2), 0.0)
             # @show optimalXi
 
-            
             # fval, gval = value_and_gradient(bogParameters[kR] + 0.05 * randn(eltype(bogParameters[kR])), nMax, kL, kR, PL, PR, AC2)
             # println(fval)
             # println(gval)
@@ -803,7 +804,7 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # vecξ = [real(bogParameters[kR]), imag(bogParameters[kR])]
             optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
                                 bogParameters[kR] + 0.05 * randn(eltype(bogParameters[kR])),
-                                LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4), 
+                                LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4)
                                 # scale! = _scale!, 
                                 # add! = _add!, 
                                 # inner = _inner, 
@@ -855,11 +856,11 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
 
         # perform SVD and truncate to desired bond dimension (also move orthogonality center to the right)
         U, S, V, ϵ = tsvd(AC2,
-                ((1, 2),
-                (3, 4));
-                trunc = truncdim(alg.bondDim) &
-                        truncerr(alg.truncErrT),
-                alg = TensorKit.SVD(),)
+                          ((1, 2),
+                           (3, 4));
+                          trunc = truncdim(alg.bondDim) &
+                                  truncerr(alg.truncErrT),
+                          alg = TensorKit.SVD(),)
         S /= norm(S)
         U = permute(U, ((1, 2), (3,)))
         V = permute(S * V, ((1, 2), (3,)))
@@ -881,7 +882,8 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
     for siteIdx in (length(finiteMPS) - 1):-1:1
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)), (1, 2), (3, 4))
+        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
+                      (1, 2), (3, 4))
 
         if mod(siteIdx, 2) == 0
 
@@ -940,7 +942,7 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # vecξ = [real(bogParameters[kR]), imag(bogParameters[kR])]
             optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
                                 bogParameters[kR] + 0.05 * randn(eltype(bogParameters[kR])),
-                                LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4), 
+                                LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4)
                                 # scale! = _scale!, 
                                 # add! = _add!, 
                                 # inner = _inner, 
@@ -993,11 +995,11 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
 
         #  perform SVD and truncate to desired bond dimension (also move orthogonality center to the left)
         U, S, V, ϵ = tsvd(AC2,
-                ((1, 2),
-                (3, 4));
-                trunc = truncdim(alg.bondDim) &
-                        truncerr(alg.truncErrT),
-                alg = TensorKit.SVD(),)
+                          ((1, 2),
+                           (3, 4));
+                          trunc = truncdim(alg.bondDim) &
+                                  truncerr(alg.truncErrT),
+                          alg = TensorKit.SVD(),)
         S /= norm(S)
         U = permute(U * S, ((1, 2), (3,)))
         V = permute(V, ((1, 2), (3,)))
@@ -1017,5 +1019,4 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
 
     # return optimized finiteMPS
     return finiteMPS, bogParameters, truncationErrors
-
 end

@@ -14,7 +14,7 @@ function applyTwoModeTransformation(twoModeU::TensorMap,
 end
 
 function computeRenyiEntropy(twoSiteTensor::TensorMap)
-    _, S, _ = tsvd(twoSiteTensor, ((1, 2), (3, 4)), alg = TensorKit.SVD())
+    _, S, _ = tsvd(twoSiteTensor, ((1, 2), (3, 4)); alg = TensorKit.SVD())
     return 2 * log(tr(S))
 end
 
@@ -62,7 +62,8 @@ function squeezingOp(ξ::Number,
 
     # construct squeezing operator
     # S = matrixExponentialSeries(-1 * tanh(ξ) * K_A_plus, nMax) * matrixExponentialSeries(-2 * log(cosh(ξ)) * K_A_0, nMax) * matrixExponentialSeries(tanh(ξ) * K_A_min, nMax)
-    S = exp(-1 * tanh(ξ) * K_A_plus) * exp(-2 * log(cosh(ξ)) * K_A_0) * exp(tanh(ξ) * K_A_min)
+    S = exp(-1 * tanh(ξ) * K_A_plus) * exp(-2 * log(cosh(ξ)) * K_A_0) *
+        exp(tanh(ξ) * K_A_min)
     return S
 end
 

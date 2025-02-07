@@ -16,7 +16,7 @@ using TensorKit
 # set truncation parameters
 modelName = "massiveSchwinger";
 truncMethod = 5;
-kMax = 3;
+kMax = 1;
 nMax = 10;
 nMaxZM = 20;
 modeOrdering = true;
@@ -30,7 +30,7 @@ bogParameters = zeros(ComplexF64, kMax)
 e = 1.0;
 M = e / sqrt(π);
 L = 100.0;
-fermionMass = 0.1;
+fermionMass = 0.01;
 
 # create NamedTuple for truncation parameters and model parameters
 truncationParameters = (kMax = kMax,
@@ -92,21 +92,23 @@ for timeStep in 0:numTimeSteps
 
     # perform time step
     if timeStep > 0
-        
         timeEvolvedMPS, envL, envR, ϵ = perform_timestep!(timeEvolvedMPS, hamMPO, δT,
-            TDVP2(; bondDim = bondDim,
-                truncErrT = truncErrT,
-                krylovDim = 2,
-                verbosePrint = 1,))
+                                                          TDVP2(; bondDim = bondDim,
+                                                                truncErrT = truncErrT,
+                                                                krylovDim = 2,
+                                                                verbosePrint = 1,))
 
         # mode optimization
         if bogoliubovRot
 
             # perform optimization of squeezing parameters
-            timeEvolvedMPS, bogParameters, truncationErrors = perform_basisOptimization!(timeEvolvedMPS, mS, TDVP2(; bondDim = bondDim,
-            truncErrT = truncErrT,
-            krylovDim = 2,
-            verbosePrint = 1,))
+            timeEvolvedMPS, bogParameters, truncationErrors = perform_basisOptimization!(timeEvolvedMPS,
+                                                                                         mS,
+                                                                                         TDVP2(;
+                                                                                               bondDim = bondDim,
+                                                                                               truncErrT = truncErrT,
+                                                                                               krylovDim = 2,
+                                                                                               verbosePrint = 1,))
 
             # update QFT model
             mS = updateBogoliubovParameters(mS, bogParameters)
@@ -118,14 +120,15 @@ for timeStep in 0:numTimeSteps
             vertexOperator = generate_H1(mS)
 
             # store bogParameters
-            storeBogParameters = vcat(storeBogParameters, hcat(δT * timeStep, reshape(bogParameters, 1, :)))
+            storeBogParameters = vcat(storeBogParameters,
+                                      hcat(δT * timeStep, reshape(bogParameters, 1, :)))
         end
-
     end
 
     # compute entanglement entropies
     mpsEntanglementEntropies = compute_entanglement_entropies(timeEvolvedMPS)
-    storeEntanglementEntropy = vcat(storeEntanglementEntropy, reshape(mpsEntanglementEntropies, 1, :))
+    storeEntanglementEntropy = vcat(storeEntanglementEntropy,
+                                    reshape(mpsEntanglementEntropies, 1, :))
     # println(mpsEntanglementEntropies)
 
     # get maximal bond dimension
@@ -209,7 +212,6 @@ plot!(plotVertexOperator,
 display(plotVertexOperator)
 
 if bogoliubovRot == 1
-
     display(storeBogParameters)
 
     # # initialize plot for the Bogoliubov parameters over time
@@ -228,18 +230,16 @@ if bogoliubovRot == 1
     # display(plotbogParameters)
 
     # plot bogParameters in the complex plane
-    realXis = real.(storeBogParameters[:, 2 : end])
-    imagXis = imag.(storeBogParameters[:, 2 : end])
-    plotbogParameters = plot(realXis, imagXis,
-        linewidth = 2.5, 
-        markers = :circle, 
-        xlabel = L"\textrm{Re}(\xi(t))", 
-        xlims = (minimum(realXis) - 0.05, maximum(realXis) + 0.05), 
-        ylabel = L"\textrm{Im}(\xi(t))", 
-        ylims = (minimum(imagXis) - 0.05, maximum(imagXis) + 0.05), 
-        # label = L"k = \pm 1", 
-        label = "", 
-        frame = :box, 
-    )
-
+    realXis = real.(storeBogParameters[:, 2:end])
+    imagXis = imag.(storeBogParameters[:, 2:end])
+    plotbogParameters = plot(realXis, imagXis;
+                             linewidth = 2.5,
+                             markers = :circle,
+                             xlabel = L"\textrm{Re}(\xi(t))",
+                             xlims = (minimum(realXis) - 0.05, maximum(realXis) + 0.05),
+                             ylabel = L"\textrm{Im}(\xi(t))",
+                             ylims = (minimum(imagXis) - 0.05, maximum(imagXis) + 0.05),
+                             # label = L"k = \pm 1", 
+                             label = "",
+                             frame = :box)
 end
