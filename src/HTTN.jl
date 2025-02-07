@@ -60,7 +60,6 @@ export compute_phase_distribution
 # export utility functions
 export normalizeMPS, normalizeMPO
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
-export infimum_larger_deg
 export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
 export save_to_file, load_from_file

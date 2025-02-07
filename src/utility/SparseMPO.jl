@@ -4,9 +4,7 @@
 # MPO types
 #------------------------------------------------------
 
-abstract type AbstractEXP end
 abstract type AbstractMPO end
-abstract type AbstractFiniteEXP <: AbstractEXP end
 abstract type AbstractFiniteMPO <: AbstractMPO end
 
 #--------------------------------------------------------------
@@ -74,7 +72,6 @@ Returns the left virtual space of the MPO tensor at site 'siteIdx'.
 This is equivalent to the right virtual space of the MPO tensor at site 'siteIdx - 1'.
 
 """
-# function getVirtualSpaceL end
 
 function getVirtualSpaceL(M::SparseMPO, siteIdx::Integer)
     return space(M.mpoTensors[siteIdx], 1)
