@@ -108,7 +108,8 @@ function MassiveSchwingerModel(truncationParameters::NamedTuple,
 end
 
 function updateBogoliubovParameters(Model::Union{MassiveSchwingerModel,
-                                                 SineGordonModel},
+                                                 SineGordonModel};
+                                    bogoliubovRot::Bool,
                                     bogParameters::Union{Vector{Int64},
                                                          Vector{Float64},
                                                          Vector{ComplexF64}})::Union{MassiveSchwingerModel,
@@ -121,7 +122,7 @@ function updateBogoliubovParameters(Model::Union{MassiveSchwingerModel,
                             nMaxZM = truncationParameters[:nMaxZM],
                             truncMethod = truncationParameters[:truncMethod],
                             modeOrdering = truncationParameters[:modeOrdering],
-                            bogoliubovRot = truncationParameters[:bogoliubovRot],
+                            bogoliubovRot = bogoliubovRot,
                             bogParameters = bogParameters)
 
     # get hamiltonianParameters
@@ -788,7 +789,8 @@ function localVertexOp(modelParameters,
     bogoliubovRot = truncationParameters[:bogoliubovRot]
     if bogoliubovRot
         ξ = truncationParameters[:bogParameters][abs(k) + 1]
-        factorBCH = exp(-α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy(k, L, M)))
+        μ = cosh(ξ)
+        ν = sinh(ξ)
     end
 
     # construct local interaction for k = 0 or k ≠ 0
@@ -821,6 +823,7 @@ function localVertexOp(modelParameters,
                                       dimAuxVecSpace)
             for nBra in 0:(dimPhysVecSpace - 1), nKet in 0:(dimPhysVecSpace - 1)
                 if bogoliubovRot
+                    factorBCH = exp(-w^2 * (ν^2 + μ * ν))
                     interactionTensor[nBra + 1, nKet + 1, 1] = factorBCH *
                                                                G(nBra, nKet, w * exp(ξ))
                 else
@@ -848,6 +851,7 @@ function localVertexOp(modelParameters,
             ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet))
             auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)))
             if bogoliubovRot
+                factorBCH = exp(-2 * w^2 * (ν^2 + μ * ν))
                 interactionTensor[braIndPos, ketIndPos, auxIndPos] = factorBCH *
                                                                      G(nBra,
                                                                        nKet,

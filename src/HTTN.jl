@@ -58,7 +58,7 @@ export compute_entanglement_spectra,
 export compute_phase_distribution
 
 # export utility functions
-export normalizeMPS, normalizeMPO
+export normalizeMPS, dotMPS, normalizeMPO
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
