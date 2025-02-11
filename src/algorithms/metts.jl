@@ -528,8 +528,10 @@ function metts_ZM!(finiteMPS::SparseMPS,
         end
 
         # do basis transformation at each step
-        finiteMPS, sqOps = transform_basis!(finiteMPS, model; squeezeZM = alg.squeezeZM,
-                                            transfWidth = alg.transfWidth) # normalized
+        if alg.changeProjBasis && alg.squeezeZM
+            finiteMPS, sqOps = transform_basis!(finiteMPS, model; squeezeZM = alg.squeezeZM,
+                                                transfWidth = alg.transfWidth) # normalized
+        end
 
         # collapse to a new state with local basis defined by mpsSample and momSample
         mpsSample, momSample = sample_MPS!(finiteMPS)
@@ -538,7 +540,7 @@ function metts_ZM!(finiteMPS::SparseMPS,
         finiteMPS = sample_to_CPS(mpsSample, momSample, model)
 
         # back transformation
-        if alg.squeezeZM
+        if alg.changeProjBasis && alg.squeezeZM
             sqOp = sqOps[1]
             @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
             finiteMPS[1] = localTensor / norm(localTensor)
