@@ -21,6 +21,7 @@ For more information on METTS, see the following references:
     extendBasis::Bool = true
     changeProjBasis::Bool = false
     squeezeZM::Bool = true
+    squeezeNonZM::Bool = true
     transfWidth::Float64 = 0.1
     verbosePrint = false
 end
@@ -311,7 +312,7 @@ function sample_MPS_block!(finiteMPS::SparseMPS, eigStates)
     return sampleResult, sampleMomentum
 end
 
-function transform_basis!(finiteMPS, model; squeezeZM, transfWidth)
+function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM, transfWidth)
     """
     Transform momentum pair mode with squeezing operator defined 
     for ξ ∈ Normal(μ = 0.0, σ = transfWidth)
@@ -328,7 +329,6 @@ function transform_basis!(finiteMPS, model; squeezeZM, transfWidth)
     for siteIdx in eachindex(finiteMPS)
         k = abs(siteIdx ÷ 2)
         nMaxk = model.modeOccupations[2, :][siteIdx]
-        # ξ = normal_in_interval(transfRange[1] * nMaxk, transfRange[2] * nMaxk)
         ξ = rand(Normal(0.0, transfWidth * nMaxk))
         if siteIdx == 1 && squeezeZM
             physSpace = space(finiteMPS[1], 2)
@@ -339,7 +339,7 @@ function transform_basis!(finiteMPS, model; squeezeZM, transfWidth)
             @tensor localTensor[-1 -2; -3] := finiteMPS[1][-1, 1, -3] * singleSqOp[-2, 1]
             finiteMPS[1] = localTensor
 
-        elseif mod(siteIdx, 2) == 0
+        elseif mod(siteIdx, 2) == 0 && squeezeNonZM
             ξs[siteIdx ÷ 2 + 1] = ξ
             physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2),
                                      space(finiteMPS[siteIdx + 1], 2)
@@ -430,6 +430,7 @@ function metts!(finiteMPS::SparseMPS,
         # do basis transformation at each step
         if alg.changeProjBasis
             finiteMPS, sqOps = transform_basis!(finiteMPS, model; squeezeZM = alg.squeezeZM,
+                                                squeezeNonZM = alg.squeezeNonZM,
                                                 transfWidth = alg.transfWidth)
         end
 
@@ -439,7 +440,7 @@ function metts!(finiteMPS::SparseMPS,
         println("Sample of local basis (momentum): $(momSample)")
         finiteMPS = sample_to_CPS(mpsSample, momSample, model)
 
-        # back transformation
+        # inverse transformation
         if alg.changeProjBasis
             for siteIdx in eachindex(finiteMPS)
                 if siteIdx == 1 && alg.squeezeZM
@@ -448,7 +449,7 @@ function metts!(finiteMPS::SparseMPS,
 
                     finiteMPS[1] = localTensor
 
-                elseif mod(siteIdx, 2) == 0
+                elseif mod(siteIdx, 2) == 0 && alg.squeezeNonZM
                     sqOp = sqOps[siteIdx ÷ 2 + 1]
 
                     @tensor localBond[-1 -2 -3; -4] := sqOp'[-2, -3, 1, 3] *
@@ -539,7 +540,7 @@ function metts_ZM!(finiteMPS::SparseMPS,
         println("Sample of local basis (momentum): $(momSample)")
         finiteMPS = sample_to_CPS(mpsSample, momSample, model)
 
-        # back transformation
+        # inverse transformation
         if alg.changeProjBasis && alg.squeezeZM
             sqOp = sqOps[1]
             @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]

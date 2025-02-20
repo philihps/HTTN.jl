@@ -40,7 +40,7 @@ function compute_average(A)
     """
     N = length(A)
     mean_A = sum(A) / N
-    taus = collect(1:(N ÷ 2))
+    taus = collect(1:(N ÷ 5))
     autoCorrs = [auto_corr(A, tau) for tau in taus]
     corrTime = int_autocorr_time(autoCorrs)
     println("Autocorrelation time is $(corrTime)")
