@@ -791,6 +791,7 @@ function localVertexOp(modelParameters,
         ξ = truncationParameters[:bogParameters][abs(k) + 1]
         μ = cosh(ξ)
         ν = sinh(ξ)
+        factorBCH = exp(-w^2 * (ν^2 + μ * ν))
     end
 
     # construct local interaction for k = 0 or k ≠ 0
@@ -823,7 +824,6 @@ function localVertexOp(modelParameters,
                                       dimAuxVecSpace)
             for nBra in 0:(dimPhysVecSpace - 1), nKet in 0:(dimPhysVecSpace - 1)
                 if bogoliubovRot
-                    factorBCH = exp(-w^2 * (ν^2 + μ * ν))
                     interactionTensor[nBra + 1, nKet + 1, 1] = factorBCH *
                                                                G(nBra, nKet, w * exp(ξ))
                 else
@@ -851,7 +851,6 @@ function localVertexOp(modelParameters,
             ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet))
             auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)))
             if bogoliubovRot
-                factorBCH = exp(-2 * w^2 * (ν^2 + μ * ν))
                 interactionTensor[braIndPos, ketIndPos, auxIndPos] = factorBCH *
                                                                      G(nBra,
                                                                        nKet,

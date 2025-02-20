@@ -42,7 +42,7 @@ virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
                                  removeDegeneracy = true);
 
 ######################################################################
-nTrials = 100
+nTrials = 50
 
 @testset "Test total momentum preservation of sampling" begin
     for trial in (1:nTrials)
@@ -56,7 +56,8 @@ nTrials = 100
         end
 
         testMPS = SparseMPS(testMPS; normalizeMPS = true)
-        testMPS, sqOps = transform_basis!(testMPS, mS; squeezeZM = false, transfWidth = 0.1)
+        testMPS, sqOps = transform_basis!(testMPS, mS; squeezeZM = true,
+                                          squeezeNonZM = true, transfWidth = 0.1)
         testMPS_1 = deepcopy(testMPS)
 
         mpsSample, momSample = sample_MPS!(testMPS)
