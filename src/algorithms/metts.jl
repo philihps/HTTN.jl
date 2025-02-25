@@ -20,8 +20,8 @@ For more information on METTS, see the following references:
     tol::Float64 = 1.0
     extendBasis::Bool = true
     changeProjBasis::Bool = false
-    squeezeZM::Bool = true
-    squeezeNonZM::Bool = true
+    squeezeZM::Bool = false
+    squeezeNonZM::Bool = false
     transfWidth::Float64 = 0.1
     verbosePrint = false
 end
@@ -531,6 +531,7 @@ function metts_ZM!(finiteMPS::SparseMPS,
         # do basis transformation at each step
         if alg.changeProjBasis && alg.squeezeZM
             finiteMPS, sqOps = transform_basis!(finiteMPS, model; squeezeZM = alg.squeezeZM,
+                                                squeezeNonZM = false,
                                                 transfWidth = alg.transfWidth) # normalized
         end
 

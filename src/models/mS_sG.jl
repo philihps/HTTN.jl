@@ -787,6 +787,7 @@ function localVertexOp(modelParameters,
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters
     bogoliubovRot = truncationParameters[:bogoliubovRot]
+    w = α / sqrt(2 * modeEnergy(k, L, M) * L) # parameter for the G function
     if bogoliubovRot
         ξ = truncationParameters[:bogParameters][abs(k) + 1]
         μ = cosh(ξ)
@@ -797,7 +798,6 @@ function localVertexOp(modelParameters,
     # construct local interaction for k = 0 or k ≠ 0
     if k == 0
         if M == 0.0
-
             # fill interactionTensor of massless zero mode: this is a "free particle" instead of a harmonic mode, so the exponential is a jump operator between the levels 
             interactionTensor = zeros(ComplexF64, dimPhysVecSpace,
                                       dimPhysVecSpace,
@@ -818,7 +818,6 @@ function localVertexOp(modelParameters,
 
         elseif M != 0.0
             # fill interactionTensor for massive zero mode: this is now a harmonic mode (independently of whether it is massless or massive, there is no quantum number constraint for the zero mode, so it should be costructed differently from the nonzero modes) 
-            w = α / sqrt(2 * modeEnergy(k, L, M) * L)
             interactionTensor = zeros(ComplexF64, dimPhysVecSpace,
                                       dimPhysVecSpace,
                                       dimAuxVecSpace)
@@ -843,7 +842,6 @@ function localVertexOp(modelParameters,
                                for productSector in keys(auxQNSectors)]
 
         # fill interactionTensor
-        w = α / sqrt(2 * modeEnergy(k, L, M) * L)
         interactionTensor = zeros(ComplexF64, dimPhysVecSpace, dimPhysVecSpace,
                                   dimAuxVecSpace)
         for nBra in 0:(dimPhysVecSpace - 1), nKet in 0:(dimPhysVecSpace - 1)

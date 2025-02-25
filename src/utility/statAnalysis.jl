@@ -6,7 +6,7 @@ function auto_corr(A, tau::Int64)
     """
     N = length(A)
     mean_A = sum(A) / N
-    res = sum((A[1:(N - tau)] .- mean_A) .* (A[(1 + tau):N] .- mean_A)) /
+    res = N / (N - tau) * sum((A[1:(N - tau)] .- mean_A) .* (A[(1 + tau):N] .- mean_A)) /
           sum((A[1:N] .- mean_A) .^ 2)
 
     return res

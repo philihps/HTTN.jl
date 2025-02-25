@@ -3,6 +3,7 @@ using Test
 
 Ti = time()
 include("test_basis_extension.jl")
+include("test_BT_1_mode.jl")
 include("test_METTS_aux.jl")
 include("test_TDVP_DMRG_METTS.jl")
 include("test_utility.jl")
