@@ -312,7 +312,61 @@ function sample_MPS_block!(finiteMPS::SparseMPS, eigStates)
     return sampleResult, sampleMomentum
 end
 
-function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM, transfWidth)
+# function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM, transfWidth)
+#     """
+#     Transform momentum pair mode with squeezing operator defined 
+#     for ξ ∈ Normal(μ = 0.0, σ = transfWidth)
+
+#     Returns:
+#     - finiteMPS: transformed MPS
+#     - eigStates: eigenstates of squeezing operators for each pair mode
+#     - eigVals: eigenvalues of squeezing operators for each pair mode
+
+#     """
+#     ξs = zeros(Float64, (length(finiteMPS) - 1) ÷ 2 + 1)
+#     sqOps = Vector(undef, (length(finiteMPS) - 1) ÷ 2 + 1)
+
+#     for siteIdx in eachindex(finiteMPS)
+#         k = abs(siteIdx ÷ 2)
+#         nMaxk = model.modeOccupations[2, :][siteIdx]
+#         ξ = rand(Normal(0.0, transfWidth * nMaxk))
+#         if siteIdx == 1 && squeezeZM
+#             physSpace = space(finiteMPS[1], 2)
+#             singleSqOp = singleSqueezingOp(ξ, nMaxk, physSpace)
+#             ξs[1] = ξ
+#             sqOps[1] = singleSqOp
+
+#             @tensor localTensor[-1 -2; -3] := finiteMPS[1][-1, 1, -3] * singleSqOp[-2, 1]
+#             finiteMPS[1] = localTensor
+
+#         elseif mod(siteIdx, 2) == 0 && squeezeNonZM
+#             ξs[siteIdx ÷ 2 + 1] = ξ
+#             physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2),
+#                                      space(finiteMPS[siteIdx + 1], 2)
+#             sqOp = squeezingOp(ξ, nMaxk, -k, k, physSpaceL, physSpaceR)
+
+#             sqOps[siteIdx ÷ 2 + 1] = sqOp
+
+#             @tensor localBond[-1 -2 -3; -4] := sqOp[-2, -3, 1, 3] *
+#                                                finiteMPS[siteIdx + 0][-1, 1, 2] *
+#                                                finiteMPS[siteIdx + 1][2, 3, -4]
+
+#             U, S, V, _ = tsvd(localBond, ((1, 2), (3, 4)))
+
+#             S /= norm(S)
+#             U = permute(U, ((1, 2), (3,)))
+#             V = permute(S * V, ((1, 2), (3,)))
+
+#             finiteMPS[siteIdx + 0] = U
+#             finiteMPS[siteIdx + 1] = V
+#         end
+#     end
+#     finiteMPS = normalizeMPS(finiteMPS)
+
+#     return finiteMPS, sqOps
+# end
+
+function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
     """
     Transform momentum pair mode with squeezing operator defined 
     for ξ ∈ Normal(μ = 0.0, σ = transfWidth)
@@ -323,31 +377,28 @@ function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM, transfWidth
     - eigVals: eigenvalues of squeezing operators for each pair mode
 
     """
-    ξs = zeros(Float64, (length(finiteMPS) - 1) ÷ 2 + 1)
-    sqOps = Vector(undef, (length(finiteMPS) - 1) ÷ 2 + 1)
+    transfOps = Vector(undef, (length(finiteMPS) - 1) ÷ 2 + 1)
 
     for siteIdx in eachindex(finiteMPS)
-        k = abs(siteIdx ÷ 2)
         nMaxk = model.modeOccupations[2, :][siteIdx]
-        ξ = rand(Normal(0.0, transfWidth * nMaxk))
         if siteIdx == 1 && squeezeZM
             physSpace = space(finiteMPS[1], 2)
-            singleSqOp = singleSqueezingOp(ξ, nMaxk, physSpace)
-            ξs[1] = ξ
-            sqOps[1] = singleSqOp
+            transfOp = TensorMap(randhaar((nMaxk + 1, nMaxk + 1)), physSpace,
+                                 physSpace)
+            transfOps[1] = transfOp
 
-            @tensor localTensor[-1 -2; -3] := finiteMPS[1][-1, 1, -3] * singleSqOp[-2, 1]
+            @tensor localTensor[-1 -2; -3] := finiteMPS[1][-1, 1, -3] * transfOp[-2, 1]
             finiteMPS[1] = localTensor
 
         elseif mod(siteIdx, 2) == 0 && squeezeNonZM
-            ξs[siteIdx ÷ 2 + 1] = ξ
             physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2),
                                      space(finiteMPS[siteIdx + 1], 2)
-            sqOp = squeezingOp(ξ, nMaxk, -k, k, physSpaceL, physSpaceR)
+            transfOp = TensorMap(randhaar,
+                                 physSpaceL ⊗ physSpaceR,
+                                 physSpaceL ⊗ physSpaceR)
+            transfOps[siteIdx ÷ 2 + 1] = transfOp
 
-            sqOps[siteIdx ÷ 2 + 1] = sqOp
-
-            @tensor localBond[-1 -2 -3; -4] := sqOp[-2, -3, 1, 3] *
+            @tensor localBond[-1 -2 -3; -4] := transfOp[-2, -3, 1, 3] *
                                                finiteMPS[siteIdx + 0][-1, 1, 2] *
                                                finiteMPS[siteIdx + 1][2, 3, -4]
 
@@ -363,7 +414,22 @@ function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM, transfWidth
     end
     finiteMPS = normalizeMPS(finiteMPS)
 
-    return finiteMPS, sqOps
+    return finiteMPS, transfOps
+end
+
+function transform_randHaar!(finiteMPS, model)
+    """
+    Transform the zero mode with a random isometry, uniformly distributed 
+    according to the Haar measure
+    """
+
+    nMaxZM = model.physSpaces[1].dims.values[1]
+    randOp = TensorMap(randhaar((nMaxZM, nMaxZM)), space(finiteMPS[1], 2),
+                       space(finiteMPS[1], 2))
+    @tensor localTensor[-1 -2; -3] := finiteMPS[1][-1, 1, -3] * randOp[-2, 1]
+    finiteMPS[1] = localTensor / norm(localTensor)
+
+    return finiteMPS, [randOp]
 end
 
 function metts!(finiteMPS::SparseMPS,
@@ -429,9 +495,9 @@ function metts!(finiteMPS::SparseMPS,
 
         # do basis transformation at each step
         if alg.changeProjBasis
-            finiteMPS, sqOps = transform_basis!(finiteMPS, model; squeezeZM = alg.squeezeZM,
-                                                squeezeNonZM = alg.squeezeNonZM,
-                                                transfWidth = alg.transfWidth)
+            finiteMPS, transfOps = transform_basis!(finiteMPS, model;
+                                                    squeezeZM = alg.squeezeZM,
+                                                    squeezeNonZM = alg.squeezeNonZM)
         end
 
         # collapse to a new state with local basis defined by mpsSample and momSample
@@ -444,15 +510,16 @@ function metts!(finiteMPS::SparseMPS,
         if alg.changeProjBasis
             for siteIdx in eachindex(finiteMPS)
                 if siteIdx == 1 && alg.squeezeZM
-                    sqOp = sqOps[1]
-                    @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
+                    transfOp = transfOps[1]
+                    @tensor localTensor[-1 -2; -3] := transfOp'[-2, 1] *
+                                                      finiteMPS[1][-1, 1, -3]
 
                     finiteMPS[1] = localTensor
 
                 elseif mod(siteIdx, 2) == 0 && alg.squeezeNonZM
-                    sqOp = sqOps[siteIdx ÷ 2 + 1]
+                    transfOp = transfOps[siteIdx ÷ 2 + 1]
 
-                    @tensor localBond[-1 -2 -3; -4] := sqOp'[-2, -3, 1, 3] *
+                    @tensor localBond[-1 -2 -3; -4] := transfOp'[-2, -3, 1, 3] *
                                                        finiteMPS[siteIdx + 0][-1, 1, 2] *
                                                        finiteMPS[siteIdx + 1][2, 3, -4]
 
@@ -529,10 +596,12 @@ function metts_ZM!(finiteMPS::SparseMPS,
         end
 
         # do basis transformation at each step
-        if alg.changeProjBasis && alg.squeezeZM
-            finiteMPS, sqOps = transform_basis!(finiteMPS, model; squeezeZM = alg.squeezeZM,
-                                                squeezeNonZM = false,
-                                                transfWidth = alg.transfWidth) # normalized
+        # if mod(step, 2) == 1 && alg.changeProjBasis
+        if alg.changeProjBasis
+            # finiteMPS, transfOps = transform_basis!(finiteMPS, model; squeezeZM = true,
+            #                                         squeezeNonZM = false,
+            #                                         transfWidth = alg.transfWidth) # normalized
+            finiteMPS, transfOps = transform_randHaar!(finiteMPS, model) # normalized
         end
 
         # collapse to a new state with local basis defined by mpsSample and momSample
@@ -542,9 +611,10 @@ function metts_ZM!(finiteMPS::SparseMPS,
         finiteMPS = sample_to_CPS(mpsSample, momSample, model)
 
         # inverse transformation
-        if alg.changeProjBasis && alg.squeezeZM
-            sqOp = sqOps[1]
-            @tensor localTensor[-1 -2; -3] := sqOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
+        # if mod(step, 2) == 1 && alg.changeProjBasis
+        if alg.changeProjBasis
+            transfOp = transfOps[1]
+            @tensor localTensor[-1 -2; -3] := transfOp'[-2, 1] * finiteMPS[1][-1, 1, -3]
             finiteMPS[1] = localTensor / norm(localTensor)
         end
     end

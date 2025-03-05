@@ -57,7 +57,7 @@ nTrials = 50
 
         testMPS = SparseMPS(testMPS; normalizeMPS = true)
         testMPS, sqOps = transform_basis!(testMPS, mS; squeezeZM = true,
-                                          squeezeNonZM = true, transfWidth = 0.1)
+                                          squeezeNonZM = true)
         testMPS_1 = deepcopy(testMPS)
 
         mpsSample, momSample = sample_MPS!(testMPS)
