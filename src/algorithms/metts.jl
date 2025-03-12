@@ -162,8 +162,8 @@ end
 function sample_to_CPS(mpsSample, momSample, model)
     virtSpaces = vcat(U1Space(0 => 1),
                       [U1Space(sum(momSample[1:linkIdx]) => 1)
-                       for linkIdx in 1:(length(momSample)-1)], 
-                       U1Space(0 => 1))
+                       for linkIdx in 1:(length(momSample))])
+    @assert virtSpaces[end] == U1Space(0 => 1)
     # create new classical product state from mpsSample
     initialTensors = Vector{TensorMap{ComplexF64}}(undef, length(mpsSample))
     physSpaces = model.physSpaces
