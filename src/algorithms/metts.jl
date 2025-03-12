@@ -366,50 +366,69 @@ end
 #     return finiteMPS, sqOps
 # end
 
+# function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
+#     """
+#     Transform momentum pair mode with squeezing operator defined 
+#     for ξ ∈ Normal(μ = 0.0, σ = transfWidth)
+
+#     Returns:
+#     - finiteMPS: transformed MPS
+#     - eigStates: eigenstates of squeezing operators for each pair mode
+#     - eigVals: eigenvalues of squeezing operators for each pair mode
+
+#     """
+#     transfOps = Vector(undef, (length(finiteMPS) - 1) ÷ 2 + 1)
+
+#     for siteIdx in eachindex(finiteMPS)
+#         nMaxk = model.modeOccupations[2, :][siteIdx]
+#         if siteIdx == 1 && squeezeZM
+#             physSpace = space(finiteMPS[1], 2)
+#             transfOp = TensorMap(randhaar((nMaxk + 1, nMaxk + 1)), physSpace,
+#                                  physSpace)
+#             transfOps[1] = transfOp
+
+#             @tensor localTensor[-1 -2; -3] := finiteMPS[1][-1, 1, -3] * transfOp[-2, 1]
+#             finiteMPS[1] = localTensor
+
+#         elseif mod(siteIdx, 2) == 0 && squeezeNonZM
+#             physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2),
+#                                      space(finiteMPS[siteIdx + 1], 2)
+#             transfOp = TensorMap(randhaar,
+#                                  physSpaceL ⊗ physSpaceR,
+#                                  physSpaceL ⊗ physSpaceR)
+#             transfOps[siteIdx ÷ 2 + 1] = transfOp
+
+#             @tensor localBond[-1 -2 -3; -4] := transfOp[-2, -3, 1, 3] *
+#                                                finiteMPS[siteIdx + 0][-1, 1, 2] *
+#                                                finiteMPS[siteIdx + 1][2, 3, -4]
+
+#             U, S, V, _ = tsvd(localBond, ((1, 2), (3, 4)))
+
+#             S /= norm(S)
+#             U = permute(U, ((1, 2), (3,)))
+#             V = permute(S * V, ((1, 2), (3,)))
+
+#             finiteMPS[siteIdx + 0] = U
+#             finiteMPS[siteIdx + 1] = V
+#         end
+#     end
+#     finiteMPS = normalizeMPS(finiteMPS)
+
+#     return finiteMPS, transfOps
+# end
+
 function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
-    """
-    Transform momentum pair mode with squeezing operator defined 
-    for ξ ∈ Normal(μ = 0.0, σ = transfWidth)
-
-    Returns:
-    - finiteMPS: transformed MPS
-    - eigStates: eigenstates of squeezing operators for each pair mode
-    - eigVals: eigenvalues of squeezing operators for each pair mode
-
-    """
-    transfOps = Vector(undef, (length(finiteMPS) - 1) ÷ 2 + 1)
+    transfOps = Vector(undef, length(finiteMPS))
 
     for siteIdx in eachindex(finiteMPS)
-        nMaxk = model.modeOccupations[2, :][siteIdx]
-        if siteIdx == 1 && squeezeZM
-            physSpace = space(finiteMPS[1], 2)
-            transfOp = TensorMap(randhaar((nMaxk + 1, nMaxk + 1)), physSpace,
-                                 physSpace)
-            transfOps[1] = transfOp
+        if (siteIdx == 1 && squeezeZM) || (siteIdx != 1 && squeezeNonZM)
+            physSpace = space(finiteMPS[siteIdx], 2)
+            transfOp = TensorMap(randhaar, physSpace, physSpace)
+            transfOps[siteIdx] = transfOp
 
-            @tensor localTensor[-1 -2; -3] := finiteMPS[1][-1, 1, -3] * transfOp[-2, 1]
-            finiteMPS[1] = localTensor
-
-        elseif mod(siteIdx, 2) == 0 && squeezeNonZM
-            physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2),
-                                     space(finiteMPS[siteIdx + 1], 2)
-            transfOp = TensorMap(randhaar,
-                                 physSpaceL ⊗ physSpaceR,
-                                 physSpaceL ⊗ physSpaceR)
-            transfOps[siteIdx ÷ 2 + 1] = transfOp
-
-            @tensor localBond[-1 -2 -3; -4] := transfOp[-2, -3, 1, 3] *
-                                               finiteMPS[siteIdx + 0][-1, 1, 2] *
-                                               finiteMPS[siteIdx + 1][2, 3, -4]
-
-            U, S, V, _ = tsvd(localBond, ((1, 2), (3, 4)))
-
-            S /= norm(S)
-            U = permute(U, ((1, 2), (3,)))
-            V = permute(S * V, ((1, 2), (3,)))
-
-            finiteMPS[siteIdx + 0] = U
-            finiteMPS[siteIdx + 1] = V
+            @tensor localTensor[-1 -2; -3] := finiteMPS[siteIdx][-1, 1, -3] *
+                                              transfOp[-2, 1]
+            finiteMPS[siteIdx] = localTensor
         end
     end
     finiteMPS = normalizeMPS(finiteMPS)
@@ -432,6 +451,120 @@ function transform_randHaar!(finiteMPS, model)
     return finiteMPS, [randOp]
 end
 
+# function metts!(finiteMPS::SparseMPS,
+#                 finiteMPO::SparseMPO,
+#                 model,
+#                 numTimeStep::Int64,
+#                 finalBeta::Union{Int64,Float64},
+#                 alg::METTS2)
+#     """
+#     METTS sampling with option for randomly mixed basis
+
+#     Params:
+#     - squeezeZM: to squeeze or not to squeeze the zero mode, that is the question
+
+#     Returns:
+#     - energies: energies[:, 1] -> energy at time step i
+#                 energies[:, 2] -> average energy up to time step i
+#                 energies[:, 3] -> standard error up to time step i
+#     """
+#     timeRanges = range(0; stop = finalBeta / 2, length = numTimeStep + 1)
+#     timeStep = 1im * (timeRanges[2] - timeRanges[1])
+#     println("Running METTS algorithm for: timestep=$(timeStep), finalT=$(1/finalBeta)")
+
+#     energies = zeros(Float64, 0, 3)
+#     warmup_energies = zeros(Float64, 0, 3)
+#     truncErrs = zeros(Float64, alg.numWarmUp + alg.numMETTS)
+
+#     # main METTS loop
+#     for step in 1:(alg.numWarmUp + alg.numMETTS)
+#         if step <= alg.numWarmUp
+#             println("Making warmup METTS number $step")
+#         else
+#             println("Making actual METTS number $(step - alg.numWarmUp)")
+#         end
+#         # perform time step by applying exp(-timeStep * H)
+#         for _ in eachindex(timeRanges)
+#             finiteMPS, _, _, truncErr = perform_timestep!(finiteMPS, finiteMPO, timeStep,
+#                                                           TDVP2())
+#             truncErrs[step] = truncErr
+#         end
+
+#         # measure properties after >= alg.numWarmUp METTS have been made
+#         mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
+#         if abs(imag(mpoExpVal)) < 1e-12
+#             mpoExpVal = real(mpoExpVal)
+#         else
+#             ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
+#         end
+
+#         if step <= alg.numWarmUp
+#             av_E, err_E = avg_stderr(warmup_energies[:, 1])
+#             warmup_energies = vcat(warmup_energies, [mpoExpVal av_E err_E])
+#         else
+#             av_E, err_E = avg_stderr(energies[:, 1])
+#             energies = vcat(energies, [mpoExpVal av_E err_E])
+#             @printf("Energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
+#             @printf("Estimated energy = %0.6f ± %0.6f  /  [%0.6f, %0.6f]\n",
+#                     av_E,
+#                     err_E,
+#                     av_E - err_E,
+#                     av_E + err_E)
+#         end
+
+#         # do basis transformation at each step
+#         if alg.changeProjBasis
+#             finiteMPS, transfOps = transform_basis!(finiteMPS, model;
+#                                                     squeezeZM = alg.squeezeZM,
+#                                                     squeezeNonZM = alg.squeezeNonZM)
+#         end
+
+#         # collapse to a new state with local basis defined by mpsSample and momSample
+#         mpsSample, momSample = sample_MPS!(finiteMPS)
+#         println("Sample of local basis (index): $(mpsSample)")
+#         println("Sample of local basis (momentum): $(momSample)")
+#         finiteMPS = sample_to_CPS(mpsSample, momSample, model)
+
+#         # inverse transformation
+#         if alg.changeProjBasis
+#             for siteIdx in eachindex(finiteMPS)
+#                 if siteIdx == 1 && alg.squeezeZM
+#                     transfOp = transfOps[1]
+#                     @tensor localTensor[-1 -2; -3] := transfOp'[-2, 1] *
+#                                                       finiteMPS[1][-1, 1, -3]
+
+#                     finiteMPS[1] = localTensor
+
+#                 elseif mod(siteIdx, 2) == 0 && alg.squeezeNonZM
+#                     transfOp = transfOps[siteIdx ÷ 2 + 1]
+
+#                     @tensor localBond[-1 -2 -3; -4] := transfOp'[-2, -3, 1, 3] *
+#                                                        finiteMPS[siteIdx + 0][-1, 1, 2] *
+#                                                        finiteMPS[siteIdx + 1][2, 3, -4]
+
+#                     U, S, V, ϵ = tsvd(localBond, ((1, 2), (3, 4)))
+
+#                     S /= norm(S)
+#                     U = permute(U, ((1, 2), (3,)))
+#                     V = permute(S * V, ((1, 2), (3,)))
+
+#                     finiteMPS[siteIdx + 0] = U
+#                     finiteMPS[siteIdx + 1] = V
+#                 end
+#             end
+
+#             finiteMPS = normalizeMPS(finiteMPS)
+#         end
+#     end
+
+#     _, av_E_last, err_E_last = energies[end, :]
+#     if abs(err_E_last / av_E_last) * 100 > alg.tol
+#         println("The observable does not converge within $(alg.numMETTS) iterations.")
+#     end
+
+#     return warmup_energies, energies, truncErrs
+# end
+
 function metts!(finiteMPS::SparseMPS,
                 finiteMPO::SparseMPO,
                 model,
@@ -446,8 +579,8 @@ function metts!(finiteMPS::SparseMPS,
 
     Returns:
     - energies: energies[:, 1] -> energy at time step i
-                energies[:, 2] -> average energy up to time step i
-                energies[:, 3] -> standard error up to time step i
+        energies[:, 2] -> average energy up to time step i
+        energies[:, 3] -> standard error up to time step i
     """
     timeRanges = range(0; stop = finalBeta / 2, length = numTimeStep + 1)
     timeStep = 1im * (timeRanges[2] - timeRanges[1])
@@ -509,28 +642,12 @@ function metts!(finiteMPS::SparseMPS,
         # inverse transformation
         if alg.changeProjBasis
             for siteIdx in eachindex(finiteMPS)
-                if siteIdx == 1 && alg.squeezeZM
-                    transfOp = transfOps[1]
+                if (siteIdx == 1 && alg.squeezeZM) || (siteIdx != 1 && alg.squeezeNonZM)
+                    transfOp = transfOps[siteIdx]
                     @tensor localTensor[-1 -2; -3] := transfOp'[-2, 1] *
-                                                      finiteMPS[1][-1, 1, -3]
+                                                      finiteMPS[siteIdx][-1, 1, -3]
 
-                    finiteMPS[1] = localTensor
-
-                elseif mod(siteIdx, 2) == 0 && alg.squeezeNonZM
-                    transfOp = transfOps[siteIdx ÷ 2 + 1]
-
-                    @tensor localBond[-1 -2 -3; -4] := transfOp'[-2, -3, 1, 3] *
-                                                       finiteMPS[siteIdx + 0][-1, 1, 2] *
-                                                       finiteMPS[siteIdx + 1][2, 3, -4]
-
-                    U, S, V, ϵ = tsvd(localBond, ((1, 2), (3, 4)))
-
-                    S /= norm(S)
-                    U = permute(U, ((1, 2), (3,)))
-                    V = permute(S * V, ((1, 2), (3,)))
-
-                    finiteMPS[siteIdx + 0] = U
-                    finiteMPS[siteIdx + 1] = V
+                    finiteMPS[siteIdx] = localTensor
                 end
             end
 

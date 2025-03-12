@@ -759,6 +759,102 @@ end
 # end
 
 ### this is the new function 
+# function localVertexOp(modelParameters,
+#                        physVecSpace::Union{ElementarySpace,
+#                                            CompositeSpace{ElementarySpace}},
+#                        k::Int64, n::Int64, β::Float64, M::Float64, L::Float64)
+#     """ 
+#     Construct normal-ordered local vertex operator in
+#     - Fock basis: V^A(w) = G(w) or
+#     - Transformed basis: V^B = exp([1 - (μ + ν)^2]w^2/2) . V^A(w . (μ + ν))
+#     for w = n . α/√(2 ω_k L)
+
+#     :Params:
+#     - n: labels eigesntate of Π0
+#     """
+
+#     # construct kroneckerDelta space
+#     kronDelSpace = removeDegeneracyQN(fuse(physVecSpace,
+#                                            conj(flip(physVecSpace))))
+
+#     # get dimensions of physVecSpace and kronDelSpace
+#     dimPhysVecSpace = dim(physVecSpace)
+#     dimAuxVecSpace = dim(kronDelSpace)
+
+#     # compute vertex operator coefficient α
+#     α = convert(Float64, n * β)
+
+#     # get truncationParameters
+#     truncationParameters = modelParameters.truncationParameters
+#     bogoliubovRot = truncationParameters[:bogoliubovRot]
+#     w = α / sqrt(2 * modeEnergy(k, L, M) * L) 
+#     if bogoliubovRot
+#         ξ = truncationParameters[:bogParameters][abs(k) + 1]
+#         μ = cosh(ξ)
+#         ν = sinh(ξ);
+#         argDisplacementOp =  1im * w * (μ + ν)
+#         vertexOp = exp(abs(w)^2 / 2) * getDisplacementOperator(dimPhysVecSpace - 1, argDisplacementOp)
+#     else
+#         vertexOp = exp(abs(w)^2 / 2) * getDisplacementOperator(dimPhysVecSpace - 1, 1im * w) 
+#     end
+
+#     # construct local interaction for k = 0 or k ≠ 0
+#     if k == 0
+#         if M == 0.0
+#             # fill interactionTensor of massless zero mode: this is a "free particle" instead of a harmonic mode, so the exponential is a jump operator between the levels 
+#             interactionTensor = zeros(ComplexF64, dimPhysVecSpace,
+#                                       dimPhysVecSpace,
+#                                       dimAuxVecSpace)
+#             if n == 0
+#                 for rk in 1:dimPhysVecSpace
+#                     interactionTensor[rk, rk, 1] = 1.0
+#                 end
+#             elseif n > 0
+#                 for rk in 1:(dimPhysVecSpace - 1)
+#                     interactionTensor[(rk + 1), rk, 1] = 1.0
+#                 end
+#             elseif n < 0
+#                 for rk in 1:(dimPhysVecSpace - 1)
+#                     interactionTensor[rk, (rk + 1), 1] = 1.0
+#                 end
+#             end
+
+#         elseif M != 0.0
+#             # fill interactionTensor for massive zero mode: this is now a harmonic mode (independently of whether it is massless or massive, there is no quantum number constraint for the zero mode, so it should be costructed differently from the nonzero modes) 
+#             interactionTensor = zeros(ComplexF64, dimPhysVecSpace,
+#                                       dimPhysVecSpace,
+#                                       dimAuxVecSpace)
+#             for nBra in 0:(dimPhysVecSpace - 1), nKet in 0:(dimPhysVecSpace - 1)
+#                 interactionTensor[nBra + 1, nKet + 1, 1] = vertexOp[nBra + 1, nKet + 1] 
+#             end
+#         end
+
+#     else
+
+#         # get ordering of QNs in physVecSpace and kronDelSpace
+#         physQNSectors = physVecSpace.dims
+#         auxQNSectors = kronDelSpace.dims
+#         phyVecSpaceOrdering = [productSector.charge
+#                                for productSector in keys(physQNSectors)]
+#         auxVecSpaceOrdering = [productSector.charge
+#                                for productSector in keys(auxQNSectors)]
+
+#         # fill interactionTensor
+#         interactionTensor = zeros(ComplexF64, dimPhysVecSpace, dimPhysVecSpace,
+#                                   dimAuxVecSpace)
+#         for nBra in 0:(dimPhysVecSpace - 1), nKet in 0:(dimPhysVecSpace - 1)
+#             braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra))
+#             ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet))
+#             auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)))
+#             interactionTensor[braIndPos, ketIndPos, auxIndPos] = vertexOp[braIndPos, ketIndPos]
+#         end
+#     end
+
+#     # convert interactionTensor to TensorMap with U1Space
+#     return TensorMap(interactionTensor, physVecSpace,
+#                      physVecSpace ⊗ kronDelSpace)
+# end
+
 function localVertexOp(modelParameters,
                        physVecSpace::Union{ElementarySpace,
                                            CompositeSpace{ElementarySpace}},
@@ -1007,4 +1103,17 @@ function pairing_operators(Model::Union{MassiveSchwingerModel,SineGordonModel})
     end
 
     return mpos_AnAn, mpos_CrCr
+end
+
+function createDisplacementOp(nMax::Int64, z::Union{Int64,Float64,ComplexF64}, physSpace)
+    """
+    Construct the normal-ordered displacement operator: 
+    : ̂D(z): = e^{z a^†} e^{-z^* a} 
+    """
+    Id = Diagonal(ones(ComplexF64, nMax + 1))
+    An = -1im * diagm(+1 => sqrt.(collect(1:nMax)))
+    getIdentityOperator(nMax + 1)
+    getAnnihilationOperator(nMax)
+
+    return idOp = TensorMap(getIdentityOperator(dim(physSpace)), physSpace, physSpace)
 end

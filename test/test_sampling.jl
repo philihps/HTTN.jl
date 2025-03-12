@@ -58,12 +58,8 @@ nTrials = 50
         testMPS = SparseMPS(testMPS; normalizeMPS = true)
         testMPS, sqOps = transform_basis!(testMPS, mS; squeezeZM = true,
                                           squeezeNonZM = true)
-        testMPS_1 = deepcopy(testMPS)
 
         mpsSample, momSample = sample_MPS!(testMPS)
         @test sum(momSample) == 0
-
-        mpsSample_1, momSample_1 = sample_MPS_block!(testMPS_1, sqOps)
-        @test sum(momSample_1) == 0
     end
 end
