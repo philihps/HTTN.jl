@@ -769,15 +769,15 @@ function localVertexOp(k::Int64,
                                            conj(flip(physVecSpace))))
 
     # get dimensions of physVecSpace and kronDelSpace
-    dimPhysVecSpace = dim(physVecSpace)
+    dimPhyVecSpace = dim(physVecSpace)
     dimAuxVecSpace = dim(kronDelSpace)
 
     # compute vertex operator coefficient α
     α = convert(Float64, s * β)
 
-    # # get Bogoliubov coefficients
-    # μ = cosh(ξ)
-    # ν = sinh(ξ)
+    # get Bogoliubov coefficients
+    μ = cosh(ξ)
+    ν = sinh(ξ)
 
     # construct local interaction for k = 0 or k ≂̸ 0
     if k == 0
@@ -813,15 +813,6 @@ function localVertexOp(k::Int64,
         end
 
     else
-
-        # create non-symmetric displacement operator
-        nMax = dimPhyVecSpace - 1
-        if bogoliubovRot
-            displacementOp = exp(abs(μ * α - ν * conj(α))^2 / 2) *
-                             getDisplacementOperator(nMax, μ * α - ν * conj(α))
-        else
-            displacementOp = exp(abs(α)^2 / 2) * getDisplacementOperator(nMax, α)
-        end
 
         # get ordering of QNs in physVecSpace and kronDelSpace
         phyQNSectors = physVecSpace.dims
@@ -917,6 +908,7 @@ function localDisplacementOp(k::Int64,
         else
             displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax, (1im * w))
         end
+        displacementOp = displacementOp' # required to match with local vertex operator construction
 
         # get ordering of QNs in physVecSpace and kronDelSpace
         phyQNSectors = physVecSpace.dims
@@ -1013,7 +1005,33 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
 
     # construct momentum-preserving MPO using a kroneckerDelta MPS
     kronDeltaSpaces = [space(localOp, 3)' for localOp in expOperator_neg]
-    kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
+    if localOp == "vertexOp"
+        println("old δ-MPS")
+        kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
+        # display(kroneckerDeltaMPS[2])
+        # display(space.(kroneckerDeltaMPS))
+    elseif localOp == "displacementOp"
+        println("new δ-MPS")
+        kroneckerDeltaMPS = generateKroneckerDeltaMPS_new(kronDeltaSpaces)
+        # display(kroneckerDeltaMPS[2])
+        # display(space.(kroneckerDeltaMPS))
+    end
+
+    # check similarity of tensor entries
+    kroneckerDeltaMPSA = generateKroneckerDeltaMPS(kronDeltaSpaces)
+    kroneckerDeltaMPSB = generateKroneckerDeltaMPS_new(kronDeltaSpaces)
+    println([norm(kroneckerDeltaMPSA[idx] - kroneckerDeltaMPSB[idx])
+             for idx in 1:length(kroneckerDeltaMPSA)])
+
+    # check similarity of spaces
+    kronSpacesA = space.(kroneckerDeltaMPSA)
+    kronSpacesB = space.(kroneckerDeltaMPSB)
+    println([kronSpacesA[idx] == kronSpacesB[idx] for idx in 1:length(kronSpacesA)])
+    display(kronSpacesA)
+    display(kronSpacesB)
+
+    display(kroneckerDeltaMPSA[4])
+    display(kroneckerDeltaMPSB[4])
 
     ### I added the 1/2 factor here. 
     V_neg = 1 / 2 *
