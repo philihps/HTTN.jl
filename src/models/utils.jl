@@ -46,3 +46,50 @@ function constructIdentityMPO(physSpaces::Vector{<:Union{ElementarySpace,
     end
     return SparseMPO(identityMPO)
 end
+
+function mps2vec(finiteMPS)
+    N = length(finiteMPS)
+    qnL = space(finiteMPS[1], 1)
+    qnR = space(finiteMPS[N], 3)
+    boundaryL = TensorMap(ones, one(qnL), qnL)
+    boundaryR = TensorMap(ones, qnR', one(qnR))
+    indexList = Vector{Vector{Int}}(undef, N + 2)
+    for idxT in eachindex(indexList)
+        if idxT == 1
+            indexList[idxT] = [idxT]
+        elseif idxT == length(indexList)
+            indexList[idxT] = [idxT - 1]
+        else
+            indexList[idxT] = [idxT - 1, -(idxT - 1), idxT]
+        end
+    end
+    mpsTensor = ncon(vcat(boundaryL, finiteMPS..., boundaryR), indexList)
+    mpsTensor = convert(Array, mpsTensor)
+    # sizeMPSTensor = size(mpsTensor)
+    # mpsVector = reshape(mpsTensor, prod(sizeMPSTensor[1:N]))
+    return mpsTensor
+end
+
+function mpo2mat(finiteMPO)
+    N = length(finiteMPO)
+    qnL = space(finiteMPO[1], 1)
+    qnR = space(finiteMPO[N], 3)
+    boundaryL = TensorMap(ones, one(qnL), qnL)
+    boundaryR = TensorMap(ones, qnR', one(qnR))
+    indexList = Vector{Vector{Int}}(undef, N + 2)
+    for idxT in eachindex(indexList)
+        if idxT == 1
+            indexList[idxT] = [idxT]
+        elseif idxT == length(indexList)
+            indexList[idxT] = [idxT - 1]
+        else
+            indexList[idxT] = [idxT - 1, -(idxT - 1), idxT, -(idxT - 1) - N]
+        end
+    end
+    mpoTensor = ncon(vcat(boundaryL, finiteMPO..., boundaryR), indexList)
+    mpoTensor = permute(mpoTensor, Tuple(1:N), Tuple((N + 1):(2 * N)))
+    mpoTensor = convert(Array, mpoTensor)
+    # sizeMPOTensor = size(mpoTensor)
+    # mpoMatrix = reshape(mpoTensor, prod(sizeMPOTensor[1:N]), prod(sizeMPOTensor[1:N]))
+    return mpoTensor
+end

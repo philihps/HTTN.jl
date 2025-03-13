@@ -15,21 +15,24 @@ struct SparseMPS{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPS
     end
 
     function SparseMPS(mpsTensors::Vector{A};
+                       orthogonalizeMPS::Bool = true,
                        normalizeMPS::Bool = false) where {A<:AbstractTensorMap{ComplexF64}}
 
         # bring MPS into right canonical form
-        for siteIdx in length(mpsTensors):-1:1
-            (L, Q) = rightorth(mpsTensors[siteIdx], ((1,), (2, 3)); alg = LQpos())
-            normalizeMPS && normalize!(L)
-            if siteIdx > 1
-                mpsTensors[siteIdx - 1] = permute(permute(mpsTensors[siteIdx - 1],
-                                                          ((1, 2),
-                                                           (3,))) * L, ((1, 2), (3,)))
-                mpsTensors[siteIdx - 0] = permute(Q, ((1, 2), (3,)))
-            else
-                mpsTensors[siteIdx - 0] = permute(L * permute(Q, ((1,), (2, 3))),
-                                                  ((1, 2),
-                                                   (3,)))
+        if orthogonalizeMPS
+            for siteIdx in length(mpsTensors):-1:1
+                (L, Q) = rightorth(mpsTensors[siteIdx], ((1,), (2, 3)); alg = LQpos())
+                normalizeMPS && normalize!(L)
+                if siteIdx > 1
+                    mpsTensors[siteIdx - 1] = permute(permute(mpsTensors[siteIdx - 1],
+                                                              ((1, 2),
+                                                               (3,))) * L, ((1, 2), (3,)))
+                    mpsTensors[siteIdx - 0] = permute(Q, ((1, 2), (3,)))
+                else
+                    mpsTensors[siteIdx - 0] = permute(L * permute(Q, ((1,), (2, 3))),
+                                                      ((1, 2),
+                                                       (3,)))
+                end
             end
         end
 
