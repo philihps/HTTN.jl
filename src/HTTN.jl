@@ -50,6 +50,9 @@ export TDVP2, TDVP2BO
 export metts, metts_ZM, transform_basis!
 export METTS2
 
+# export mps2vec and mpo2mat functions
+export mps2vec, mpo2mat
+
 # export mpo compression functions
 export compress_MPO, convert_MPO_33block, convert_33block_MPO
 
