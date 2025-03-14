@@ -1,13 +1,22 @@
+# function removeDegeneracyQN(vecSpace; degenCutOff::Int64 = 1)
+#     """ Function to remove degeneracies of QNs """
+
+#     qnSectors = vecSpace.dims
+#     momentumQNs = [productSector.charge for productSector in keys(qnSectors)]
+#     momentumDGs = [degeneracyValue for degeneracyValue in values(qnSectors)]
+#     truncatedVectorSpace = Rep[U₁]([momentumQNs[qnIdx] => min(momentumDGs[qnIdx],
+#                                                               degenCutOff)
+#                                     for
+#                                     qnIdx in eachindex(momentumQNs)])
+#     return truncatedVectorSpace
+# end
+
 function removeDegeneracyQN(vecSpace; degenCutOff::Int64 = 1)
     """ Function to remove degeneracies of QNs """
 
     qnSectors = vecSpace.dims
-    momentumQNs = [productSector.charge for productSector in keys(qnSectors)]
-    momentumDGs = [degeneracyValue for degeneracyValue in values(qnSectors)]
-    truncatedVectorSpace = Rep[U₁]([momentumQNs[qnIdx] => min(momentumDGs[qnIdx],
-                                                              degenCutOff)
-                                    for
-                                    qnIdx in eachindex(momentumQNs)])
+    truncatedVectorSpace = typeof(vecSpace)([key => min(qnSectors[key], degenCutOff)
+                                             for key in keys(qnSectors)])
     return truncatedVectorSpace
 end
 
@@ -98,35 +107,10 @@ function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace,
     # get number of momentum modes
     numSites = length(physSpaces)
 
-    # create virtual vector spaces L
-    virtSpaces_L = Vector{GradedSpace}()
-    virtSpaces_L = vcat(virtSpaces_L, qnL)
-    for ind in 1:+1:numSites
-        spaceL = virtSpaces_L[end]
-        spaceP = physSpaces[ind]
-        spaceR = fuse(spaceL, spaceP)
-        if removeDegeneracy
-            spaceR = removeDegeneracyQN(spaceR; degenCutOff = degenCutOff)
-        end
-        virtSpaces_L = vcat(virtSpaces_L, [spaceR])
-    end
-
-    # create virtual vector spaces R
-    virtSpaces_R = Vector{GradedSpace}()
-    virtSpaces_R = vcat(qnR, virtSpaces_R)
-    for ind in numSites:-1:1
-        spaceR = virtSpaces_R[1]
-        spaceP = physSpaces[ind]
-        spaceL = fuse(conj(flip(spaceP)), spaceR)
-        if removeDegeneracy
-            spaceL = removeDegeneracyQN(spaceL)
-        end
-        virtSpaces_R = vcat([spaceL], virtSpaces_R)
-    end
-
-    # combine virtual vector spaces
-    virtSpaces = [infimum(virtSpaces_L[siteIdx], virtSpaces_R[siteIdx])
-                  for siteIdx in 1:(numSites + 1)]
+    # create virtSpaces
+    virtSpaces = constructVirtSpaces(physSpaces, qnL, qnR;
+                                     removeDegeneracy = removeDegeneracy,
+                                     degenCutOff = degenCutOff)
 
     # construct MPS with physSpaces and virtSpaces
     deltaMPS = Vector{TensorMap{ComplexF64}}(undef, numSites)
@@ -135,5 +119,5 @@ function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace,
                                  virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
                                  virtSpaces[siteIdx + 1])
     end
-    return SparseMPS(deltaMPS)
+    return SparseMPS(deltaMPS; orthogonalizeMPS = false)
 end
