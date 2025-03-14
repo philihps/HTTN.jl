@@ -1006,38 +1006,17 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     # construct momentum-preserving MPO using a kroneckerDelta MPS
     kronDeltaSpaces = [space(localOp, 3)' for localOp in expOperator_neg]
     if localOp == "vertexOp"
-        println("old δ-MPS")
         kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
-        # display(kroneckerDeltaMPS[2])
-        # display(space.(kroneckerDeltaMPS))
     elseif localOp == "displacementOp"
-        println("new δ-MPS")
-        kroneckerDeltaMPS = generateKroneckerDeltaMPS_new(kronDeltaSpaces)
-        # display(kroneckerDeltaMPS[2])
-        # display(space.(kroneckerDeltaMPS))
+        kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
     end
-
-    # check similarity of tensor entries
-    kroneckerDeltaMPSA = generateKroneckerDeltaMPS(kronDeltaSpaces)
-    kroneckerDeltaMPSB = generateKroneckerDeltaMPS_new(kronDeltaSpaces)
-    println([norm(kroneckerDeltaMPSA[idx] - kroneckerDeltaMPSB[idx])
-             for idx in 1:length(kroneckerDeltaMPSA)])
-
-    # check similarity of spaces
-    kronSpacesA = space.(kroneckerDeltaMPSA)
-    kronSpacesB = space.(kroneckerDeltaMPSB)
-    println([kronSpacesA[idx] == kronSpacesB[idx] for idx in 1:length(kronSpacesA)])
-    display(kronSpacesA)
-    display(kronSpacesB)
-
-    display(kroneckerDeltaMPSA[4])
-    display(kroneckerDeltaMPSB[4])
 
     ### I added the 1/2 factor here. 
     V_neg = 1 / 2 *
             convertLocalOperatorsToMPO(expOperator_neg, kroneckerDeltaMPS)
     V_pos = 1 / 2 *
             convertLocalOperatorsToMPO(expOperator_pos, kroneckerDeltaMPS)
+
     # multiply by θ phase factors and 1/2 for the construction of the cosine 
     if θ != 0  # this condition is not necessary since for θ == 0 we get factors equal to 1. 
         ### I think the phase should have opposite sign, at least this is how it's defined in the paper. 
