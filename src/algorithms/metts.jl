@@ -367,6 +367,43 @@ end
 #     return finiteMPS, sqOps
 # end
 
+function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
+    """
+    3-body gate
+    """
+    physSpaceL, phySpaceC, physSpaceR = space(finiteMPS[1], 2),
+                                        space(finiteMPS[2], 2),
+                                        space(finiteMPS[3], 2)
+
+    transfOp = TensorMap(randhaar, physSpaceL ⊗ phySpaceC ⊗ physSpaceR,
+                         physSpaceL ⊗ phySpaceC ⊗ physSpaceR)
+
+    @tensor localBond[-1 -2 -3 -4; -5] := transfOp[-2, -3, -4, 1, 3, 5] *
+                                          finiteMPS[1][-1, 1, 2] *
+                                          finiteMPS[2][2, 3, 4] *
+                                          finiteMPS[3][4, 5, -5]
+
+    U, S, V, _ = tsvd(localBond, ((1, 2), (3, 4, 5)))
+
+    S /= norm(S)
+    U = permute(U, ((1, 2), (3,)))
+    finiteMPS[1] = U
+
+    V = permute(S * V, ((1, 2, 3), (4,)))
+    U, S, V, _ = tsvd(V, ((1, 2), (3, 4)))
+
+    S /= norm(S)
+    U = permute(U, ((1, 2), (3,)))
+    V = permute(S * V, ((1, 2), (3,)))
+
+    finiteMPS[2] = U
+    finiteMPS[3] = V
+
+    finiteMPS = normalizeMPS(finiteMPS)
+
+    return finiteMPS, transfOp
+end
+
 # function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
 #     """
 #     Transform momentum pair mode with squeezing operator defined 
@@ -417,25 +454,6 @@ end
 
 #     return finiteMPS, transfOps
 # end
-
-function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
-    transfOps = Vector(undef, length(finiteMPS))
-
-    for siteIdx in eachindex(finiteMPS)
-        if (siteIdx == 1 && squeezeZM) || (siteIdx != 1 && squeezeNonZM)
-            physSpace = space(finiteMPS[siteIdx], 2)
-            transfOp = TensorMap(randhaar, physSpace, physSpace)
-            transfOps[siteIdx] = transfOp
-
-            @tensor localTensor[-1 -2; -3] := finiteMPS[siteIdx][-1, 1, -3] *
-                                              transfOp[-2, 1]
-            finiteMPS[siteIdx] = localTensor
-        end
-    end
-    finiteMPS = normalizeMPS(finiteMPS)
-
-    return finiteMPS, transfOps
-end
 
 function transform_randHaar!(finiteMPS, model)
     """
@@ -573,15 +591,7 @@ function metts!(finiteMPS::SparseMPS,
                 finalBeta::Union{Int64,Float64},
                 alg::METTS2)
     """
-    METTS sampling with option for randomly mixed basis
-
-    Params:
-    - squeezeZM: to squeeze or not to squeeze the zero mode, that is the question
-
-    Returns:
-    - energies: energies[:, 1] -> energy at time step i
-        energies[:, 2] -> average energy up to time step i
-        energies[:, 3] -> standard error up to time step i
+    3-body gate
     """
     timeRanges = range(0; stop = finalBeta / 2, length = numTimeStep + 1)
     timeStep = 1im * (timeRanges[2] - timeRanges[1])
@@ -629,7 +639,7 @@ function metts!(finiteMPS::SparseMPS,
 
         # do basis transformation at each step
         if alg.changeProjBasis
-            finiteMPS, transfOps = transform_basis!(finiteMPS, model;
+            finiteMPS, transfOp = transform_basis!(finiteMPS, model;
                                                     squeezeZM = alg.squeezeZM,
                                                     squeezeNonZM = alg.squeezeNonZM)
         end
@@ -642,15 +652,26 @@ function metts!(finiteMPS::SparseMPS,
 
         # inverse transformation
         if alg.changeProjBasis
-            for siteIdx in eachindex(finiteMPS)
-                if (siteIdx == 1 && alg.squeezeZM) || (siteIdx != 1 && alg.squeezeNonZM)
-                    transfOp = transfOps[siteIdx]
-                    @tensor localTensor[-1 -2; -3] := transfOp'[-2, 1] *
-                                                      finiteMPS[siteIdx][-1, 1, -3]
+            @tensor localBond[-1 -2 -3 -4; -5] := transfOp'[-2, -3, -4, 1, 3, 5] *
+                                                finiteMPS[1][-1, 1, 2] *
+                                                finiteMPS[2][2, 3, 4] *
+                                                finiteMPS[3][4, 5, -5]
 
-                    finiteMPS[siteIdx] = localTensor
-                end
-            end
+            U, S, V, _ = tsvd(localBond, ((1, 2), (3, 4, 5)))
+
+            S /= norm(S)
+            U = permute(U, ((1, 2), (3,)))
+            finiteMPS[1] = U
+        
+            V = permute(S * V, ((1, 2, 3), (4,)))
+            U, S, V, _ = tsvd(V, ((1, 2), (3, 4)))
+        
+            S /= norm(S)
+            U = permute(U, ((1, 2), (3,)))
+            V = permute(S * V, ((1, 2), (3,)))
+        
+            finiteMPS[2] = U
+            finiteMPS[3] = V
 
             finiteMPS = normalizeMPS(finiteMPS)
         end
