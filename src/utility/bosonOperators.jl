@@ -19,20 +19,12 @@ function getCreationOperator(numBosons::Int64)
     return bosonOp
 end
 
-function expMatrices(oP, numBosons::Int64, z::Union{Int64,Float64,ComplexF64})
-    """
-    Compute e^{z . oP}
-    """
-    Id = getIdentityOperator(numBosons + 1)
-    opPowers = zeros(ComplexF64, numBosons + 1, numBosons + 1, numBosons + 1)
-    opPowers[1, :, :] = Id
-    for n in 1:numBosons
-        opPowers[n + 1, :, :] = z * oP * opPowers[n, :, :]
-    end
-    expOp = sum(1 / gamma(n + 1) * opPowers[n + 1, :, :] for n in collect(0:(numBosons - 1)))
-
-    return expOp
-
+function mergeLocalOperators(localOpB::TensorMap, localOpT::TensorMap)
+    fusionIsometry = isometry(space(localOpT, 3)' ⊗ space(localOpB, 3)',
+                              fuse(space(localOpT, 3)', space(localOpB, 3)'))
+    @tensor newLocalOp[-1; -2 -3] := localOpT[1, -2, 2] * localOpB[-1, 1, 3] *
+                                     fusionIsometry[2, 3, -3]
+    return newLocalOp
 end
 
 function getDisplacementOperator(nMax::Int64, α::Number)
@@ -40,10 +32,8 @@ function getDisplacementOperator(nMax::Int64, α::Number)
     Construct displacement operator:
     D(z) = e^{-|z|^2 / 2} . e^{α a†} . e^{-α* a}
     """
-    # displacementOp = exp(-abs(α)^2 / 2) * exp(α * getCreationOperator(nMax)) *
-    #                  exp(-conj(α) * getAnnihilationOperator(nMax))
-    displacementOp = exp(-abs(α)^2 / 2) * expMatrices(getCreationOperator(nMax), nMax, α) *
-                     expMatrices(getAnnihilationOperator(nMax), nMax, -conj(α))
+    displacementOp = exp(-abs(α)^2 / 2) * exp(α * getCreationOperator(nMax)) *
+                     exp(-conj(α) * getAnnihilationOperator(nMax))
     return displacementOp
 end
 

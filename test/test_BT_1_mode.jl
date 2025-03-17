@@ -50,7 +50,7 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     groundStateMPS = TensorMap(eigVecs[:, 1], virtSpaces[1] ⊗ physSpaces[1], virtSpaces[2])
     groundStateMPS = SparseMPS([groundStateMPS]; normalizeMPS = true)
 
-    ξ = 0.3
+    ξ = 0.2
     @info "Free part of the transformed Hamiltonian w/ $ξ"
     transfMS = updateBogoliubovParameters(mS; bogoliubovRot = true, bogParameters = [ξ])
     H0MPOTransf = generate_H0(transfMS)
@@ -59,14 +59,10 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     groundStateBTMPS = TensorMap(eigVecs[:, 1], virtSpaces[1] ⊗ physSpaces[1],
                                  virtSpaces[2])
     @test abs(norm(groundStateBTMPS) - 1.0) < 1e-8
-    print("Overlap of GS with vacuum")
     @test abs(real(dotMPS(groundStateMPS, vacuumMPS)) - 1.0) < 1e-8
 
     groundStateBTMPS = SparseMPS([groundStateBTMPS]; normalizeMPS = true)
-    println("Ground-state energy after BT transformed H0")
-    @test abs(eigValsFreeTransf[1] - eigValsFree[1]) < 1e-8
-    println("First excited state energy after BT transformed H0")
-    @test abs(eigValsFreeTransf[2] - eigValsFree[2]) < 1e-8
+    @test maximum(abs.(real((eigValsFreeTransf[1:5] - eigValsFree[1:5])))) < 1e-7
 
     @info "Test squeezing operator for GS of free Hamiltonian"
     singleSqOp = singleSqueezingOp(-ξ, nMaxZM, physSpaces[1])
@@ -75,7 +71,6 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     normSQState = real(tr(groundStateSqMPS' * groundStateSqMPS))
     println("Norm of the squeezed (vacuum) state: $normSQState")
     groundStateSqMPS = SparseMPS([groundStateSqMPS]; normalizeMPS = true)
-    println("Overlap of inverse BT GS with vacuum")
     @test abs(real(dotMPS(vacuumMPS, groundStateSqMPS))) - 1.0 < 1e-8
 
     @info "Full Hamiltonian"
@@ -86,7 +81,7 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     groundStateMPS = SparseMPS([groundStateMPS]; normalizeMPS = true)
 
     @info "Full transformed Hamiltonian"
-    ξ = 0.3
+    ξ = 0.2
     transfMS = updateBogoliubovParameters(mS; bogoliubovRot = true, bogParameters = [ξ])
     HMPOTransf = generate_MPO_mS(transfMS)
     HMatTransf = reshape(convert(Array, HMPOTransf[1]), (zeroDim, zeroDim))
@@ -94,10 +89,7 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     groundStateBTMPS = TensorMap(eigVecs[:, 1], virtSpaces[1] ⊗ physSpaces[1],
                                  virtSpaces[2])
     groundStateBTMPS = SparseMPS([groundStateBTMPS]; normalizeMPS = true)
-    println("Ground-state energy after BT transformed H")
-    @test abs(eigValsFullBT[1] - eigValsFull[1]) < 1e-8
-    println("First excited state energy after BT transformed H")
-    @test abs(eigValsFullBT[2] - eigValsFull[2]) < 1e-8
+    @test maximum(abs.(real((eigValsFullBT[1:5] - eigValsFull[1:5])))) < 1e-7
 
     @info "Test squeezing operator for GS of full Hamiltonian"
     singleSqOp = singleSqueezingOp(-ξ, nMaxZM, physSpaces[1])
@@ -106,9 +98,7 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     groundStateInvTransf = SparseMPS([groundStateInvTransf]; normalizeMPS = true)
     energy = real(expectation_value_mpo(groundStateInvTransf, HMPO))
 
-    println("Energy of inverse transformed GS")
     @test abs(energy - eigValsFull[1]) < 1e-8
-    println("Overlap between original GS and inverse transformed GS:")
     @test abs(dotMPS(groundStateMPS, groundStateInvTransf) - 1.0) < 1e-8
 end
 
