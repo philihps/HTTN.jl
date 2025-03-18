@@ -39,7 +39,7 @@ hamMPO = generate_MPO_mS(mS)
 # construct physical and virtual vector spaces for the MPS
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
-physSpaces = sG.physSpaces;
+physSpaces = mS.physSpaces;
 virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
                                  removeDegeneracy = true);
 fullVirtSpaces = [virtSpace.dims.keys for virtSpace in virtSpaces]
