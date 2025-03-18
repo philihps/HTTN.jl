@@ -84,7 +84,6 @@ Returns the right virtual space of the MPS tensor at site 'siteIdx'.
 This is equivalent to the left virtual space of the MPS tensor at site 'siteIdx + 1'.
 
 """
-# function getVirtualSpaceR end
 
 function getVirtualSpaceR(M::SparseMPO, siteIdx::Integer)
     return dual(space(M.mpoTensors[siteIdx], 3))
