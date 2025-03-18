@@ -640,8 +640,8 @@ function metts!(finiteMPS::SparseMPS,
         # do basis transformation at each step
         if alg.changeProjBasis
             finiteMPS, transfOp = transform_basis!(finiteMPS, model;
-                                                    squeezeZM = alg.squeezeZM,
-                                                    squeezeNonZM = alg.squeezeNonZM)
+                                                   squeezeZM = alg.squeezeZM,
+                                                   squeezeNonZM = alg.squeezeNonZM)
         end
 
         # collapse to a new state with local basis defined by mpsSample and momSample
@@ -653,23 +653,23 @@ function metts!(finiteMPS::SparseMPS,
         # inverse transformation
         if alg.changeProjBasis
             @tensor localBond[-1 -2 -3 -4; -5] := transfOp'[-2, -3, -4, 1, 3, 5] *
-                                                finiteMPS[1][-1, 1, 2] *
-                                                finiteMPS[2][2, 3, 4] *
-                                                finiteMPS[3][4, 5, -5]
+                                                  finiteMPS[1][-1, 1, 2] *
+                                                  finiteMPS[2][2, 3, 4] *
+                                                  finiteMPS[3][4, 5, -5]
 
             U, S, V, _ = tsvd(localBond, ((1, 2), (3, 4, 5)))
 
             S /= norm(S)
             U = permute(U, ((1, 2), (3,)))
             finiteMPS[1] = U
-        
+
             V = permute(S * V, ((1, 2, 3), (4,)))
             U, S, V, _ = tsvd(V, ((1, 2), (3, 4)))
-        
+
             S /= norm(S)
             U = permute(U, ((1, 2), (3,)))
             V = permute(S * V, ((1, 2), (3,)))
-        
+
             finiteMPS[2] = U
             finiteMPS[3] = V
 

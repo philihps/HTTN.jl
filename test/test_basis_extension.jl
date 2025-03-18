@@ -3,7 +3,7 @@ using TensorKit
 using Test
 
 # set modelName
-modelName = "sineGordon"
+modelName = "massiveSchwinger"
 
 # set display parameters
 modeOrdering = true;
@@ -16,9 +16,11 @@ nMaxZM = 10;
 bogoliubovRot = false;
 
 # set model parameters
-β = 0.25 * sqrt(4 * π);
-λ = 1.0;
-L = 15.0;
+θ = 1.0 * π;
+e = 1.0;
+M = e / sqrt(π);
+L = 100.0;
+fermionMass = 0.1;
 
 # create NamedTuple for truncation parameters and model parameters
 truncationParameters = (kMax = kMax,
@@ -27,28 +29,28 @@ truncationParameters = (kMax = kMax,
                         truncMethod = truncMethod,
                         modeOrdering = modeOrdering,
                         bogoliubovRot = bogoliubovRot);
-hamiltonianParameters = (β = β, λ = λ, L = L);
+hamiltonianParameters = (θ = θ, m = fermionMass, M = M, L = L)
 
 # construct Sine-Gordon model (with MPO)
-sG = SineGordonModel(truncationParameters, hamiltonianParameters);
-display(sG.modeOccupations)
-hamMPO = generate_MPO_sG(sG)
+mS = MassiveSchwingerModel(truncationParameters, hamiltonianParameters)
+display(mS.modeOccupations)
+hamMPO = generate_MPO_mS(mS)
 
 # construct physical and virtual vector spaces for the MPS
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
-virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR;
+virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
                                  removeDegeneracy = true);
 fullVirtSpaces = [virtSpace.dims.keys for virtSpace in virtSpaces]
 
 @testset "Test basis extension" begin
 
     # initialize random product state
-    mpsSample = [15, 2, 4, 4, 3]
+    mpsSample = [5, 2, 4, 4, 3]
     momSample = [0, -1, 3, -6, 4]
 
-    finiteMPS = sample_to_CPS(mpsSample, momSample, sG)
+    finiteMPS = sample_to_CPS(mpsSample, momSample, mS)
     virtSpacesCPS = vcat([space(finiteMPS[1], 1).dims.keys],
                          [space(finiteMPS[i], 3).dims.keys for i in 1:length(physSpaces)])
     @show virtSpacesCPS
