@@ -20,6 +20,10 @@ function getCreationOperator(numBosons::Int64)
 end
 
 function mergeLocalOperators(localOpB::TensorMap, localOpT::TensorMap)
+    """
+    Apply localOpT onto localOpB to create a 3-leg MPO 
+    with the spaces of the third legs fused 
+    """
     fusionIsometry = isometry(space(localOpT, 3)' ⊗ space(localOpB, 3)',
                               fuse(space(localOpT, 3)', space(localOpB, 3)'))
     @tensor newLocalOp[-1; -2 -3] := localOpT[1, -2, 2] * localOpB[-1, 1, 3] *

@@ -53,7 +53,6 @@ fullVirtSpaces = [virtSpace.dims.keys for virtSpace in virtSpaces]
     finiteMPS = sample_to_CPS(mpsSample, momSample, mS)
     virtSpacesCPS = vcat([space(finiteMPS[1], 1).dims.keys],
                          [space(finiteMPS[i], 3).dims.keys for i in 1:length(physSpaces)])
-    @show virtSpacesCPS
 
     timeStep = 0.05
     finiteMPS, _, _, _ = perform_timestep!(finiteMPS, hamMPO, timeStep, TDVP2())

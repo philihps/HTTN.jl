@@ -383,23 +383,21 @@ function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
                                           finiteMPS[2][2, 3, 4] *
                                           finiteMPS[3][4, 5, -5]
 
-    U, S, V, _ = tsvd(localBond, ((1, 2), (3, 4, 5)))
+    U, S, V, _ = tsvd(localBond, ((1, 2, 3), (4, 5)))
 
     S /= norm(S)
-    U = permute(U, ((1, 2), (3,)))
-    finiteMPS[1] = U
+    V = permute(V, ((1, 2), (3,)))
+    finiteMPS[3] = V # right-canonical form
 
-    V = permute(S * V, ((1, 2, 3), (4,)))
-    U, S, V, _ = tsvd(V, ((1, 2), (3, 4)))
+    U = permute(U * S, ((1, 2, 3), (4,)))
+    U, S, V, _ = tsvd(U, ((1, 2), (3, 4)))
 
     S /= norm(S)
-    U = permute(U, ((1, 2), (3,)))
-    V = permute(S * V, ((1, 2), (3,)))
+    U = permute(U * S, ((1, 2), (3,)))
+    V = permute(V, ((1, 2), (3,)))
 
-    finiteMPS[2] = U
-    finiteMPS[3] = V
-
-    finiteMPS = normalizeMPS(finiteMPS)
+    finiteMPS[2] = V
+    finiteMPS[1] = U / sqrt(norm(U))
 
     return finiteMPS, transfOp
 end

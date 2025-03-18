@@ -68,7 +68,6 @@ groundStateEnergy_TDVP = 0
                                                               DMRG2(; bondDim = 1000,
                                                                     truncErr = 1e-6,
                                                                     verbosePrint = true))
-    @show groundStateEnergy_DMRG
     @test isapprox(groundStateEnergy_DMRG, 1.5414652000703606)
 
     @info "Start TDVP"

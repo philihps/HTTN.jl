@@ -1060,11 +1060,6 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     # construct momentum-preserving MPO using a kroneckerDelta MPS
     kronDeltaSpaces = [space(localOp, 3)' for localOp in expOperator_neg]
     kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
-    # @show kroneckerDeltaMPS
-    # A = mps2vec(kroneckerDeltaMPS)
-    # @show real(A)
-
-    # @show size(A)
 
     # combined with kroneckerDeltaMPS to form full MPO 
     V_neg = 1 / 2 *
