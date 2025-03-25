@@ -12,18 +12,20 @@ abstract type AbstractFiniteLocalOp <: AbstractLocalOp end
 #--------------------------------------------------------------
 # MPO constructors
 #--------------------------------------------------------------
-struct SparseLocalOp{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteLocalOp
+struct SparseLocalOp{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteLocalOp
     """
     A vector of 3-index tensors with additional δ-index for momentum transfer between the bra and ket index
     """
     localTensors::Vector{A}
 
-    function SparseLocalOp{A}(localTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(localTensors)
+    function SparseLocalOp{T,A}(localTensors::Vector{A}) where {T<:Number,
+                                                                A<:AbstractTensorMap{T}}
+        return new(localTensors)
     end
 
-    function SparseLocalOp(localTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(localTensors)
+    function SparseLocalOp(localTensors::Vector{A}) where {T<:Number,
+                                                           A<:AbstractTensorMap{T}}
+        return new{T,A}(localTensors)
     end
 end
 
@@ -34,7 +36,7 @@ struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
     mpoTensors::Vector{A}
 
     function SparseMPO{A}(mpoTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(mpoTensors)
+        return new(mpoTensors)
     end
 
     function SparseMPO(mpoTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
