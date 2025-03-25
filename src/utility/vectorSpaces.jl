@@ -92,7 +92,8 @@ function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S;
     end
 
     # combine virtual vector spaces
-    virtSpaces = [infimum(virtSpaces_L[i], virtSpaces_R[i]) for i in 1:length(virtSpaces_L)]
+    virtSpaces = [infimum(virtSpaces_L[i], virtSpaces_R[i])
+                  for i in eachindex(virtSpaces_L)]
     return virtSpaces
 end
 

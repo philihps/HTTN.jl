@@ -10,14 +10,13 @@ abstract type AbstractFiniteMPS <: AbstractMPS end
 struct SparseMPS{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteMPS
     mpsTensors::Vector{A}
 
-    function SparseMPS{T,A}(mpsTensors::Vector{A}) where {T<:Number,
-                                                          A<:AbstractTensorMap{T}}
+    function SparseMPS{T,A}(mpsTensors::Vector{A}) where {T<:Number,A<:AbstractTensorMap{T}}
         return new(mpsTensors)
     end
 
     function SparseMPS(mpsTensors::Vector{A};
                        orthogonalizeMPS::Bool = true,
-                       normalizeMPS::Bool = false) where {A<:AbstractTensorMap{ComplexF64}}
+                       normalizeMPS::Bool = false) where {T<:Number,A<:AbstractTensorMap{T}}
 
         # bring MPS into right canonical form
         if orthogonalizeMPS
