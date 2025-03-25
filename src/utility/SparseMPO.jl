@@ -29,18 +29,20 @@ struct SparseLocalOp{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteLocalOp
     end
 end
 
-struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
+struct SparseMPO{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteMPO
     """
     A vector of 4-index MPO
     """
     mpoTensors::Vector{A}
 
-    function SparseMPO{A}(mpoTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
+    function SparseMPO{T,A}(mpoTensors::Vector{A}) where {T<:Number,
+                                                          A<:AbstractTensorMap{T}}
         return new(mpoTensors)
     end
 
-    function SparseMPO(mpoTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(mpoTensors)
+    function SparseMPO(mpoTensors::Vector{A}) where {T<:Number,
+                                                     A<:AbstractTensorMap{T}}
+        return new{T,A}(mpoTensors)
     end
 end
 
@@ -49,7 +51,7 @@ end
 #--------------------------------------------------------------
 
 """
-getKroneckerDeltaSpace(E::MomentumMPO, siteIdx::Int)
+getKroneckerDeltaSpace(E::SparseLocalOp, siteIdx::Int)
 
 Returns the Kronecker-Delta space of the EXP tensor at site 'siteIdx'.
 
@@ -61,7 +63,7 @@ function getKroneckerDeltaSpace(E::SparseMPO, siteIdx::Integer)
 end
 
 """
-getPhysicalSpace(E::MomentumMPO, siteIdx::Int)
+getPhysicalSpace(E::SparseLocalOp, siteIdx::Int)
 
 Returns the physical space of the EXP tensor at site 'siteIdx'.
 

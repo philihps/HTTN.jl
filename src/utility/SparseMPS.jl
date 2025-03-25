@@ -7,15 +7,17 @@
 abstract type AbstractMPS end
 abstract type AbstractFiniteMPS <: AbstractMPS end
 
-struct SparseMPS{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPS
+struct SparseMPS{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteMPS
     mpsTensors::Vector{A}
 
-    function SparseMPS{A}(mpsTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(mpsTensors)
+    function SparseMPS{T,A}(mpsTensors::Vector{A}) where {T<:Number,
+                                                          A<:AbstractTensorMap{T}}
+        return new(mpsTensors)
     end
 
     function SparseMPS(mpsTensors::Vector{A};
-                       normalizeMPS::Bool = false) where {A<:AbstractTensorMap{ComplexF64}}
+                       normalizeMPS::Bool = false) where {T<:Number,
+                                                          A<:AbstractTensorMap{T}}
 
         # bring MPS into right canonical form
         for siteIdx in length(mpsTensors):-1:1
@@ -33,7 +35,7 @@ struct SparseMPS{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPS
             end
         end
 
-        return new{A}(mpsTensors)
+        return new{T,A}(mpsTensors)
     end
 end
 
