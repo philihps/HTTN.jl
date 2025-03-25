@@ -5,12 +5,33 @@
 #------------------------------------------------------
 
 abstract type AbstractMPO end
+abstract type MomentumMPO end
 abstract type AbstractFiniteMPO <: AbstractMPO end
+abstract type FiniteMomentumMPO <: MomentumMPO end
+
 
 #--------------------------------------------------------------
-# SparseMPO constructors
+# MPO constructors
 #--------------------------------------------------------------
+struct SparseMomentumMPO{A<:AbstractTensorMap{ComplexF64}} <: FiniteMomentumMPO
+    """
+    3-index MPO with additional δ-index for momentum transfer between the bra and ket index.
+    """
+    momentumTensors::Vector{A}
+
+    function MomentumMPO{A}(momentumTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
+        return new{A}(momentumTensors)
+    end
+
+    function MomentumMPO(momentumTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
+        return new{A}(momentumTensors)
+    end
+end
+
 struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
+    """
+    4-/2-index MPO
+    """
     mpoTensors::Vector{A}
 
     function SparseMPO{A}(mpoTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
@@ -22,12 +43,14 @@ struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
     end
 end
 
+
+
 #--------------------------------------------------------------
 # SparseMPO utilities
 #--------------------------------------------------------------
 
 """
-getKroneckerDeltaSpace(E::AbstractEXP, siteIdx::Int)
+getKroneckerDeltaSpace(E::MomentumMPO, siteIdx::Int)
 
 Returns the Kronecker-Delta space of the EXP tensor at site 'siteIdx'.
 
@@ -39,7 +62,7 @@ function getKroneckerDeltaSpace(E::SparseMPO, siteIdx::Integer)
 end
 
 """
-getPhysicalSpace(E::AbstractEXP, siteIdx::Int)
+getPhysicalSpace(E::MomentumMPO, siteIdx::Int)
 
 Returns the physical space of the EXP tensor at site 'siteIdx'.
 
