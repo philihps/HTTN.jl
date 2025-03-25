@@ -293,18 +293,12 @@ function perform_timestep(finiteMPS::SparseMPS,
     return perform_timestep!(copy(finiteMPS), finiteMPO, timeStep, alg)
 end
 
-#-------------------------------------------------
+# ------------------------------------------------------------
+# perform local basis optimization to reduce entanglement
 
-function perform_timestep!(finiteMPS::SparseMPS,
-                           mpoHandle::Function,
-                           QFTModel::AbstractQFTModel,
-                           timeStep::Union{Float64,ComplexF64},
-                           alg::TDVP2BO)
-    """ 2-site TDVP implementation for finiteMPO with global Krylov subspace expansion """
-
-    # create MPO that should be simulated
-    finiteMPO = mpoHandle(QFTModel)
-    println(getLinkDimsMPO(finiteMPO))
+function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTModel,
+                                    alg::TDVP2)
+    """ rotates pairs of modes [-k,+k] to optimal basis, such that the Renyi-1/2 entropy is minimized """
 
     # get bogParameters
     bogParameters = QFTModel.modelParameters.truncationParameters[:bogParameters]
@@ -343,7 +337,8 @@ function perform_timestep!(finiteMPS::SparseMPS,
         U, S, V, ϵ = tsvd(newAC2,
                           ((1, 2),
                            (3, 4));
-                          trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
+                          trunc = truncdim(alg.bondDim) &
+                                  truncerr(alg.truncErrT),
                           alg = TensorKit.SVD(),)
         S /= norm(S)
         U = permute(U, ((1, 2), (3,)))
@@ -354,20 +349,12 @@ function perform_timestep!(finiteMPS::SparseMPS,
         finiteMPS[siteIdx + 0] = U
         finiteMPS[siteIdx + 1] = V
 
-        # update mpoEnvL
-        mpoEnvL[siteIdx + 1] = update_MPOEnvL(mpoEnvL[siteIdx], finiteMPS[siteIdx],
-                                              finiteMPO[siteIdx], finiteMPS[siteIdx])
+        # # update mpoEnvL
+        # mpoEnvL[siteIdx + 1] = update_MPOEnvL(mpoEnvL[siteIdx],
+        #                             finiteMPS[siteIdx],
+        #                             finiteMPO[siteIdx],
+        #                             finiteMPS[siteIdx])
 
-        # compute K(n + 1) and apply it to V(n + 1) to evolve it with exp(+1im * timeStep/2 * K(n + 1))
-        if siteIdx < (length(finiteMPS) - 1)
-            finiteMPS[siteIdx + 1], convHist = exponentiate(x -> applyAC(x,
-                                                                         finiteMPO[siteIdx + 1],
-                                                                         mpoEnvL[siteIdx + 1],
-                                                                         mpoEnvR[siteIdx + 1]),
-                                                            +1im * timeStep / 2,
-                                                            finiteMPS[siteIdx + 1],
-                                                            Lanczos())
-        end
     end
 
     # sweep L <--- R
@@ -392,7 +379,8 @@ function perform_timestep!(finiteMPS::SparseMPS,
         U, S, V, ϵ = tsvd(newAC2,
                           ((1, 2),
                            (3, 4));
-                          trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
+                          trunc = truncdim(alg.bondDim) &
+                                  truncerr(alg.truncErrT),
                           alg = TensorKit.SVD(),)
         S /= norm(S)
         U = permute(U * S, ((1, 2), (3,)))
@@ -403,22 +391,12 @@ function perform_timestep!(finiteMPS::SparseMPS,
         finiteMPS[siteIdx + 0] = U
         finiteMPS[siteIdx + 1] = V
 
-        # update mpoEnvR
-        mpoEnvR[siteIdx + 0] = update_MPOEnvR(mpoEnvR[siteIdx + 1],
-                                              finiteMPS[siteIdx + 1],
-                                              finiteMPO[siteIdx + 1],
-                                              finiteMPS[siteIdx + 1])
+        # # update mpoEnvR
+        # mpoEnvR[siteIdx + 0] = update_MPOEnvR(mpoEnvR[siteIdx + 1],
+        #                             finiteMPS[siteIdx + 1],
+        #                             finiteMPO[siteIdx + 1],
+        #                             finiteMPS[siteIdx + 1])
 
-        # compute K(n) and apply it to V(n) to evolve it with exp(+1im * timeStep/2 * K(n))
-        if siteIdx > 1
-            finiteMPS[siteIdx + 0], convHist = exponentiate(x -> applyAC(x,
-                                                                         finiteMPO[siteIdx + 0],
-                                                                         mpoEnvL[siteIdx + 0],
-                                                                         mpoEnvR[siteIdx + 0]),
-                                                            +1im * timeStep / 2,
-                                                            finiteMPS[siteIdx + 0],
-                                                            Lanczos())
-        end
     end
 
     # # ------------------------------------------------------------
@@ -706,7 +684,7 @@ function perform_timestep!(finiteMPS::SparseMPS,
     # end
 
     # return optimized finiteMPS
-    return finiteMPS, mpoEnvL, mpoEnvR, bogParameters, maximum(truncationErrors), finiteMPO
+    return finiteMPS, bogParameters, truncationErrors
 end
 
 function perform_timestep(finiteMPS::SparseMPS,

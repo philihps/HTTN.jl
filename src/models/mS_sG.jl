@@ -631,8 +631,8 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             # get Bogoliubov rotation parameters (this is not checked for complex ξ)
             ξ = bogParameters[abs(kVal) + 1]
 
-            mpoAnAnZM *= M * 1 / 2 * sinh(2 * ξ)
-            mpoCrCrZM *= M * 1 / 2 * sinh(2 * ξ)
+            mpoAnAnZM *= 0.5 * M * sinh(2 * ξ)
+            mpoCrCrZM *= 0.5 * M * sinh(2 * ξ)
 
             # store sum of MPOs
             storeIndividualMPOs[kIdx] = mpoAnAnZM + mpoCrCrZM
