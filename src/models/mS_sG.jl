@@ -675,7 +675,6 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             # store sum of MPOs
             storeIndividualMPOs[kIdx] = mpoAnAn + mpoCrCr
         end
-
     end
 
     mpo_H0_Part_B = sum(storeIndividualMPOs)
@@ -832,8 +831,7 @@ function localVertexOp(modelParameters,
     """
 
     # construct kroneckerDelta space
-    kronDelSpace = removeDegeneracyQN(fuse(physVecSpace,
-                                           conj(flip(physVecSpace))))
+    kronDelSpace = removeDegeneracyQN(fuse(physVecSpace, conj(flip(physVecSpace))))
 
     # get dimensions of physVecSpace and kronDelSpace
     dimPhyVecSpace = dim(physVecSpace)
@@ -842,21 +840,21 @@ function localVertexOp(modelParameters,
     # compute vertex operator coefficient α
     α = convert(Float64, n * β)
 
-    # get truncationParameters
-    truncationParameters = modelParameters.truncationParameters
-    bogoliubovRot = truncationParameters[:bogoliubovRot]
-    w = α / sqrt(2 * modeEnergy(k, L, M) * L)
-    if bogoliubovRot
-        ξ = truncationParameters[:bogParameters][abs(k) + 1]
-        μ = cosh(abs(ξ))
-        ν = sinh(abs(ξ)) * exp(1im * angle(ξ))
-        argDisplacementOp = μ * (1im * w) - ν * conj(1im * w)
-        vertexOp = exp(abs(w)^2 / 2) *
-                   (getDisplacementOperator(dimPhysVecSpace - 1, argDisplacementOp))
-    else
-        vertexOp = exp(abs(w)^2 / 2) *
-                   (getDisplacementOperator(dimPhysVecSpace - 1, 1im * w))
-    end
+    # # get truncationParameters
+    # truncationParameters = modelParameters.truncationParameters
+    # bogoliubovRot = truncationParameters[:bogoliubovRot]
+    # w = α / sqrt(2 * modeEnergy(k, L, M) * L)
+    # if bogoliubovRot
+    #     ξ = truncationParameters[:bogParameters][abs(k) + 1]
+    #     μ = cosh(abs(ξ))
+    #     ν = sinh(abs(ξ)) * exp(1im * angle(ξ))
+    #     argDisplacementOp = μ * (1im * w) - ν * conj(1im * w)
+    #     vertexOp = exp(abs(w)^2 / 2) *
+    #                (getDisplacementOperator(dimPhysVecSpace - 1, argDisplacementOp))
+    # else
+    #     vertexOp = exp(abs(w)^2 / 2) *
+    #                (getDisplacementOperator(dimPhysVecSpace - 1, 1im * w))
+    # end
 
     # construct local interaction for k = 0 or k ≠ 0
     if k == 0
@@ -921,11 +919,10 @@ function localVertexOp(modelParameters,
     return TensorMap(interactionTensor, physVecSpace, physVecSpace ⊗ kronDelSpace)
 end
 
-function localDisplacementOp(k::Int64,
+function localDisplacementOp(modelParameters,
                              physVecSpace::Union{ElementarySpace,
                                                  CompositeSpace{ElementarySpace}},
-                             s::Int64, β::Float64, M::Float64, L::Float64,
-                             bogoliubovRot::Bool = false, ξ::Number = 0.0)
+                             k::Int64, n::Int64, β::Float64, M::Float64, L::Float64)
     """ Construct local displacement operator, to be combined with kroneckerDeltaMPS to form full MPO """
 
     # construct kroneckerDelta space
@@ -936,11 +933,23 @@ function localDisplacementOp(k::Int64,
     dimAuxVecSpace = dim(kronDelSpace)
 
     # compute vertex operator coefficient α
-    α = convert(Float64, s * β)
+    α = convert(Float64, n * β)
 
-    # get Bogoliubov coefficients
-    μ = cosh(abs(ξ))
-    ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
+    # get truncationParameters
+    truncationParameters = modelParameters.truncationParameters
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
+    w = α / sqrt(2 * modeEnergy(k, L, M) * L)
+    if bogoliubovRot
+        ξ = truncationParameters[:bogParameters][abs(k) + 1]
+        μ = cosh(abs(ξ))
+        ν = sinh(abs(ξ)) * exp(1im * angle(ξ))
+        argDisplacementOp = μ * (1im * w) - ν * conj(1im * w)
+        vertexOp = exp(abs(w)^2 / 2) *
+                   (getDisplacementOperator(dimPhysVecSpace - 1, argDisplacementOp))
+    else
+        vertexOp = exp(abs(w)^2 / 2) *
+                   (getDisplacementOperator(dimPhysVecSpace - 1, 1im * w))
+    end
 
     # construct local interaction for k = 0 or k ≂̸ 0
     if k == 0
@@ -970,23 +979,23 @@ function localDisplacementOp(k::Int64,
             interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
                                       dimAuxVecSpace)
             for nBra in 0:(dimPhyVecSpace - 1), nKet in 0:(dimPhyVecSpace - 1)
-                ### interactionTensor[nBra + 1, nKet + 1, 1] = convert(Float64, sum([F_mS(nBra, nKet, j, momentumVal, α, L, M) for j = max(0, nBra - nKet) : nBra]));
-                interactionTensor[nBra + 1, nKet + 1, 1] = G(nBra, nKet, w)
+                # interactionTensor[nBra + 1, nKet + 1, 1] = G(nBra, nKet, w)
+                interactionTensor[nBra + 1, nKet + 1, 1] = vertexOp[nBra + 1, nKet + 1]
             end
         end
 
     else
 
-        # create non-symmetric displacement operator
-        nMax = dimPhyVecSpace - 1
-        w = α / sqrt(2 * modeEnergy(k, L, M) * L)
-        if bogoliubovRot
-            displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax,
-                                                                    μ * (1im * w) - ν * conj(1im * w))
-        else
-            displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax, (1im * w))
-        end
-        displacementOp = displacementOp' # required to match with local vertex operator construction
+        # # create non-symmetric displacement operator
+        # nMax = dimPhyVecSpace - 1
+        # w = α / sqrt(2 * modeEnergy(k, L, M) * L)
+        # if bogoliubovRot
+        #     displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax,
+        #                                                             μ * (1im * w) - ν * conj(1im * w))
+        # else
+        #     displacementOp = exp(w^2 / 2) * getDisplacementOperator(nMax, (1im * w))
+        # end
+        # displacementOp = displacementOp' # required to match with local vertex operator construction
 
         # get ordering of QNs in physVecSpace and kronDelSpace
         phyQNSectors = physVecSpace.dims
@@ -1121,9 +1130,8 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
                                             SineGordonParameters},
                      modeOccupations::Matrix{Int64},
                      physSpaces::Vector{<:Union{ElementarySpace,
-                                                CompositeSpace{ElementarySpace}}}, 
-                                                localOp::String = "vertexOp")
-                                                
+                                                CompositeSpace{ElementarySpace}}},
+                     localOp::String = "vertexOp")
     """ Construct the cosine interaction 
     :cos(βΦ - θ): = 1/2 . [e^{-iθ}:V_β: + e^{iθ}:V_{-β}:]"""
 
@@ -1170,8 +1178,10 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
         end
 
         if localOp == "vertexOp"
-            localOperators_neg[siteIdx] = localVertexOp(modelParameters, physVecSpace, momentumVal, -1, β, M, L)
-            localOperators_pos[siteIdx] = localVertexOp(modelParameters, physVecSpace, momentumVal, +1, β, M, L)
+            localOperators_neg[siteIdx] = localVertexOp(modelParameters, physVecSpace,
+                                                        momentumVal, -1, β, M, L)
+            localOperators_pos[siteIdx] = localVertexOp(modelParameters, physVecSpace,
+                                                        momentumVal, +1, β, M, L)
         elseif localOp == "displacementOp"
             localOperators_neg[siteIdx] = localDisplacementOp(momentumVal, physVecSpace, -1,
                                                               β, M, L, bogoliubovRot,

@@ -695,8 +695,6 @@ function perform_timestep(finiteMPS::SparseMPS,
     return perform_timestep!(copy(finiteMPS), mpoHandle, QFTModel, timeStep, alg)
 end
 
-
-
 # ------------------------------------------------------------
 # perform local basis optimization to reduce entanglement
 
