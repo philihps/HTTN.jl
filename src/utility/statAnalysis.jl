@@ -6,7 +6,7 @@ function auto_corr(A, tau::Int64)
     """
     N = length(A)
     mean_A = sum(A) / N
-    res = sum((A[1:(N - tau)] .- mean_A) .* (A[(1 + tau):N] .- mean_A)) /
+    res = N / (N - tau) * sum((A[1:(N - tau)] .- mean_A) .* (A[(1 + tau):N] .- mean_A)) /
           sum((A[1:N] .- mean_A) .^ 2)
 
     return res
@@ -40,7 +40,7 @@ function compute_average(A)
     """
     N = length(A)
     mean_A = sum(A) / N
-    taus = collect(1:(N ÷ 2))
+    taus = collect(1:(N ÷ 5))
     autoCorrs = [auto_corr(A, tau) for tau in taus]
     corrTime = int_autocorr_time(autoCorrs)
     println("Autocorrelation time is $(corrTime)")

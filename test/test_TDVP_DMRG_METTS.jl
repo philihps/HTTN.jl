@@ -15,8 +15,6 @@ kMax = 1;
 nMax = 5;
 nMaxZM = 10;
 bogoliubovRot = false;
-bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13];
-bogParameters = bogParameters[1:kMax];
 
 # set model parameters
 θ = 1.0 * π;
@@ -31,8 +29,7 @@ truncationParameters = (kMax = kMax,
                         nMaxZM = nMaxZM,
                         truncMethod = truncMethod,
                         modeOrdering = modeOrdering,
-                        bogoliubovRot = bogoliubovRot,
-                        bogParameters = bogParameters);
+                        bogoliubovRot = bogoliubovRot);
 hamiltonianParameters = (θ = θ, m = fermionMass, M = M, L = L)
 
 mS = MassiveSchwingerModel(truncationParameters, hamiltonianParameters)
@@ -65,16 +62,12 @@ timeRanges = range(0; stop = finalBeta, length = numTimeStep + 1)
 timeStep = 1im * (timeRanges[2] - timeRanges[1])
 groundStateEnergy_TDVP = 0
 
-# set METTS parameters
-numMETTS = 3;
-
 @testset "Compare energy" begin
     @info "Start DMRG"
     groundStateMPS, groundStateEnergy_DMRG = find_groundstate(initialMPS, hamMPO,
                                                               DMRG2(; bondDim = 1000,
                                                                     truncErr = 1e-6,
                                                                     verbosePrint = true))
-    @show groundStateEnergy_DMRG
     @test isapprox(groundStateEnergy_DMRG, 1.5414652000703606)
 
     @info "Start TDVP"
@@ -92,11 +85,11 @@ numMETTS = 3;
     @test abs(groundStateEnergy_TDVP - groundStateEnergy_DMRG) < 1e-14
 
     @info "Start METTS"
-    _, energies, _ = metts_basis(initialMPS, hamMPO, mS, numTimeStep, finalBeta;
-                                 alg = METTS2(; numWarmUp = 3,
-                                              numMETTS = numMETTS,
-                                              doBasisExtend = false,
-                                              tol = 1.0))
+    _, energies, _ = metts(initialMPS, hamMPO, mS, numTimeStep, finalBeta;
+                           alg = METTS2(; numWarmUp = 3,
+                                        numMETTS = 3,
+                                        extendBasis = false,
+                                        tol = 1.0))
 
     _, av_E_last, err_E_last = energies[end, :]
     @test abs(groundStateEnergy_TDVP - av_E_last) < 1e-14

@@ -77,20 +77,18 @@ function singleSqueezingOp(ξ::Union{Int64,Float64,ComplexF64},
 
     # construct one-site operators
     Cr = TensorMap(getCreationOperator(nMax), physSpace, physSpace)
-    @tensor CrCr[-1; -2] := Cr[-1, 1] * Cr[1, -2]
     An = TensorMap(getAnnihilationOperator(nMax), physSpace, physSpace)
-    @tensor AnAn[-1; -2] := An[-1, 1] * An[1, -2]
     numberOp = TensorMap(getNumberOperator(nMax), physSpace, physSpace)
     idOp = TensorMap(getIdentityOperator(dim(physSpace)), physSpace, physSpace)
 
-    K_A_0 = numberOp + (1 / 2) * idOp
-    K_A_min = AnAn
-    K_A_plus = CrCr
+    K_A_0 = (1 / 2) * numberOp + 1 / 4 * idOp
+    K_A_min = (1 / 2) * An * An
+    K_A_plus = (1 / 2) * Cr * Cr
 
     # construct squeezing operator
     S = matrixExponentialSeries(-1 * tanh(ξ) * K_A_plus, nMax) *
         matrixExponentialSeries(-2 * log(cosh(ξ)) * K_A_0, nMax) *
-        matrixExponentialSeries(tanh(ξ) * K_A_min, nMax)
+        matrixExponentialSeries(1 * tanh(ξ) * K_A_min, nMax)
     return S
 end
 

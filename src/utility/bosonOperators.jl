@@ -19,6 +19,28 @@ function getCreationOperator(numBosons::Int64)
     return bosonOp
 end
 
+function mergeLocalOperators(localOpB::TensorMap, localOpT::TensorMap)
+    """
+    Apply localOpT onto localOpB to create a 3-leg MPO 
+    with the spaces of the third legs fused 
+    """
+    fusionIsometry = isometry(space(localOpT, 3)' ⊗ space(localOpB, 3)',
+                              fuse(space(localOpT, 3)', space(localOpB, 3)'))
+    @tensor newLocalOp[-1; -2 -3] := localOpT[1, -2, 2] * localOpB[-1, 1, 3] *
+                                     fusionIsometry[2, 3, -3]
+    return newLocalOp
+end
+
+function getDisplacementOperator(nMax::Int64, α::Number)
+    """
+    Construct displacement operator:
+    D(z) = e^{-|z|^2 / 2} . e^{α a†} . e^{-α* a}
+    """
+    displacementOp = exp(-abs(α)^2 / 2) * exp(α * getCreationOperator(nMax)) *
+                     exp(-conj(α) * getAnnihilationOperator(nMax))
+    return displacementOp
+end
+
 function localAnnihilationOp(k::Int64, physVecSpace::GradedSpace)
     """ Construct a(k) for a momentum-conserving MPO """
 
@@ -64,7 +86,7 @@ function localIdentityOp(physVecSpace::GradedSpace)
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
     auxVecSpace = U1Space(0 => 1)
-    interactionTensor = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
     interactionTensor[:, :, 1] = diagm(ones(dimPhyVecSpace))
     interactionTensor = TensorMap(interactionTensor, physVecSpace,
                                   physVecSpace ⊗ auxVecSpace)

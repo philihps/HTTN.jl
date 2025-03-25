@@ -4,73 +4,80 @@
 # MPO types
 #------------------------------------------------------
 
-abstract type AbstractEXP end
 abstract type AbstractMPO end
-abstract type AbstractFiniteEXP <: AbstractEXP end
+abstract type AbstractLocalOp end
 abstract type AbstractFiniteMPO <: AbstractMPO end
+abstract type AbstractFiniteLocalOp <: AbstractLocalOp end
 
-struct SparseEXP{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteEXP
-    expTensors::Vector{A}
+#--------------------------------------------------------------
+# MPO constructors
+#--------------------------------------------------------------
+struct SparseLocalOp{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteLocalOp
+    """
+    A vector of 3-index tensors with additional δ-index for momentum transfer between the bra and ket index
+    """
+    localTensors::Vector{A}
 
-    function SparseEXP{A}(expTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(expTensors)
+    function SparseLocalOp{T,A}(localTensors::Vector{A}) where {T<:Number,
+                                                                A<:AbstractTensorMap{T}}
+        return new(localTensors)
     end
 
-    function SparseEXP(expTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(expTensors)
+    function SparseLocalOp(localTensors::Vector{A}) where {T<:Number,
+                                                           A<:AbstractTensorMap{T}}
+        return new{T,A}(localTensors)
     end
 end
 
-struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
+struct SparseMPO{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteMPO
+    """
+    A vector of 4-index MPO
+    """
     mpoTensors::Vector{A}
 
-    function SparseMPO{A}(mpoTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(mpoTensors)
+    function SparseMPO{T,A}(mpoTensors::Vector{A}) where {T<:Number,
+                                                          A<:AbstractTensorMap{T}}
+        return new(mpoTensors)
     end
 
-    function SparseMPO(mpoTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
-        return new{A}(mpoTensors)
+    function SparseMPO(mpoTensors::Vector{A}) where {T<:Number,
+                                                     A<:AbstractTensorMap{T}}
+        return new{T,A}(mpoTensors)
     end
 end
 
 #--------------------------------------------------------------
-# SparseMPO constructors
-#--------------------------------------------------------------
-
-#--------------------------------------------------------------
-# SparseEXP utilities
+# SparseMPO utilities
 #--------------------------------------------------------------
 
 """
-getKroneckerDeltaSpace(E::AbstractEXP, siteIdx::Int)
+getKroneckerDeltaSpace(E::SparseLocalOp, siteIdx::Int)
 
 Returns the Kronecker-Delta space of the EXP tensor at site 'siteIdx'.
 
 """
 # function getKroneckerDeltaSpace end
 
-function getKroneckerDeltaSpace(E::SparseEXP, siteIdx::Integer)
+function getKroneckerDeltaSpace(E::SparseMPO, siteIdx::Integer)
     return dual(space(E.expTensors[siteIdx], 3))
 end
 
 """
-getPhysicalSpace(E::AbstractEXP, siteIdx::Int)
+getPhysicalSpace(E::SparseLocalOp, siteIdx::Int)
 
 Returns the physical space of the EXP tensor at site 'siteIdx'.
 
 """
 # function getPhysicalSpace end
 
-function getPhysicalSpace(E::SparseEXP, siteIdx::Integer)
+function getPhysicalSpace(E::SparseMPO, siteIdx::Integer)
     return space(E.expTensors[siteIdx], 1)
 end
 
-Base.getindex(E::SparseEXP, idx) = E.expTensors[idx];
-Base.size(E::SparseEXP, args...) = size(E.expTensors, args...);
-Base.length(E::SparseEXP) = length(E.expTensors);
-Base.iterate(E::SparseEXP, args...) = iterate(E.expTensors, args...);
-# TensorKit.space(E::EXPTensor, idx) = space(E, idx)
-# TensorKit.space(E::SparseEXP, idx) = space(E.expTensors, idx)
+Base.getindex(E::SparseMPO, idx) = E.expTensors[idx];
+Base.size(E::SparseMPO, args...) = size(E.expTensors, args...);
+Base.length(E::SparseMPO) = length(E.expTensors);
+Base.iterate(E::SparseMPO, args...) = iterate(E.expTensors, args...);
 
 function getLinkDimsMPO(M::SparseMPO)
     return dim.(vcat([getVirtualSpaceL(M, idx) for idx in 1:length(M)],
@@ -89,7 +96,6 @@ Returns the left virtual space of the MPO tensor at site 'siteIdx'.
 This is equivalent to the right virtual space of the MPO tensor at site 'siteIdx - 1'.
 
 """
-# function getVirtualSpaceL end
 
 function getVirtualSpaceL(M::SparseMPO, siteIdx::Integer)
     return space(M.mpoTensors[siteIdx], 1)
@@ -102,7 +108,6 @@ Returns the right virtual space of the MPS tensor at site 'siteIdx'.
 This is equivalent to the left virtual space of the MPS tensor at site 'siteIdx + 1'.
 
 """
-# function getVirtualSpaceR end
 
 function getVirtualSpaceR(M::SparseMPO, siteIdx::Integer)
     return dual(space(M.mpoTensors[siteIdx], 3))
@@ -260,7 +265,6 @@ function applyMPO(finiteMPO::SparseMPO,
 
     # get length of finiteMPS
     N = length(compressedMPS)
-    chainCenter = Int((N - 1) / 2 + 1)
 
     if compressionAlg == "densityMatrix"
 

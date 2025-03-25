@@ -14,8 +14,6 @@ kMax = 2;
 nMax = 3;
 nMaxZM = 10;
 bogoliubovRot = false;
-bogParameters = [1.24, 0.90, 0.71, 0.60, 0.55, 0.45, 0.39, 0.29, 0.25, 0.21, 0.17, 0.13];
-bogParameters = bogParameters[1:kMax];
 
 # set model parameters
 β = 0.25 * sqrt(4 * π);
@@ -28,8 +26,7 @@ truncationParameters = (kMax = kMax,
                         nMaxZM = nMaxZM,
                         truncMethod = truncMethod,
                         modeOrdering = modeOrdering,
-                        bogoliubovRot = bogoliubovRot,
-                        bogParameters = bogParameters);
+                        bogoliubovRot = bogoliubovRot);
 hamiltonianParameters = (β = β, λ = λ, L = L);
 
 # construct Sine-Gordon model (with MPO)
