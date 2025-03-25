@@ -9,7 +9,6 @@ abstract type MomentumMPO end
 abstract type AbstractFiniteMPO <: AbstractMPO end
 abstract type FiniteMomentumMPO <: MomentumMPO end
 
-
 #--------------------------------------------------------------
 # MPO constructors
 #--------------------------------------------------------------
@@ -42,8 +41,6 @@ struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
         return new{A}(mpoTensors)
     end
 end
-
-
 
 #--------------------------------------------------------------
 # SparseMPO utilities
