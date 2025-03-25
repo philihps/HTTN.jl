@@ -18,11 +18,11 @@ struct SparseMomentumMPO{A<:AbstractTensorMap{ComplexF64}} <: FiniteMomentumMPO
     """
     momentumTensors::Vector{A}
 
-    function MomentumMPO{A}(momentumTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
+    function SparseMomentumMPO{A}(momentumTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
         return new{A}(momentumTensors)
     end
 
-    function MomentumMPO(momentumTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
+    function SparseMomentumMPO(momentumTensors::Vector{A}) where {A<:AbstractTensorMap{ComplexF64}}
         return new{A}(momentumTensors)
     end
 end
