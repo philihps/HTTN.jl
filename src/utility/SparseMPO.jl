@@ -14,7 +14,7 @@ abstract type AbstractFiniteLocalOp <: AbstractLocalOp end
 #--------------------------------------------------------------
 struct SparseLocalOp{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteLocalOp
     """
-    3-index tensor with additional δ-index for momentum transfer between the bra and ket index
+    A vector of 3-index tensors with additional δ-index for momentum transfer between the bra and ket index
     """
     localTensors::Vector{A}
 
@@ -29,7 +29,7 @@ end
 
 struct SparseMPO{A<:AbstractTensorMap{ComplexF64}} <: AbstractFiniteMPO
     """
-    4-/2-index MPO
+    A vector of 4-index MPO
     """
     mpoTensors::Vector{A}
 
