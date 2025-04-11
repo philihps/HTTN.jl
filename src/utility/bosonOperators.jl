@@ -46,7 +46,7 @@ function localAnnihilationOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bo
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
-    auxVecSpace = !conserveZ2 ? U1Space(-k => 1) : Rep[U₁ × ℤ₂]((-k, 0) => 1)
+    auxVecSpace = !conserveZ2 ? U1Space(-k => 1) : Rep[U₁ × ℤ₂]((-k, 1) => 1)
     interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
     interactionTensor[:, :, 1] = getAnnihilationOperator(dimPhyVecSpace - 1)
     interactionTensor = TensorMap(interactionTensor, physVecSpace,
@@ -59,7 +59,7 @@ function localCreationOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool =
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
-    auxVecSpace = !conserveZ2 ? U1Space(+k => 1) : Rep[U₁ × ℤ₂]((+k, 0) => 1)
+    auxVecSpace = !conserveZ2 ? U1Space(+k => 1) : Rep[U₁ × ℤ₂]((+k, 1) => 1)
     interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
     interactionTensor[:, :, 1] = getCreationOperator(dimPhyVecSpace - 1)
     interactionTensor = TensorMap(interactionTensor, physVecSpace,
