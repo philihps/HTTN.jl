@@ -2,12 +2,7 @@ function removeDegeneracyQN(vecSpace; degenCutOff::Int64 = 1)
     """ Function to remove degeneracies of QNs """
 
     qnSectors = vecSpace.dims
-    momentumQNs = [productSector.charge for productSector in keys(qnSectors)]
-    momentumDGs = [degeneracyValue for degeneracyValue in values(qnSectors)]
-    truncatedVectorSpace = Rep[U₁]([momentumQNs[qnIdx] => min(momentumDGs[qnIdx],
-                                                              degenCutOff)
-                                    for
-                                    qnIdx in eachindex(momentumQNs)])
+    truncatedVectorSpace = typeof(vecSpace)([key => min(qnSectors[key], degenCutOff) for key in keys(qnSectors)])
     return truncatedVectorSpace
 end
 
@@ -83,7 +78,7 @@ function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S;
     end
 
     # combine virtual vector spaces
-    virtSpaces = [infimum(virtSpaces_L[i], virtSpaces_R[i]) for i in 1:length(virtSpaces_L)]
+    virtSpaces = [infimum(virtSpaces_L[i], virtSpaces_R[i]) for i in 1:(numSites + 1)]
     return virtSpaces
 end
 
