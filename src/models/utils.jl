@@ -1,11 +1,12 @@
 
 function convertLocalOperatorsToMPO(localOperators::Vector{<:AbstractTensorMap};
-                                    truncMomentumQNs::Union{Int64,Float64} = Inf,)
+                                    qnL::ElementarySpace = U1Space(0 => 1),
+                                    qnR::ElementarySpace = U1Space(0 => 1),)
     """ Generates MPO out of three-index local operators using kroneckerDeltaMPS """
 
     # construct kroneckerDeltaMPS
     kronDeltaIndices = [space(localOp, 3)' for localOp in localOperators]
-    kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaIndices)
+    kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaIndices; qnL = qnL, qnR = qnR)
 
     # combine local operators and kroneckerDeltaMPS
     localOperators = SparseMPO(localOperators)

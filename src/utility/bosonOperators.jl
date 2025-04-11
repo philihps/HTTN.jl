@@ -115,7 +115,7 @@ function localParityOperator(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bo
     numberOp = exp(1im * π * getNumberOperator(dimPhyVecSpace - 1))
     numberOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
     if k == 0 && conserveZ2
-        rowColPerm = vcat(collect(1 : 2 : dim(physVecSpace)), collect(2 : 2 : dim(physVecSpace)))
+        rowColPerm = vcat(collect(1:2:dim(physVecSpace)), collect(2:2:dim(physVecSpace)))
         numberOperator[:, :, 1] = numberOp[rowColPerm, rowColPerm]
     else
         numberOperator[:, :, 1] = numberOp
