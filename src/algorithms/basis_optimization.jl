@@ -35,7 +35,8 @@ function squeezingOp(ξ::Union{Int64,Float64,ComplexF64},
                      kL::Int64,
                      kR::Int64,
                      PL::ElementarySpace,
-                     PR::ElementarySpace)
+                     PR::ElementarySpace;
+                     conserveZ2::Bool = false)
     """
     S = e^{-tanh(ξ) . K_A_plus} . e^{-2 . log(cosh(ξ)) . K_A_0} . e^{tanh(ξ) . K_A_min}
     K_A_0 = (1/2) * (N_{-k} + N_k + Id)
@@ -44,13 +45,13 @@ function squeezingOp(ξ::Union{Int64,Float64,ComplexF64},
     """
 
     # construct two-site operators
-    CrCr = convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
-                                               localCreationOp(kR, PR)])
-    AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
-                                               localAnnihilationOp(kR, PR)])
-    IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
-    NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
-    IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
+    CrCr = convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL, conserveZ2),
+                                               localCreationOp(kR, PR, conserveZ2)])
+    AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL, conserveZ2),
+                                               localAnnihilationOp(kR, PR, conserveZ2)])
+    IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL, conserveZ2), localIdentityOp(PR, conserveZ2)])
+    NuId = convertLocalOperatorsToTwoBodyGate([localNumberOp(PL, conserveZ2), localIdentityOp(PR, conserveZ2)])
+    IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL, conserveZ2), localNumberOp(PR, conserveZ2)])
 
     K_A_0 = 1 / 2 * (NuId + IdNu + IdId)
     K_A_min = AnAn
@@ -65,7 +66,8 @@ end
 
 function singleSqueezingOp(ξ::Union{Int64,Float64,ComplexF64},
                            nMax::Int64,
-                           physSpace::ElementarySpace)
+                           physSpace::ElementarySpace;
+                           conserveZ2::Bool = false)
     """
     Squeezing operator for zero mode
         
@@ -157,8 +159,8 @@ function gradient_squeezing_operator(ξ::Union{Int64,Float64,ComplexF64},
     AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
                                                localAnnihilationOp(kR, PR)])
     IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
-    NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
-    IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
+    NuId = convertLocalOperatorsToTwoBodyGate([localNumberOp(PL), localIdentityOp(PR)])
+    IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localNumberOp(PR)])
 
     # compute μ and ν
     μ = cosh(ξ)
