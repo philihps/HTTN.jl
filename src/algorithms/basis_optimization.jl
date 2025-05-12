@@ -51,10 +51,10 @@ function squeezingOp(ξ::Number,
                                                               localAnnihilationOp(kR, PR)])
     IdId = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL),
                                                               localIdentityOp(PR)])
-    NuId = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL),
+    NuId = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localNumberOp(PL),
                                                               localIdentityOp(PR)])
     IdNu = Zygote.@ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL),
-                                                              locaNumberOp(PR)])
+                                                              localNumberOp(PR)])
 
     # construct K operators
     K_A_0 = 1 / 2 * (NuId + IdNu + IdId)
@@ -168,8 +168,8 @@ end
 #     AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
 #                                                localAnnihilationOp(kR, PR)])
 #     IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
-#     NuId = convertLocalOperatorsToTwoBodyGate([locaNumberOp(PL), localIdentityOp(PR)])
-#     IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), locaNumberOp(PR)])
+#     NuId = convertLocalOperatorsToTwoBodyGate([localNumberOp(PL), localIdentityOp(PR)])
+#     IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localNumberOp(PR)])
 
 #     # compute μ and ν
 #     μ = cosh(ξ)
