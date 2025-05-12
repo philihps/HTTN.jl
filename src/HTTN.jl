@@ -1,5 +1,5 @@
 
-__precompile__(false)
+# __precompile__(false)
 module HTTN
 
 # include external packages
@@ -11,11 +11,13 @@ using LinearAlgebra: diag, diagm
 using FFTW
 using JLD2
 using KrylovKit
+using OptimKit
 using Printf
 using LaTeXStrings
 using Roots
 using SpecialFunctions
 using TensorKit
+using Zygote
 
 import Distributions: Normal
 
@@ -37,14 +39,19 @@ export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG
 export updateBogoliubovParameters
 export local_number_operators
 export pairing_operators
+export getMomentumModes
 
 # export algorithms
 export find_groundstate, find_excitedstate
 export DMRG2, DMRG2BO
 export perform_timestep!
+export perform_basisOptimization!
 export TDVP2, TDVP2BO
 export metts, metts_ZM, transform_basis!
 export METTS2
+
+# export mps2vec and mpo2mat functions
+export mps2vec, mpo2mat
 
 # export mpo compression functions
 export compress_MPO, convert_MPO_33block, convert_33block_MPO
@@ -62,7 +69,7 @@ export normalizeMPS, dotMPS, normalizeMPO
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
-export save_to_file, load_from_file
+# export save_to_file, load_from_file
 export compute_average
 
 # export Bogoliubov transformation functions

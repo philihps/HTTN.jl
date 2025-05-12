@@ -14,11 +14,11 @@ using Printf
 using TensorKit
 
 # set truncation parameters
-modelName = "sineGordon";
+modelName = "massiveSchwinger";
 truncMethod = 5;
 kMax = 1;
-nMax = 20;
-nMaxZM = 10;
+nMax = 10;
+nMaxZM = 20;
 modeOrdering = true;
 bogoliubovRot = true;
 
@@ -26,10 +26,11 @@ bogoliubovRot = true;
 bogParameters = zeros(ComplexF64, kMax)
 
 # set model parameters
-β = 0.75 * sqrt(4 * π);
-λ = 1.0;
-L = 15.0;
-R = sqrt(4 * π) / β;
+θ = 1.0 * π;
+e = 1.0;
+M = e / sqrt(π);
+L = 100.0;
+fermionMass = 0.01;
 
 # create NamedTuple for truncation parameters and model parameters
 truncationParameters = (kMax = kMax,
@@ -39,23 +40,22 @@ truncationParameters = (kMax = kMax,
                         modeOrdering = modeOrdering,
                         bogoliubovRot = bogoliubovRot,
                         bogParameters = bogParameters);
-hamiltonianParameters = (β = β, R = R, λ = λ, L = L);
+hamiltonianParameters = (θ = θ, m = fermionMass, M = M, L = L)
 
-# construct Sine-Gordon model (with MPO)
-sG = SineGordonModel(truncationParameters, hamiltonianParameters);
-physSpaces = sG.physSpaces;
-display(sG.modeOccupations)
+mS = MassiveSchwingerModel(truncationParameters, hamiltonianParameters)
+physSpaces = mS.physSpaces;
+display(mS.modeOccupations)
 
-# construct sineGordon MPO
-hamMPO = generate_MPO_sG(sG);
+# construct massive Schwinger MPO
+hamMPO = generate_MPO_mS(mS);
 println(getLinkDimsMPO(hamMPO))
 
 # construct vertex operator to measure expectation value of ⟨sin(ϕ)⟩
-vertexOperator = generate_H1(sG);
+vertexOperator = generate_H1(mS);
 println(getLinkDimsMPO(vertexOperator))
 
 # initialize vaccum MPS (ground state of non-interacting Hamiltonian)
-vacuumMPS = initializeVacuumMPS(sG; modeOrdering = modeOrdering);
+vacuumMPS = initializeVacuumMPS(mS; modeOrdering = modeOrdering);
 
 # set total time
 totalTime = 10.0;
@@ -103,7 +103,7 @@ for timeStep in 0:numTimeSteps
 
             # perform optimization of squeezing parameters
             timeEvolvedMPS, bogParameters, truncationErrors = perform_basisOptimization!(timeEvolvedMPS,
-                                                                                         sG,
+                                                                                         mS,
                                                                                          TDVP2(;
                                                                                                bondDim = bondDim,
                                                                                                truncErrT = truncErrT,
@@ -111,13 +111,13 @@ for timeStep in 0:numTimeSteps
                                                                                                verbosePrint = 1,))
 
             # update QFT model
-            sG = updateBogoliubovParameters(sG, bogParameters)
+            mS = updateBogoliubovParameters(mS, bogParameters)
 
             # reconstruct sineGordon MPO
-            hamMPO = generate_MPO_sG(sG)
+            hamMPO = generate_MPO_mS(mS)
 
             # reconstruct vertex operator to measure expectation value of ⟨sin(ϕ)⟩
-            vertexOperator = generate_H1(sG)
+            vertexOperator = generate_H1(mS)
 
             # store bogParameters
             storeBogParameters = vcat(storeBogParameters,
@@ -230,14 +230,16 @@ if bogoliubovRot == 1
     # display(plotbogParameters)
 
     # plot bogParameters in the complex plane
-    plotbogParameters = plot(real.(storeBogParameters[:, 2]),
-                             imag.(storeBogParameters[:, 2]);
+    realXis = real.(storeBogParameters[:, 2:end])
+    imagXis = imag.(storeBogParameters[:, 2:end])
+    plotbogParameters = plot(realXis, imagXis;
                              linewidth = 2.5,
                              markers = :circle,
                              xlabel = L"\textrm{Re}(\xi(t))",
-                             xlims = (-0.25, +0.25),
+                             xlims = (minimum(realXis) - 0.05, maximum(realXis) + 0.05),
                              ylabel = L"\textrm{Im}(\xi(t))",
-                             ylims = (-0.25, +0.25),
-                             label = L"k = \pm 1",
+                             ylims = (minimum(imagXis) - 0.05, maximum(imagXis) + 0.05),
+                             # label = L"k = \pm 1", 
+                             label = "",
                              frame = :box)
 end

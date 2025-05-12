@@ -1,38 +1,67 @@
-function auto_corr(A, tau::Int64)
-    """
-    Find the correlation length 
+"""
+Julia implementation of https://emcee.readthedocs.io/en/stable/tutorials/autocorr/
+"""
 
-    ∑_{i=1}^{N - τ} (x_i - μ)(x_{i + τ} - μ) / ∑_{i=1}^{N} (x_i - μ)^2
-    """
-    N = length(A)
-    mean_A = sum(A) / N
-    res = N / (N - tau) * sum((A[1:(N - tau)] .- mean_A) .* (A[(1 + tau):N] .- mean_A)) /
-          sum((A[1:N] .- mean_A) .^ 2)
+using FFTW, LinearAlgebra
 
-    return res
+function nextPowTwo(n::Int)
+    i = 1
+    while i < n
+        i <<= 1
+    end
+    return i
 end
 
-function int_autocorr_time(autoCorrs; cutoff = 0.0005)
+function findWindow(taus::Vector{<:Real}, c::Real)
     """
-    Computes the integrated autocorrelation time τ_int 
-    from an array of autocorrelation values 
-
-    Params:
-    - cutoff: Threshold for selecting N_max where autoCorrs 
-              is considered negligible (default: 0.05)
+    Automated windowing procedure following Sokal (1989)
     """
+    m = collect(1:length(taus)) .< c .* taus
+    if any(m)
+        return argmin(m)
+    end
+    return length(taus)
+end
 
-    # Find N_max where autoCorrs effectively becomes negligible
-    N_max = findfirst(k -> abs(autoCorrs[k]) < cutoff, 1:length(autoCorrs))
-
-    if N_max === nothing  # If no clear cutoff is found, use full sum
-        N_max = length(autoCorrs)
+function computeAutoCorr1D(x::Vector{<:Real}, norm::Bool = true)
+    """
+    Compute autocorrelation function for 1D data
+    """
+    if length(size(x)) != 1
+        throw(ArgumentError("invalid dimensions for 1D autocorrelation function"))
     end
 
-    return sum(autoCorrs[1:N_max])
+    n = nextPowTwo(length(x))
+    # Compute the FFT and then (from that) the auto-correlation function
+    x_mean = sum(x) / length(x)
+
+    f = fft(vcat(x .- x_mean, zeros(2 * n - length(x))))
+    acf = real(ifft(f .* conj(f)))[1:length(x)]
+    acf ./= 4 * n
+
+    # Optionally normalize
+    if norm
+        acf ./= acf[1]
+    end
+
+    return acf
 end
 
-function compute_average(A)
+function computeAutoCorrTime(data, c::Real = 5.0)
+    """
+    Compute integrated autocorrelation time for parallel runs
+    """
+    f = zeros(size(data, 2))
+    for i in 1:size(data, 1)
+        f .+= computeAutoCorr1D(data[i, :])
+    end
+    f ./= size(data, 1)
+    taus = 2.0 .* cumsum(f) .- 1.0
+    window = findWindow(taus, c)
+    return taus[window]
+end
+
+function computeAverage(A)
     """
     Compute equilibrium average of A for correlated data
     <A>  = <A>_N ± σ_N        
@@ -40,15 +69,13 @@ function compute_average(A)
     """
     N = length(A)
     mean_A = sum(A) / N
-    taus = collect(1:(N ÷ 5))
-    autoCorrs = [auto_corr(A, tau) for tau in taus]
-    corrTime = int_autocorr_time(autoCorrs)
-    println("Autocorrelation time is $(corrTime)")
+    intCorrTime = computeAutoCorrTime(A)
+    println("Autocorrelation time is $(intCorrTime)")
     var = 1 / N * (sum(A .^ 2) / N - mean_A^2)
     if abs(var - 0) < 1e-8
         var = 0
     end
     stDev = sqrt(var)
 
-    return mean_A, stDev * sqrt(1 + 2 * corrTime)
+    return mean_A, stDev * sqrt(intCorrTime)
 end

@@ -10,28 +10,29 @@ abstract type AbstractFiniteMPS <: AbstractMPS end
 struct SparseMPS{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteMPS
     mpsTensors::Vector{A}
 
-    function SparseMPS{T,A}(mpsTensors::Vector{A}) where {T<:Number,
-                                                          A<:AbstractTensorMap{T}}
+    function SparseMPS{T,A}(mpsTensors::Vector{A}) where {T<:Number,A<:AbstractTensorMap{T}}
         return new(mpsTensors)
     end
 
     function SparseMPS(mpsTensors::Vector{A};
-                       normalizeMPS::Bool = false) where {T<:Number,
-                                                          A<:AbstractTensorMap{T}}
+                       orthogonalizeMPS::Bool = true,
+                       normalizeMPS::Bool = false) where {T<:Number,A<:AbstractTensorMap{T}}
 
         # bring MPS into right canonical form
-        for siteIdx in length(mpsTensors):-1:1
-            (L, Q) = rightorth(mpsTensors[siteIdx], ((1,), (2, 3)); alg = LQpos())
-            normalizeMPS && normalize!(L)
-            if siteIdx > 1
-                mpsTensors[siteIdx - 1] = permute(permute(mpsTensors[siteIdx - 1],
-                                                          ((1, 2),
-                                                           (3,))) * L, ((1, 2), (3,)))
-                mpsTensors[siteIdx - 0] = permute(Q, ((1, 2), (3,)))
-            else
-                mpsTensors[siteIdx - 0] = permute(L * permute(Q, ((1,), (2, 3))),
-                                                  ((1, 2),
-                                                   (3,)))
+        if orthogonalizeMPS
+            for siteIdx in length(mpsTensors):-1:1
+                (L, Q) = rightorth(mpsTensors[siteIdx], ((1,), (2, 3)); alg = LQpos())
+                normalizeMPS && normalize!(L)
+                if siteIdx > 1
+                    mpsTensors[siteIdx - 1] = permute(permute(mpsTensors[siteIdx - 1],
+                                                              ((1, 2),
+                                                               (3,))) * L, ((1, 2), (3,)))
+                    mpsTensors[siteIdx - 0] = permute(Q, ((1, 2), (3,)))
+                else
+                    mpsTensors[siteIdx - 0] = permute(L * permute(Q, ((1,), (2, 3))),
+                                                      ((1, 2),
+                                                       (3,)))
+                end
             end
         end
 
@@ -290,16 +291,16 @@ function Base.:+(mpsA::SparseMPS, mpsB::SparseMPS)
 end
 Base.:-(mpsA::SparseMPS, mpsB::SparseMPS) = mpsA + (-1 * mpsB)
 
-#--------------------------------------------------------------
-# SparseMPS save and load functions
-#--------------------------------------------------------------
+# #--------------------------------------------------------------
+# # SparseMPS save and load functions
+# #--------------------------------------------------------------
 
-function save_to_file(fileName::String, sparseMPS::SparseMPS; dictKey::String = "sparseMPS")
-    sparseMPS = convert.(Dict, sparseMPS)
-    return JLD2.save(fileName, dictKey, sparseMPS)
-end
+# function save_to_file(fileName::String, sparseMPS::SparseMPS; dictKey::String = "sparseMPS")
+#     sparseMPS = convert.(Dict, sparseMPS)
+#     return JLD2.save(fileName, dictKey, sparseMPS)
+# end
 
-function load_from_file(fileName::String, dictKey::String = "sparseMPS")
-    sparseMPS = JLD2.load(fileName, dictKey)
-    return sparseMPS = SparseMPS(convert.(TensorMap, sparseMPS))
-end
+# function load_from_file(fileName::String, dictKey::String = "sparseMPS")
+#     sparseMPS = JLD2.load(fileName, dictKey)
+#     return sparseMPS = SparseMPS(convert.(TensorMap, sparseMPS))
+# end

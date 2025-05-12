@@ -152,13 +152,15 @@ function generate_H0(Model::Union{MassiveSchwingerModel,SineGordonModel})
     return mpo_H0
 end
 
-function generate_H1(Model::Union{MassiveSchwingerModel,SineGordonModel})
+function generate_H1(Model::Union{MassiveSchwingerModel,SineGordonModel};
+                     localOp::String = "displacementOp")
     modeOccupations, physSpaces = constructPhysSpaces(Model.modelParameters)
-    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces)
+    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces;
+                         localOp = localOp)
     return mpo_H1
 end
 
-function generate_MPO_mS(Model::MassiveSchwingerModel)
+function generate_MPO_mS(Model::MassiveSchwingerModel; localOp::String = "displacementOp")
 
     # get hamiltonianParameters
     θ = Model.modelParameters.hamiltonianParameters[:θ]
@@ -169,7 +171,8 @@ function generate_MPO_mS(Model::MassiveSchwingerModel)
     # construct MPOs
     modeOccupations, physSpaces = constructPhysSpaces(Model.modelParameters)
     mpo_H0 = generate_H0(Model.modelParameters, modeOccupations, physSpaces)
-    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces)
+    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces;
+                         localOp = localOp)
 
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     if m == 0
@@ -183,7 +186,7 @@ function generate_MPO_mS(Model::MassiveSchwingerModel)
     return mpo_mS
 end
 
-function generate_MPO_sG(sGModel::SineGordonModel)
+function generate_MPO_sG(sGModel::SineGordonModel; localOp::String = "displacementOp")
 
     # get hamiltonianParameters
     β = sGModel.modelParameters.hamiltonianParameters[:β]
@@ -194,7 +197,8 @@ function generate_MPO_sG(sGModel::SineGordonModel)
     # construct MPOs
     modeOccupations, physSpaces = constructPhysSpaces(sGModel.modelParameters)
     mpo_H0 = generate_H0(sGModel.modelParameters, modeOccupations, physSpaces)
-    mpo_H1 = generate_H1(sGModel.modelParameters, modeOccupations, physSpaces)
+    mpo_H1 = generate_H1(sGModel.modelParameters, modeOccupations, physSpaces;
+                         localOp = localOp)
 
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     if λ == 0
@@ -526,7 +530,11 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
 
             # get Bogoliubov rotation parameters
             if bogoliubovRot
-                modeFactor *= (μ^2 + ν^2)
+                kIdx = abs(momentumVal)
+                ξ = bogParameters[kIdx]
+                μ = cosh(abs(ξ))
+                ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
+                modeFactor *= (μ^2 + abs(ν)^2)
             end
 
             if siteIdx == 1
@@ -623,15 +631,15 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             # get Bogoliubov rotation parameters (this is not checked for complex ξ)
             ξ = bogParameters[abs(kVal) + 1]
 
-            mpoAnAnZM *= M * 1 / 2 * sinh(2 * ξ)
-            mpoCrCrZM *= M * 1 / 2 * sinh(2 * ξ)
+            mpoAnAnZM *= 0.5 * M * sinh(2 * ξ)
+            mpoCrCrZM *= 0.5 * M * sinh(2 * ξ)
 
             # store sum of MPOs
             storeIndividualMPOs[kIdx] = mpoAnAnZM + mpoCrCrZM
 
         else
             # construct momentum-preserving MPO for [A(-k).A(+k)]
-            localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites) #XXX: Why is k=0 included?
+            localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites)
             for (siteIdx, momentumVal) in enumerate(momentumModes)
                 if abs(momentumVal) == kVal
                     localOperators[siteIdx] = localAnnihilationOp(momentumVal,
@@ -718,12 +726,13 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal) + 1]
-        ν = sinh(ξ)
+        ν = sinh(abs(ξ)) * ξ / abs(ξ)
         if kVal == 0
-            mpoIdId *= M * ν^2
+            mpoIdId *= modeEnergy(kVal, L, M) * abs(ν)^2
         else
-            mpoIdId *= modeEnergy(kVal, L, M) * 2 * ν^2
+            mpoIdId *= 2 * modeEnergy(kVal, L, M) * abs(ν)^2
         end
+
         # store MPO
         storeIndividualMPOs[kIdx] = mpoIdId
     end
@@ -767,7 +776,8 @@ function generate_H0(modelParameters::Union{MassiveSchwingerParameters,
     return mpo_H0
 end
 
-function G(nBra::Int64, nKet::Int64, w::Float64)::Float64
+### new definition 
+function G(nBra::Int64, nKet::Int64, w::Number)::Number
     """ Matrix element of the k-factor of V_{(±1, 0)}(x = 0, t = 0) for compactification radius R=sqrt(4π) in a massive mode basis of mass M """
 
     matElem = sqrt(factorial(big(nBra)) * factorial(big(nKet))) *
@@ -801,8 +811,8 @@ end
 # function F_mS(nBra::Int64, nKet::Int64, j::Int64, k::Union{Int64, Float64}, alpha::Union{Int64, Float64}, L::Float64, M::Union{Int64, Float64})::Float64
 #     """ Matrix element of the k-factor of V_{(±1, 0)}(x = 0, t = 0) for compactification radius R=sqrt(4π) in a massive mode basis of mass M """
 
-#     matEL = convert(Float64, (-1)^(j + nKet - nBra) * (alpha / sqrt(2 * modeEnergy(k, L, M) * L))^(2*j + nKet - nBra) * sqrt(factorial(big(nBra)) * factorial(big(nKet))) / factorial(big(j)) / factorial(big(nBra - j)) / factorial(big(j + nKet - nBra)));
-#     return matEL
+#     matElem = convert(Float64, (-1)^(j + nKet - nBra) * (alpha / sqrt(2 * modeEnergy(k, L, M) * L))^(2*j + nKet - nBra) * sqrt(factorial(big(nBra)) * factorial(big(nKet))) / factorial(big(j)) / factorial(big(nBra - j)) / factorial(big(j + nKet - nBra)));
+#     return matElem
 # end
 
 ### this is the new function 
@@ -817,42 +827,24 @@ function localVertexOp(modelParameters,
     for w = n . α/√(2 ω_k L)
 
     :Params:
-    - n: labels eigesntate of Π0
+    - n: labels eigenstate of Π0
     """
 
     # construct kroneckerDelta space
-    kronDelSpace = removeDegeneracyQN(fuse(physVecSpace,
-                                           conj(flip(physVecSpace))))
+    kronDelSpace = removeDegeneracyQN(fuse(physVecSpace, conj(flip(physVecSpace))))
 
     # get dimensions of physVecSpace and kronDelSpace
-    dimPhysVecSpace = dim(physVecSpace)
+    dimPhyVecSpace = dim(physVecSpace)
     dimAuxVecSpace = dim(kronDelSpace)
 
     # compute vertex operator coefficient α
     α = convert(Float64, n * β)
 
-    # get truncationParameters
-    truncationParameters = modelParameters.truncationParameters
-    bogoliubovRot = truncationParameters[:bogoliubovRot]
-    w = α / sqrt(2 * modeEnergy(k, L, M) * L)
-    if bogoliubovRot
-        ξ = truncationParameters[:bogParameters][abs(k) + 1]
-        μ = cosh(abs(ξ))
-        ν = sinh(abs(ξ)) * exp(1im * angle(ξ))
-        argDisplacementOp = μ * (1im * w) - ν * conj(1im * w)
-        vertexOp = exp(abs(w)^2 / 2) *
-                   (getDisplacementOperator(dimPhysVecSpace - 1, argDisplacementOp))
-    else
-        vertexOp = exp(abs(w)^2 / 2) *
-                   (getDisplacementOperator(dimPhysVecSpace - 1, 1im * w))
-    end
-
     # construct local interaction for k = 0 or k ≠ 0
     if k == 0
         if M == 0.0
             # fill interactionTensor of massless zero mode: this is a "free particle" instead of a harmonic mode, so the exponential is a jump operator between the levels 
-            interactionTensor = zeros(ComplexF64, dimPhysVecSpace,
-                                      dimPhysVecSpace,
+            interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
                                       dimAuxVecSpace)
             if n == 0
                 for rk in 1:dimPhysVecSpace
@@ -869,40 +861,144 @@ function localVertexOp(modelParameters,
             end
 
         elseif M != 0.0
+
             # fill interactionTensor for massive zero mode: this is now a harmonic mode (independently of whether it is massless or massive, there is no quantum number constraint for the zero mode, so it should be costructed differently from the nonzero modes) 
-            interactionTensor = zeros(ComplexF64, dimPhysVecSpace,
-                                      dimPhysVecSpace,
+            w = α / sqrt(2 * modeEnergy(k, L, M) * L)
+            interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
                                       dimAuxVecSpace)
-            for nBra in 0:(dimPhysVecSpace - 1), nKet in 0:(dimPhysVecSpace - 1)
-                interactionTensor[nBra + 1, nKet + 1, 1] = vertexOp[nBra + 1, nKet + 1]
+            for nBra in 0:(dimPhyVecSpace - 1), nKet in 0:(dimPhyVecSpace - 1)
+                interactionTensor[nBra + 1, nKet + 1, 1] = G(nBra, nKet, w)
+            end
+        end
+
+    else
+
+        # get truncationParameters
+        truncationParameters = modelParameters.truncationParameters
+        bogoliubovRot = truncationParameters[:bogoliubovRot]
+        w = α / sqrt(2 * modeEnergy(k, L, M) * L)
+        if bogoliubovRot
+            ξ = truncationParameters[:bogParameters][abs(k) + 1]
+        end
+
+        # get ordering of QNs in physVecSpace and kronDelSpace
+        phyQNSectors = physVecSpace.dims
+        auxQNSectors = kronDelSpace.dims
+        phyVecSpaceOrdering = [productSector.charge for productSector in keys(phyQNSectors)]
+        auxVecSpaceOrdering = [productSector.charge for productSector in keys(auxQNSectors)]
+
+        # fill interactionTensor
+        w = α / sqrt(2 * modeEnergy(k, L, M) * L)
+        interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
+                                  dimAuxVecSpace)
+        for nBra in 0:(dimPhyVecSpace - 1), nKet in 0:(dimPhyVecSpace - 1)
+            braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra))
+            ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet))
+            auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)))
+            if bogoliubovRot
+                factorBCH = exp(-α^2 * (exp(2 * ξ) - 1) / (4 * L * modeEnergy(k, L, M)))
+                interactionTensor[braIndPos, ketIndPos, auxIndPos] = factorBCH *
+                                                                     G(nBra, nKet,
+                                                                       w * exp(ξ))
+            else
+                interactionTensor[braIndPos, ketIndPos, auxIndPos] = G(nBra, nKet, w)
+            end
+        end
+    end
+
+    # convert interactionTensor to TensorMap with U1Space
+    return TensorMap(interactionTensor, physVecSpace, physVecSpace ⊗ kronDelSpace)
+end
+
+function localDisplacementOp(modelParameters,
+                             physVecSpace::Union{ElementarySpace,
+                                                 CompositeSpace{ElementarySpace}},
+                             k::Int64, n::Int64, β::Float64, M::Float64, L::Float64)
+    """ Construct local displacement operator, to be combined with kroneckerDeltaMPS to form full MPO """
+
+    # construct kroneckerDelta space
+    kronDelSpace = removeDegeneracyQN(fuse(physVecSpace, conj(flip(physVecSpace))))
+
+    # get dimensions of physVecSpace and kronDelSpace
+    dimPhyVecSpace = dim(physVecSpace)
+    dimAuxVecSpace = dim(kronDelSpace)
+
+    # compute vertex operator coefficient α
+    α = convert(Float64, n * β)
+
+    # create non-symmetric displacement operator
+    truncationParameters = modelParameters.truncationParameters
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
+    w = α / sqrt(2 * modeEnergy(k, L, M) * L)
+    if bogoliubovRot
+        ξ = truncationParameters[:bogParameters][abs(k) + 1]
+        μ = cosh(abs(ξ))
+        ν = sinh(abs(ξ)) * exp(1im * angle(ξ))
+        argDisplacementOp = μ * (1im * w) - ν * conj(1im * w)
+        displacementOp = exp(w^2 / 2) *
+                         getDisplacementOperator(dimPhyVecSpace - 1, argDisplacementOp)
+    else
+        displacementOp = exp(w^2 / 2) * getDisplacementOperator(dimPhyVecSpace - 1, 1im * w)
+    end
+    displacementOp = displacementOp' # required to match with local vertex operator construction
+
+    # construct local interaction for k = 0 or k ≂̸ 0
+    if k == 0
+        if M == 0.0
+
+            # fill interactionTensor of massless zero mode: this is a "free particle" instead of a harmonic mode, so the exponential is a jump operator between the levels 
+            interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
+                                      dimAuxVecSpace)
+
+            if n == 0
+                for rk in 1:dimPhyVecSpace
+                    interactionTensor[rk, rk, 1] = 1.0
+                end
+            elseif n > 0
+                for rk in 1:(dimPhyVecSpace - 1)
+                    interactionTensor[(rk + 1), rk, 1] = 1.0
+                end
+            elseif n < 0
+                for rk in 1:(dimPhyVecSpace - 1)
+                    interactionTensor[rk, (rk + 1), 1] = 1.0
+                end
+            end
+
+        elseif M != 0.0
+
+            # fill interactionTensor for massive zero mode: this is now a harmonic mode (independently of whether it is massless or massive, there is no quantum number constraint for the zero mode, so it should be costructed differently from the nonzero modes) 
+            w = α / sqrt(2 * modeEnergy(k, L, M) * L)
+            interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
+                                      dimAuxVecSpace)
+            for nBra in 0:(dimPhyVecSpace - 1), nKet in 0:(dimPhyVecSpace - 1)
+                # interactionTensor[nBra + 1, nKet + 1, 1] = G(nBra, nKet, w)
+                interactionTensor[nBra + 1, nKet + 1, 1] = displacementOp[nBra + 1,
+                                                                          nKet + 1]
             end
         end
 
     else
 
         # get ordering of QNs in physVecSpace and kronDelSpace
-        physQNSectors = physVecSpace.dims
+        phyQNSectors = physVecSpace.dims
         auxQNSectors = kronDelSpace.dims
-        phyVecSpaceOrdering = [productSector.charge
-                               for productSector in keys(physQNSectors)]
-        auxVecSpaceOrdering = [productSector.charge
-                               for productSector in keys(auxQNSectors)]
+        phyVecSpaceOrdering = [productSector.charge for productSector in keys(phyQNSectors)]
+        auxVecSpaceOrdering = [productSector.charge for productSector in keys(auxQNSectors)]
 
         # fill interactionTensor
-        interactionTensor = zeros(ComplexF64, dimPhysVecSpace, dimPhysVecSpace,
+        interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
                                   dimAuxVecSpace)
-        for nBra in 0:(dimPhysVecSpace - 1), nKet in 0:(dimPhysVecSpace - 1)
+        for nBra in 0:(dim(physVecSpace) - 1), nKet in 0:(dim(physVecSpace) - 1)
             braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra))
             ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet))
             auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)))
-            interactionTensor[braIndPos, ketIndPos, auxIndPos] = vertexOp[braIndPos,
-                                                                          ketIndPos]
+            interactionTensor[braIndPos, ketIndPos, auxIndPos] = displacementOp[braIndPos,
+                                                                                ketIndPos]
         end
     end
 
     # convert interactionTensor to TensorMap with U1Space
-    return TensorMap(interactionTensor, physVecSpace,
-                     physVecSpace ⊗ kronDelSpace)
+    return TensorMap(interactionTensor, physVecSpace, physVecSpace ⊗ kronDelSpace)
 end
 
 # function localVertexOp(modelParameters,
@@ -1016,9 +1112,17 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
                                             SineGordonParameters},
                      modeOccupations::Matrix{Int64},
                      physSpaces::Vector{<:Union{ElementarySpace,
-                                                CompositeSpace{ElementarySpace}}})
+                                                CompositeSpace{ElementarySpace}}};
+                     localOp::String = "vertexOp")
     """ Construct the cosine interaction 
     :cos(βΦ - θ): = 1/2 . [e^{-iθ}:V_β: + e^{iθ}:V_{-β}:]"""
+
+    # get truncationParameters
+    truncationParameters = modelParameters.truncationParameters
+    bogoliubovRot = truncationParameters[:bogoliubovRot]
+    if bogoliubovRot
+        bogParameters = truncationParameters[:bogParameters]
+    end
 
     # get hamiltonianParameters
     hamiltonianParameters = modelParameters.hamiltonianParameters
@@ -1048,10 +1152,19 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     localOperators_pos = Vector{TensorMap{ComplexF64}}(undef, numSites)
     for (siteIdx, momentumVal) in enumerate(momentumModes)
         physVecSpace = physSpaces[siteIdx]
-        localOperators_neg[siteIdx] = localVertexOp(modelParameters, physVecSpace,
-                                                    momentumVal, -1, β, M, L)
-        localOperators_pos[siteIdx] = localVertexOp(modelParameters, physVecSpace,
-                                                    momentumVal, +1, β, M, L)
+        if localOp == "vertexOp"
+            localOperators_neg[siteIdx] = localVertexOp(modelParameters, physVecSpace,
+                                                        momentumVal, -1, β, M, L)
+            localOperators_pos[siteIdx] = localVertexOp(modelParameters, physVecSpace,
+                                                        momentumVal, +1, β, M, L)
+        elseif localOp == "displacementOp"
+            localOperators_neg[siteIdx] = localDisplacementOp(modelParameters, physVecSpace,
+                                                              momentumVal, -1, β, M, L)
+            localOperators_pos[siteIdx] = localDisplacementOp(modelParameters, physVecSpace,
+                                                              momentumVal, +1, β, M, L)
+        else
+            error("localOp must be either 'vertexOp' or 'displacementOp'")
+        end
     end
 
     expOperator_neg = SparseMPO(localOperators_neg)
@@ -1059,9 +1172,13 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
 
     # construct momentum-preserving MPO using a kroneckerDelta MPS
     kronDeltaSpaces = [space(localOp, 3)' for localOp in expOperator_neg]
-    kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
+    if localOp == "vertexOp"
+        kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
+    elseif localOp == "displacementOp"
+        kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
+    end
 
-    # combined with kroneckerDeltaMPS to form full MPO 
+    ### I added the 1/2 factor here. 
     V_neg = 1 / 2 *
             convertLocalOperatorsToMPO(expOperator_neg, kroneckerDeltaMPS)
     V_pos = 1 / 2 *
