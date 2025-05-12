@@ -178,9 +178,7 @@ function generate_MPO_mS(Model::MassiveSchwingerModel; localOp::String = "displa
     if m == 0
         mpo_mS = mpo_H0
     else
-
-        # use infinite size prefactor for H1
-        convFactor = -L * m * M / (2 * pi) * exp(0.5772156649)
+        convFactor = -L * m * M / (2 * pi) * exp(0.5772156649) # use infinite size prefactor for H1
         mpo_mS = mpo_H0 + convFactor * mpo_H1
     end
     return mpo_mS
@@ -678,7 +676,6 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
     end
 
     mpo_H0_Part_B = sum(storeIndividualMPOs)
-
     return mpo_H0_Part_B
 end
 
@@ -726,7 +723,7 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
         ξ = bogParameters[abs(kVal) + 1]
-        ν = sinh(abs(ξ)) * ξ / abs(ξ)
+        ν = sinh(abs(ξ)) * exp(1im * angle(ξ))
         if kVal == 0
             mpoIdId *= modeEnergy(kVal, L, M) * abs(ν)^2
         else
