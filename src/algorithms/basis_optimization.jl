@@ -35,7 +35,8 @@ function squeezingOp(ξ::Number,
                      kL::Int64,
                      kR::Int64,
                      PL::ElementarySpace,
-                     PR::ElementarySpace)
+                     PR::ElementarySpace;
+                     conserveZ2::Bool = false)
     """
     S = e^{-tanh(ξ) . K_A_plus} . e^{-2 . log(cosh(ξ)) . K_A_0} . e^{tanh(ξ) . K_A_min}
     K_A_0 = (1/2) * (N_{-k} + N_k + Id)
@@ -69,7 +70,8 @@ end
 
 function singleSqueezingOp(ξ::Number,
                            nMax::Int64,
-                           physSpace::ElementarySpace)
+                           physSpace::ElementarySpace;
+                           conserveZ2::Bool = false)
     """
     Squeezing operator for zero mode
         

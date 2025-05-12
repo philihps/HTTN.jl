@@ -41,67 +41,86 @@ function getDisplacementOperator(nMax::Int64, α::Number)
     return displacementOp
 end
 
-function localAnnihilationOp(k::Int64, physVecSpace::GradedSpace)
+function localAnnihilationOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool = false)
     """ Construct a(k) for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
-    auxVecSpace = U1Space(-k => 1)
-    interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
-    interactionTensor[:, :, 1] = getAnnihilationOperator(dimPhyVecSpace - 1)
-    interactionTensor = TensorMap(interactionTensor, physVecSpace,
-                                  physVecSpace ⊗ auxVecSpace)
-    return interactionTensor
+    auxVecSpace = !conserveZ2 ? U1Space(-k => 1) : Rep[U₁ × ℤ₂]((-k, 1) => 1)
+    annihilationOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
+                                 dim(auxVecSpace))
+    annihilationOperator[:, :, 1] = getAnnihilationOperator(dimPhyVecSpace - 1)
+    annihilationOperator = TensorMap(annihilationOperator, physVecSpace,
+                                     physVecSpace ⊗ auxVecSpace)
+    return annihilationOperator
 end
 
-function localCreationOp(k::Int64, physVecSpace::GradedSpace)
+function localCreationOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool = false)
     """ Construct a(k)^dag for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
-    auxVecSpace = U1Space(+k => 1)
-    interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
-    interactionTensor[:, :, 1] = getCreationOperator(dimPhyVecSpace - 1)
-    interactionTensor = TensorMap(interactionTensor, physVecSpace,
-                                  physVecSpace ⊗ auxVecSpace)
-    return interactionTensor
+    auxVecSpace = !conserveZ2 ? U1Space(+k => 1) : Rep[U₁ × ℤ₂]((+k, 1) => 1)
+    creationOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    creationOperator[:, :, 1] = getCreationOperator(dimPhyVecSpace - 1)
+    creationOperator = TensorMap(creationOperator, physVecSpace,
+                                 physVecSpace ⊗ auxVecSpace)
+    return creationOperator
 end
 
-function locaNumberOp(physVecSpace::GradedSpace)
+function localNumberOp(physVecSpace::GradedSpace, conserveZ2::Bool = false)
     """ Construct n(k) for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
-    auxVecSpace = U1Space(0 => 1)
-    interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
-    interactionTensor[:, :, 1] = getNumberOperator(dimPhyVecSpace - 1)
-    interactionTensor = TensorMap(interactionTensor, physVecSpace,
-                                  physVecSpace ⊗ auxVecSpace)
-    return interactionTensor
+    auxVecSpace = !conserveZ2 ? U1Space(0 => 1) : Rep[U₁ × ℤ₂]((0, 0) => 1)
+    numberOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    numberOperator[:, :, 1] = getNumberOperator(dimPhyVecSpace - 1)
+    numberOperator = TensorMap(numberOperator, physVecSpace,
+                               physVecSpace ⊗ auxVecSpace)
+    return numberOperator
 end
 
-function localIdentityOp(physVecSpace::GradedSpace)
+function localIdentityOp(physVecSpace::GradedSpace, conserveZ2::Bool = false)
     """ Construct I for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
-    auxVecSpace = U1Space(0 => 1)
-    interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
-    interactionTensor[:, :, 1] = diagm(ones(dimPhyVecSpace))
-    interactionTensor = TensorMap(interactionTensor, physVecSpace,
-                                  physVecSpace ⊗ auxVecSpace)
-    return interactionTensor
+    auxVecSpace = !conserveZ2 ? U1Space(0 => 1) : Rep[U₁ × ℤ₂]((0, 0) => 1)
+    identityOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    identityOperator[:, :, 1] = diagm(ones(dimPhyVecSpace))
+    identityOperator = TensorMap(identityOperator, physVecSpace,
+                                 physVecSpace ⊗ auxVecSpace)
+    return identityOperator
 end
 
-function localMomentumOp(k::Int64, physVecSpace::GradedSpace)
+function localMomentumOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool = false)
     """ Construct k * n(k) for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
-    auxVecSpace = U1Space(0 => 1)
-    interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
-    interactionTensor[:, :, 1] = k * getNumberOperator(dimPhyVecSpace - 1)
-    interactionTensor = TensorMap(interactionTensor, physVecSpace,
-                                  physVecSpace ⊗ auxVecSpace)
-    return interactionTensor
+    auxVecSpace = !conserveZ2 ? U1Space(0 => 1) : Rep[U₁ × ℤ₂]((0, 0) => 1)
+    momentumOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    momentumOperator[:, :, 1] = k * getNumberOperator(dimPhyVecSpace - 1)
+    momentumOperator = TensorMap(momentumOperator, physVecSpace,
+                                 physVecSpace ⊗ auxVecSpace)
+    return momentumOperator
+end
+
+function localParityOperator(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool = false)
+    """ Construct exp(iπ n(k)) for a momentum-conserving MPO """
+
+    # get dimension of physVecSpace 
+    dimPhyVecSpace = dim(physVecSpace)
+    auxVecSpace = !conserveZ2 ? U1Space(0 => 1) : Rep[U₁ × ℤ₂]((0, 0) => 1)
+    parityOp = exp(1im * π * getNumberOperator(dimPhyVecSpace - 1))
+    parityOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    if k == 0 && conserveZ2
+        rowColPerm = vcat(collect(1:2:dim(physVecSpace)), collect(2:2:dim(physVecSpace)))
+        parityOperator[:, :, 1] = parityOp[rowColPerm, rowColPerm]
+    else
+        parityOperator[:, :, 1] = parityOp
+    end
+    parityOperator = TensorMap(parityOperator, physVecSpace, physVecSpace ⊗ auxVecSpace)
+    return parityOperator
 end
