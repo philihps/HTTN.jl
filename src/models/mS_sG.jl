@@ -604,11 +604,10 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites)
             for (siteIdx, momentumVal) in enumerate(momentumModes)
                 if momentumVal == 0
-                    CrCr = mergeLocalOperators(localCreationOp(momentumVal,
+                    localOperators[siteIdx] = mergeLocalOperators(localCreationOp(momentumVal,
                                                                physSpaces[siteIdx]),
                                                localCreationOp(momentumVal,
                                                                physSpaces[siteIdx]))
-                    localOperators[siteIdx] = CrCr
                 else
                     localOperators[siteIdx] = localIdentityOp(physSpaces[siteIdx])
                 end
@@ -618,11 +617,10 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites)
             for (siteIdx, momentumVal) in enumerate(momentumModes)
                 if momentumVal == 0
-                    AnAn = mergeLocalOperators(localAnnihilationOp(momentumVal,
+                    localOperators[siteIdx] = mergeLocalOperators(localAnnihilationOp(momentumVal,
                                                                    physSpaces[siteIdx]),
                                                localAnnihilationOp(momentumVal,
                                                                    physSpaces[siteIdx]))
-                    localOperators[siteIdx] = AnAn
                 else
                     localOperators[siteIdx] = localIdentityOp(physSpaces[siteIdx])
                 end
