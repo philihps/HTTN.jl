@@ -16,26 +16,26 @@ using Printf
 using TensorKit
 
 # set truncation parameters
-modelName = "sineGordon";
-truncMethod = 5;
-kMax = 20;
-nMax = 20;
-nMaxZM = 20;
-modeOrdering = 1;
-bogoliubovR = 1;
+modelName = "sineGordon"
+truncMethod = 5
+kMax = 3
+nMax = 15
+nMaxZM = 15
+modeOrdering = true
+bogoliubovRot = false
 
-# truncMethod = 3;
-# kMax = 2;
-# nMax = 3;
-# nMaxZM = 10;
+# truncMethod = 3
+# kMax = 2
+# nMax = 3
+# nMaxZM = 10
 
 # compute ground or excited state
-computeEigenstate_0 = 1;
-computeEigenstate_1 = 0;
+computeEigenstate_0 = 1
+computeEigenstate_1 = 1
 
 # use numerical basis optimization
-useBasisOptimization_0 = 1;
-useBasisOptimization_1 = 0;
+useBasisOptimization_0 = 0
+useBasisOptimization_1 = 0
 
 # # β = 1.0 * sqrt(4π)
 # # truncMethod = 3
@@ -62,9 +62,9 @@ useBasisOptimization_1 = 0;
 #     [], 
 #     [1.2154420098990029, 0.8741046214248941, 0.6850565405410879, 0.5555723860457121, 0.46204441091204673, 0.39140940910303207, 0.3343609068000002, 0.2870721376453025, 0.2506922636472108, 0.22253401068003634, 0.1973623119556844, 0.17389025874470296, 0.1556768567075738, 0.1402171933641977, 0.1285253169833322, 0.1162135859624253, 0.10552888433599983, 0.0968451306154898, 0.09113985045696667], 
 #     [1.2225193774020136, 0.8803716914769047, 0.6879418108574467, 0.5577988583316977, 0.46376124715920797, 0.39367291936296134, 0.3376604157816094, 0.29218912736293856, 0.2539510721792752, 0.22253401068003634, 0.1973623119556844, 0.17715719756721635, 0.15848590999260423, 0.14259836529178319, 0.1285253169833322, 0.1162135859624253, 0.10820656279034487, 0.09925461079534144, 0.09113985045696667, 0.08391637833943519], 
-# ];
-# bogParameters = convert.(Float64, optimalBogParameters[kMax]);
-# bogParameters = randn(Float64, kMax);
+# ]
+# bogParameters = convert.(Float64, optimalBogParameters[kMax])
+# bogParameters = randn(Float64, kMax)
 
 # β = 1.0 * sqrt(4π), L = 15.0
 # truncMethod = 5
@@ -102,8 +102,8 @@ optimalBogParameters = [[],
                          -0.11244860702558758, -0.09394935509305521, -0.08248167196995668,
                          -0.07287844663881438, -0.06553282180829105, -0.05806593366498754,
                          -0.05313362938143072, -0.04822682813270046, -0.04392761531443672,
-                         -0.04002725568853267, -0.0368876374995955]];
-bogParameters = convert.(Float64, optimalBogParameters[kMax]);
+                         -0.04002725568853267, -0.0368876374995955]]
+bogParameters = convert.(Float64, optimalBogParameters[kMax])
 
 # # β = 1.0 * sqrt(4π), L = 25.0
 # # truncMethod = 5
@@ -117,47 +117,47 @@ bogParameters = convert.(Float64, optimalBogParameters[kMax]);
 #     [-1.1335793150876836, -0.7953326598109092, -0.6029189741949903, -0.47977100826593316, -0.3897525013935271, -0.32302633272158393], 
 #     [-1.1335793150876836, -0.7953326598109092, -0.6029189741949903, -0.47977100826593316, -0.3897525013935271, -0.32302633272158393, -0.25], 
 #     [], 
-# ];
-# bogParameters = convert.(Float64, optimalBogParameters[kMax]);
+# ]
+# bogParameters = convert.(Float64, optimalBogParameters[kMax])
 
 # # truncMethod = 5
 # # nMax = 10, nMaxZM = 10
 # optimalBogParameters = [
 #     [-0.8],
-# ];
-# bogParameters = convert.(Float64, optimalBogParameters[kMax]);
-# bogParameters = randn(kMax);
+# ]
+# bogParameters = convert.(Float64, optimalBogParameters[kMax])
+# bogParameters = randn(kMax)
 
 # set model parameters
-βFF = 1.0 * sqrt(4 * π);
-λ = 1.0;
-L = 15.0;
-# R = sqrt(4 * π) / β;
+βFF = 1.0 * sqrt(4 * π)
+λ = 1.0
+L = 15.0
+# R = sqrt(4 * π) / β
 
 # set list of β
-# betaList = βFF * collect(0.2 : 0.2 : 0.2);
-betaList = βFF * [1.00];
+# betaList = βFF * collect(0.2 : 0.2 : 0.2)
+betaList = βFF * [1.00]
 
 # set list of L
-sizeList = convert.(Float64, collect(1:1:25));
-sizeList = [15.0];
+sizeList = convert.(Float64, collect(1:1:25))
+sizeList = [15.0]
 
 # set DMRG parameters
-bondDim = 1024;
-truncErr = 1e-6;
-subspaceExpansion = true;
+bondDim = 1024
+truncErr = 1e-6
+subspaceExpansion = true
 
 # initialize or load previous simulation
-initMethod = 0;
-load_kMax = kMax;
-load_modeOrdering = modeOrdering;
-load_bogoliubovR = 0;
-load_L = L;
-load_bondDim = bondDim;
+initMethod = 0
+load_kMax = kMax
+load_modeOrdering = modeOrdering
+load_bogoliubovRot = 0
+load_L = L
+load_bondDim = bondDim
 
 # plot entanglement entropy
-xLimits = (0, 2 * kMax);
-momentumModes = convert.(Int64, collect((-kMax):1:(+kMax)));
+xLimits = (0, 2 * kMax)
+momentumModes = convert.(Int64, collect((-kMax):1:(+kMax)))
 if modeOrdering == 1
     momentumModes = sort(momentumModes; by = abs)
 end
@@ -194,7 +194,7 @@ for (idxB, β) in enumerate(betaList)
                                 nMaxZM = nMaxZM,
                                 truncMethod = truncMethod,
                                 modeOrdering = modeOrdering,
-                                bogoliubovR = bogoliubovR,
+                                bogoliubovRot = bogoliubovRot,
                                 bogParameters = bogParameters)
         hamiltonianParameters = (β = β, R = R, λ = λ, L = L)
 
@@ -217,6 +217,8 @@ for (idxB, β) in enumerate(betaList)
             vacuumMPS = initializeVacuumMPS(sG; modeOrdering = modeOrdering)
             initialMPS = initializeMPS(sG, vacuumMPS; modeOrdering = modeOrdering)
             # initialMPS = SparseMPS(randn, ComplexF64, physSpaces, virtSpaces);
+
+            display(initialMPS[1])
 
             # set startOptimization after first DMRG sweep
             startOptimization = 1
@@ -276,7 +278,7 @@ for (idxB, β) in enumerate(betaList)
                       "/modeOrdering_" *
                       string(modeOrdering) *
                       "/bogoliubovRot_" *
-                      string(bogoliubovR) *
+                      string(bogoliubovRot) *
                       "/truncMethod_" *
                       string(truncMethod)
 
@@ -398,8 +400,9 @@ for (idxB, β) in enumerate(betaList)
             if useBasisOptimization_1 == 0
 
                 # get optimal bogParameters for groundState and update sG model
-                # bogParameters = storeBogoliubovParameters[end, :];
-                sG = updateBogoliubovParameters(sG, bogParameters)
+                if bogoliubovRot
+                    sG = updateBogoliubovParameters(sG, bogoliubovRot = bogoliubovRot, bogParameters = bogParameters)
+                end
                 # println(bogParameters)
 
                 # construct sineGordon MPO

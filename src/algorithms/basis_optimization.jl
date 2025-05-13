@@ -61,10 +61,14 @@ function squeezingOp(ξ::Number,
     K_A_min = AnAn
     K_A_plus = CrCr
 
+    # compute μ and ν
+    μ = cosh(abs(ξ))
+    ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
+    # println([ξ, μ, ν])
+
     # construct squeezing operator
-    # S = matrixExponentialSeries(-1 * tanh(ξ) * K_A_plus, nMax) * matrixExponentialSeries(-2 * log(cosh(ξ)) * K_A_0, nMax) * matrixExponentialSeries(tanh(ξ) * K_A_min, nMax)
-    S = exp(-1 * tanh(ξ) * K_A_plus) * exp(-2 * log(cosh(ξ)) * K_A_0) *
-        exp(tanh(ξ) * K_A_min)
+    # S = exp(-1 * tanh(ξ) * K_A_plus) * exp(-2 * log(cosh(ξ)) * K_A_0) * exp(tanh(ξ) * K_A_min)
+    S = exp(-1 * ν / μ * K_A_plus) * exp(-2 * log(μ) * K_A_0) * exp(conj(ν) / μ * K_A_min)
     return S
 end
 

@@ -6,7 +6,7 @@ Base.run(`clear`)
 using Pkg
 using Revise
 
-# Pkg.activate(".")
+Pkg.activate(".")
 using HTTN
 using LaTeXStrings
 using Plots
@@ -17,19 +17,20 @@ using TensorKit
 modelName = "massiveSchwinger"
 truncMethod = 5
 kMax = 2
-nMax = 8
-nMaxZM = 12
-modeOrdering = false
-bogoliubovRot = false
+nMax = 4
+nMaxZM = 3
+modeOrdering = true
+bogoliubovRot = true
 
 # set model parameters
 θ = 1.0 * π
-m = 0.10
+m = 0.1
 M = 1 / sqrt(π)
 L = 100.0
 
 # initialize Bogoliubov rotation parameters
 bogParameters = zeros(ComplexF64, 1 + kMax)
+# bogParameters = [0.0 + 0.0im, 0.2 + 0.1im, 0.1 + 0.1im]
 
 # create NamedTuple for truncation and model parameters
 truncationParameters = (kMax = kMax,
@@ -53,6 +54,22 @@ println(getLinkDimsMPO(hamMPO))
 # construct vertex operator to measure expectation value of ⟨sin(ϕ)⟩
 vertexOperator = generate_H1(mS)
 println(getLinkDimsMPO(vertexOperator))
+
+# mpo_H0 = generate_H0(mS)
+# mpo_H1 = generate_H1(mS)
+
+# mat_H0 = mpo2mat(mpo_H0)
+# mat_H1 = mpo2mat(mpo_H1)
+# sizeMat_H0 = size(mat_H0)
+# sizeMat_H1 = size(mat_H1)
+
+# mat_H0 = reshape(mat_H0, prod(sizeMat_H0[1:(2 * kMax + 1)]),
+#                  prod(sizeMat_H0[1:(2 * kMax + 1)]))
+# mat_H1 = reshape(mat_H1, prod(sizeMat_H1[1:(2 * kMax + 1)]),
+#                  prod(sizeMat_H1[1:(2 * kMax + 1)]))
+
+# display(norm(mat_H0 - mat_H0'))
+# display(norm(mat_H1 - mat_H1'))
 
 # initialize vaccum MPS (ground state of non-interacting Hamiltonian)
 vacuumMPS = initializeVacuumMPS(mS; modeOrdering = modeOrdering)
@@ -81,7 +98,7 @@ storeEnergy = zeros(Float64, 0, 2)
 storeVertexOp = zeros(Float64, 0, 2)
 
 # initialize array to store bogParameters
-storeBogParameters = zeros(Float64, 1, 1 + 1 + kMax)
+storeBogParameters = zeros(ComplexF64, 1, 1 + 1 + kMax)
 
 # copy input state
 timeEvolvedMPS = copy(vacuumMPS)
@@ -110,7 +127,7 @@ for timeStep in 0:numTimeSteps
                                                                                                verbosePrint = 1,))
 
             # update QFT model
-            mS = updateBogoliubovParameters(mS, bogParameters)
+            mS = updateBogoliubovParameters(mS, bogoliubovRot = bogoliubovRot, bogParameters = bogParameters)
 
             # reconstruct sineGordon MPO
             hamMPO = generate_MPO_mS(mS)
@@ -207,20 +224,30 @@ plot!(plotVertexOperator,
       label = "",)
 display(plotVertexOperator)
 
-if bogoliubovRot
+if bogoliubovRot == 1
+
+    display(storeBogParameters)
 
     # initialize plot for the Bogoliubov parameters over time
-    plotbogParameters = plot(; xlabel = L"t", ylabel = L"\xi(t)", frame = :box)
+    plotbogParameters = plot(;
+                             xlabel = L"\textrm{Re}(\xi(t))",
+                            #  xlims = (-0.25, +0.25),
+                             ylabel = L"\textrm{Im}(\xi(t))",
+                            #  ylims = (-0.25, +0.25),
+                             frame = :box)
 
-    # plot bogParameters
+    # plot bogParameters in the complex plane
     for idxB in axes(storeBogParameters, 2)
         if idxB > 1
-            plot!(plotbogParameters,
-                  δT * collect(0:numTimeSteps),
-                  storeBogParameters[:, idxB];
-                  linewidth = 2.0,
-                  label = "",)
+            labelString = @sprintf("k = \\pm %d", idxB - 2)
+            labelString = latexstring(labelString)
+            plot!(real.(storeBogParameters[:, idxB]),
+                imag.(storeBogParameters[:, idxB]),
+                linewidth = 2.5,
+                markers = :circle,
+                label = labelString)
         end
     end
     display(plotbogParameters)
+
 end

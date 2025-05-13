@@ -4,8 +4,8 @@
     bondDim::Int64 = 10
     truncErr::Float64 = 1e-6
     convTolE::Float64 = 1e-6
-    eigsTol::Float64 = 1e-12
-    maxIterations::Int64 = 1
+    eigsTol::Float64 = 1e-8
+    maxIterations::Int64 = 5
     subspaceExpansion::Bool = true
     verbosePrint::Int64 = 0
 end
@@ -14,8 +14,8 @@ end
     bondDim::Int64 = 10
     truncErr::Float64 = 1e-6
     convTolE::Float64 = 1e-6
-    eigsTol::Float64 = 1e-12
-    maxIterations::Int64 = 1
+    eigsTol::Float64 = 1e-8
+    maxIterations::Int64 = 5
     subspaceExpansion::Bool = true
     startOptimization::Int = 1
     verbosePrint::Int64 = 0

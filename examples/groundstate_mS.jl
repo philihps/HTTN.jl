@@ -17,21 +17,21 @@ using Printf
 using TensorKit
 
 # set truncation parameters
-modelName = "massiveSchwinger";
-truncMethod = 5;
-kMax = 1;
-nMax = 10;
-nMaxZM = 20;
-modeOrdering = true;
-bogoliubovRot = true;
-useBasisOptimization = 0;
+modelName = "massiveSchwinger"
+truncMethod = 5
+kMax = 1
+nMax = 10
+nMaxZM = 20
+modeOrdering = true
+bogoliubovRot = false
+useBasisOptimization = 0
 
 # # truncMethod = 5, nMax = 10
-# bogParameters = [0.21, 0.18];
-# # bogParameters = [-0.3384];
-# # bogParameters = bogParameters[1 : kMax];
-# bogParameters = rand(kMax);
-# bogParameters = [0.00];
+# bogParameters = [0.21, 0.18]
+# # bogParameters = [-0.3384]
+# # bogParameters = bogParameters[1 : kMax]
+# bogParameters = rand(kMax)
+# bogParameters = [0.00]
 
 # m = 0.1, L = 100.0
 # truncMethod = 5
@@ -40,31 +40,31 @@ optimalBogParameters = [[0.21300345504641333],
                         [0.19511612076252846, 0.18917065022482815],
                         [0.18670990807348506, 0.17368583832210574, 0.1657267488930994],
                         [0.18068855037933930, 0.16430758201352447, 0.1529672303024104,
-                         0.14403652093220048]];
-bogParameters = convert.(Float64, optimalBogParameters[kMax]);
-# bogParameters = randn(kMax);
+                         0.14403652093220048]]
+bogParameters = convert.(Float64, optimalBogParameters[kMax])
+# bogParameters = randn(kMax)
 
 bogParameters = [0.1 + 0.2im]
 
 # set model parameters
-θ = 1.0 * π;
-e = 1.0;
-M = e / sqrt(π);
-L = 100.0;
+θ = 1.0 * π
+e = 1.0
+M = e / sqrt(π)
+L = 100.0
 
 # set fermion mass
-fermionMasses = collect(0.100:0.10:0.100);
-fermionMasses = [0.1];
-# fermionMasses = collect(0.20 : 0.05 : 0.35);
+fermionMasses = collect(0.100:0.10:0.100)
+fermionMasses = [0.1]
+# fermionMasses = collect(0.20 : 0.05 : 0.35)
 
 # set DMRG parameters
-bondDim = 1024;
-truncErr = 1e-6;
-subspaceExpansion = true;
+bondDim = 1024
+truncErr = 1e-6
+subspaceExpansion = true
 
 # plot entanglement entropy
-xLimits = (0, 2 * kMax);
-momentumModes = convert.(Int64, collect((-kMax):1:(+kMax)));
+xLimits = (0, 2 * kMax)
+momentumModes = convert.(Int64, collect((-kMax):1:(+kMax)))
 if modeOrdering == 1
     momentumModes = sort(momentumModes; by = abs)
 end
@@ -82,7 +82,7 @@ entanglementEntropyPlot = plot(;
                                ylab = L"S(k_L,k_R)",
                                linewidth = 2.0,
                                legend = :topright,
-                               frame = :box,);
+                               frame = :box,)
 
 # loop over Hamiltonian parameters
 for (idxM, m) in enumerate(fermionMasses)
@@ -105,7 +105,7 @@ for (idxM, m) in enumerate(fermionMasses)
     boundarySpaceL = U1Space(0 => 1)
     boundarySpaceR = U1Space(0 => 1)
     physSpaces = mS.physSpaces
-    virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
+    virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR; 
                                      removeDegeneracy = true)
 
     storeBogoliubovParameters = []
@@ -118,7 +118,7 @@ for (idxM, m) in enumerate(fermionMasses)
         # display(hamMPO)
 
         # initialize ground state
-        # initialMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering);
+        # initialMPS = initializeVacuumMPS(mS, modeOrdering = modeOrdering)
         vacuumMPS = initializeVacuumMPS(mS; modeOrdering = modeOrdering)
         initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
 
