@@ -5,7 +5,8 @@
     truncErr::Float64 = 1e-6
     convTolE::Float64 = 1e-6
     eigsTol::Float64 = 1e-8
-    maxIterations::Int64 = 5
+    maxIterationsInit::Int64 = 10
+    maxIterations::Int64 = 1
     subspaceExpansion::Bool = true
     verbosePrint::Int64 = 0
 end
@@ -15,7 +16,8 @@ end
     truncErr::Float64 = 1e-6
     convTolE::Float64 = 1e-6
     eigsTol::Float64 = 1e-8
-    maxIterations::Int64 = 5
+    maxIterationsInit::Int64 = 10
+    maxIterations::Int64 = 1
     subspaceExpansion::Bool = true
     startOptimization::Int = 1
     verbosePrint::Int64 = 0
@@ -106,11 +108,12 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                                  (3, 4)))
 
                 # optimize wave function to get newAC
+                maxIterKrylov = loopCounter == 1 ? alg.maxIterationsInit : alg.maxIterations
                 eigenVal, eigenVec = eigsolve(theta,
                                               1,
                                               :SR,
                                               KrylovKit.Lanczos(; tol = alg.eigsTol,
-                                                                maxiter = alg.maxIterations)) do x
+                                                                maxiter = maxIterKrylov)) do x
                     return applyH2(x,
                                    mpoEnvL[siteIdx],
                                    finiteMPO[siteIdx],
@@ -157,11 +160,12 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                                  (3, 4)))
 
                 # optimize wave function to get newAC
+                maxIterKrylov = loopCounter == 1 ? alg.maxIterationsInit : alg.maxIterations
                 eigenVal, eigenVec = eigsolve(theta,
                                               1,
                                               :SR,
                                               KrylovKit.Lanczos(; tol = alg.eigsTol,
-                                                                maxiter = alg.maxIterations)) do x
+                                                                maxiter = maxIterKrylov)) do x
                     return applyH2(x,
                                    mpoEnvL[siteIdx],
                                    finiteMPO[siteIdx],
@@ -335,11 +339,12 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                                  (3, 4)))
 
                 # optimize wave function to get newAC
+                maxIterKrylov = loopCounter == 1 ? alg.maxIterationsInit : alg.maxIterations
                 eigenVal, eigenVec = eigsolve(theta,
                                               1,
                                               :SR,
                                               KrylovKit.Lanczos(; tol = alg.eigsTol,
-                                                                maxiter = alg.maxIterations)) do x
+                                                                maxiter = maxIterKrylov)) do x
                     return applyH2(x,
                                    mpoEnvL[siteIdx],
                                    finiteMPO[siteIdx],
@@ -460,7 +465,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] -= optimalXi;
                             bogParameters[kR] += optimalXi
-                            QFTModel = updateBogoliubovParameters(QFTModel, bogParameters)
+                            QFTModel = updateBogoliubovParameters(QFTModel, bogoliubovRot = true, bogParameters = bogParameters)
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
@@ -512,11 +517,12 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                                  (3, 4)))
 
                 # optimize wave function to get newAC
+                maxIterKrylov = loopCounter == 1 ? alg.maxIterationsInit : alg.maxIterations
                 eigenVal, eigenVec = eigsolve(theta,
                                               1,
                                               :SR,
                                               KrylovKit.Lanczos(; tol = alg.eigsTol,
-                                                                maxiter = alg.maxIterations)) do x
+                                                                maxiter = maxIterKrylov)) do x
                     return applyH2(x,
                                    mpoEnvL[siteIdx],
                                    finiteMPO[siteIdx],
@@ -637,7 +643,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] -= optimalXi;
                             bogParameters[kR] += optimalXi
-                            QFTModel = updateBogoliubovParameters(QFTModel, bogParameters)
+                            QFTModel = updateBogoliubovParameters(QFTModel, bogoliubovRot = true, bogParameters = bogParameters)
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
@@ -808,11 +814,12 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
                 end
 
                 # optimize wave function to get newAC
+                maxIterKrylov = loopCounter == 1 ? alg.maxIterationsInit : alg.maxIterations
                 eigenVal, eigenVec = eigsolve(thetaN,
                                               1,
                                               :SR,
                                               KrylovKit.Lanczos(; tol = alg.eigsTol,
-                                                                maxiter = alg.maxIterations)) do x
+                                                                maxiter = maxIterKrylov)) do x
                     return applyH2_X(x,
                                      siteIdx,
                                      mpoEnvL,
@@ -891,11 +898,12 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
                 end
 
                 # optimize wave function to get newAC
+                maxIterKrylov = loopCounter == 1 ? alg.maxIterationsInit : alg.maxIterations
                 eigenVal, eigenVec = eigsolve(thetaN,
                                               1,
                                               :SR,
                                               KrylovKit.Lanczos(; tol = alg.eigsTol,
-                                                                maxiter = alg.maxIterations)) do x
+                                                                maxiter = maxIterKrylov)) do x
                     return applyH2_X(x,
                                      siteIdx,
                                      mpoEnvL,
@@ -1083,11 +1091,12 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                 end
 
                 # optimize wave function to get newAC
+                maxIterKrylov = loopCounter == 1 ? alg.maxIterationsInit : alg.maxIterations
                 eigenVal, eigenVec = eigsolve(thetaN,
                                               1,
                                               :SR,
                                               KrylovKit.Lanczos(; tol = alg.eigsTol,
-                                                                maxiter = alg.maxIterations)) do x
+                                                                maxiter = maxIterKrylov)) do x
                     return applyH2_X(x,
                                      siteIdx,
                                      mpoEnvL,
@@ -1208,7 +1217,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] -= optimalXi;
                             bogParameters[kR] += optimalXi
-                            QFTModel = updateBogoliubovParameters(QFTModel, bogParameters)
+                            QFTModel = updateBogoliubovParameters(QFTModel, bogoliubovRot = true, bogParameters = bogParameters)
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
@@ -1284,11 +1293,12 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                 end
 
                 # optimize wave function to get newAC
+                maxIterKrylov = loopCounter == 1 ? alg.maxIterationsInit : alg.maxIterations
                 eigenVal, eigenVec = eigsolve(thetaN,
                                               1,
                                               :SR,
                                               KrylovKit.Lanczos(; tol = alg.eigsTol,
-                                                                maxiter = alg.maxIterations)) do x
+                                                                maxiter = maxIterKrylov)) do x
                     return applyH2_X(x,
                                      siteIdx,
                                      mpoEnvL,
@@ -1409,7 +1419,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                             # update QFTModel with new bogParameters
                             bogParameters[kR] -= optimalXi
                             # bogParameters[kR] += optimalXi;
-                            QFTModel = updateBogoliubovParameters(QFTModel, bogParameters)
+                            QFTModel = updateBogoliubovParameters(QFTModel, bogoliubovRot = true, bogParameters = bogParameters)
                             alg.verbosePrint > 0 && println(bogParameters, "\n")
 
                             # recreate modified MPO
