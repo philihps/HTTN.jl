@@ -23,26 +23,27 @@ let
 
     # set model parameters
     β = 1.0
-    ω = sqrt(1.0)
+    ωPre = sqrt(1.0)
+    ωPost = 0.0
     κ = 2.0
 
     # set DMRG and TDVP truncation parameters
-    bondDim = 1024
+    bondDim = 64
     truncErrD = 1e-6
     truncErrT = 1e-6
 
     # set time step and total time for time evolution
-    δT = 5e-2
-    totalTime = 10.0
+    δT = 1e-1
+    totalTime = 5.0
     numTimeSteps = Int(totalTime / δT)
 
     # create NamedTuple for truncation parameters
     truncationParameters = (M = M, N = N)
 
     # create NamedTuple for model parameters
-    hamiltonianParameters_Pre = (β = β, ω = ω, κ = κ, BC = BC)
-    hamiltonianParameters_Post = (β = β, ω = 0.0, κ = κ, BC = BC)
-
+    hamiltonianParameters_Pre = (β = β, ω = ωPre, κ = κ, BC = BC)
+    hamiltonianParameters_Post = (β = β, ω = ωPost, κ = κ, BC = BC)
+    
     # construct coupled rotors model
     cR_Pre = CoupledRotorsModel(truncationParameters, hamiltonianParameters_Pre)
     cR_Post = CoupledRotorsModel(truncationParameters, hamiltonianParameters_Post)
@@ -50,14 +51,18 @@ let
     physSpaces = cR_Pre.physSpaces
     display(modeOccupations)
     display(reshape(physSpaces, 1, :))
+    println()
 
     # construct pre-quench MPO
     preQuenchMPO = generate_MPO_cR(cR_Pre)
-    println(getLinkDimsMPO(preQuenchMPO))
+    println("MPO bond dimensions pre-quench:")
+    println(getLinkDimsMPO(preQuenchMPO), "\n")
 
     # construct post-quench MPO
     postQuenchMPO = generate_MPO_cR(cR_Post)
-    println(getLinkDimsMPO(postQuenchMPO))
+    println("MPO bond dimensions post-quench (ω = 0):")
+    println(getLinkDimsMPO(postQuenchMPO), "\n")
+
 
     # -------------------------------------------------------------
     # DMRG
@@ -78,7 +83,7 @@ let
 
 
     # -------------------------------------------------------------
-    # TDVP 
+    # TDVP
 
     # copy input state
     timeEvolvedMPS = copy(groundStateMPS)
@@ -89,10 +94,14 @@ let
     # initialize array to store bond dimension
     storeBondDimension = zeros(Float64, 0, length(physSpaces) - 1)
 
+    # initialize array to store maximal truncation error
+    storeTruncationError = zeros(Float64, 0, 2)
+
     # # initialize array to store energy expectation value
     # storeEnergy = zeros(Float64, 0, 2)
 
     # run TDVP to evolve the pre-quench ground state with the post-quench Hamiltonian
+    ϵ = 0.0
     for timeStep in 0:numTimeSteps
 
         @printf("timeStep = %d/%d\n", timeStep, numTimeSteps)
@@ -102,7 +111,6 @@ let
             timeEvolvedMPS, envL, envR, ϵ = perform_timestep!(timeEvolvedMPS, postQuenchMPO, δT,
                                                             TDVP2(; bondDim = bondDim,
                                                                     truncErrT = truncErrT,
-                                                                    krylovDim = 2,
                                                                     verbosePrint = 1,
                                                                     extendBasis = false,))
         end
@@ -114,6 +122,9 @@ let
         # get maximal bond dimension
         virtBondDims = getLinkDimsMPS(timeEvolvedMPS)
         storeBondDimension = vcat(storeBondDimension, reshape(virtBondDims[2:(end - 1)], 1, :))
+
+        # store truncation error
+        storeTruncationError = vcat(storeTruncationError, [δT * timeStep ϵ])
 
         # # compute energy of time-evolved state
         # energyExpectationValue = expectation_value_mpo(timeEvolvedMPS, postQuenchMPO)
@@ -132,22 +143,35 @@ let
         plot!(plotEntanglementEntropy,
             δT * collect(0:numTimeSteps),
             storeEntanglementEntropy[:, idxB];
+            ylims = (0, Inf),
             linewidth = 2.0,
             label = "",)
     end
     display(plotEntanglementEntropy)
 
 
-    # # plot for the bond dimension over time
-    # plotBondDimensions = plot(; xlabel = L"t", ylabel = L"\chi(t)", frame = :box)
-    # for idxB in axes(storeBondDimension, 2)
-    #     plot!(plotBondDimensions,
-    #         δT * collect(0:numTimeSteps),
-    #         storeBondDimension[:, idxB];
-    #         linewidth = 2.0,
-    #         label = "",)
-    # end
-    # display(plotBondDimensions)
+    # plot for the bond dimension over time
+    plotBondDimensions = plot(; xlabel = L"t", ylabel = L"\chi(t)", frame = :box)
+    for idxB in axes(storeBondDimension, 2)
+        plot!(plotBondDimensions,
+            δT * collect(0:numTimeSteps),
+            storeBondDimension[:, idxB];
+            linewidth = 2.0,
+            label = "",)
+    end
+    display(plotBondDimensions)
+
+
+    # plot for the truncation error over time
+    plotTruncationError = plot(; xlabel = L"t", ylabel = L"\varepsilon(t)", frame = :box)
+    plot!(plotTruncationError,
+            storeTruncationError[:, 1],
+            storeTruncationError[:, 2];
+            linewidth = 2.0,
+            label = "",)
+    display(plotTruncationError)
+
+
 
     # # plot for the energy over time
     # plotEnergy = plot(; xlabel = L"t", ylabel = L"E(t)", frame = :box)
