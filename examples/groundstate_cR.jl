@@ -19,13 +19,13 @@ using TensorKit
 # set truncation parameters
 modelName = "coupledRotors"
 boundaryConditions = "PBC" # "NBC, "DBC", or "PBC"
-M = 4
+M = 8
 N = 10
 
 # set model parameters
 β = 1.0
 ω = sqrt(1.0)
-κ = 2.0
+κ = 0.0
 
 # set DMRG parameters
 bondDim = 1024
@@ -60,6 +60,7 @@ groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, ha
                                                                   DMRG2(; bondDim = bondDim,
                                                                         truncErr = truncErr,
                                                                         maxIterationsInit = 10,
+                                                                        maxIterations = 2,
                                                                         subspaceExpansion = false,
                                                                         verbosePrint = 1))
 @printf("ground state energy E0 = %0.8f\n\n", groundStateEnergy)

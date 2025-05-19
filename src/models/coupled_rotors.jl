@@ -245,7 +245,7 @@ function generate_H1(modelParameters::CoupledRotorsParameters,
     β = hamiltonianParameters[:β]
     ω = hamiltonianParameters[:ω]
     κ = hamiltonianParameters[:κ]
-    boundaryConditions = hamiltonianParameters[:boundaryConditions]
+    BC = hamiltonianParameters[:BC]
 
     # get momentumModes
     momentumModes = modeOccupations[1, :]
@@ -259,9 +259,9 @@ function generate_H1(modelParameters::CoupledRotorsParameters,
 
     # collect all constant contributions in identity MPO
     constantFactor = ω^2 * M + κ * (M - 1)
-    if boundaryConditions == "DBC"
+    if BC == "DBC"
         constantFactor += 2 * κ
-    elseif boundaryConditions == "PBC"
+    elseif BC == "PBC"
         constantFactor += 1 * κ
     end
     identityMPO = constantFactor * constructIdentityMPO(physSpaces, oneunit(ComplexSpace))
@@ -308,7 +308,7 @@ function generate_H1(modelParameters::CoupledRotorsParameters,
         end
 
         # add term for DBC
-        if boundaryConditions == "DBC"
+        if BC == "DBC"
 
             localOperators = localIdentityOp.(physSpaces)
             localOperators[1] = localNegShiftOperator(physSpaces[1]) +
@@ -330,7 +330,7 @@ function generate_H1(modelParameters::CoupledRotorsParameters,
         end
 
         # add term for PBC
-        if boundaryConditions == "PBC"
+        if BC == "PBC"
 
             localOperators = localIdentityOp.(physSpaces)
             localOperators[1] = localNegShiftOperator(physSpaces[1])
