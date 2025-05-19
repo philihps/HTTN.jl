@@ -293,7 +293,6 @@ function perform_timestep(finiteMPS::SparseMPS,
     return perform_timestep!(copy(finiteMPS), finiteMPO, timeStep, alg)
 end
 
-
 # ------------------------------------------------------------
 # perform local basis optimization to reduce entanglement
 
@@ -378,7 +377,8 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # optimize twoSiteUnitary
             # vecξ = [real(bogParameters[1 + kR]), imag(bogParameters[1 + kR])]
             optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
-                                bogParameters[1 + kR] + 0.05 * randn(eltype(bogParameters[1 + kR])),
+                                bogParameters[1 + kR] +
+                                0.05 * randn(eltype(bogParameters[1 + kR])),
                                 LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4)
                                 # scale! = _scale!, 
                                 # add! = _add!, 
@@ -518,7 +518,8 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # optimize twoSiteUnitary
             # vecξ = [real(bogParameters[1 + kR]), imag(bogParameters[1 + kR])]
             optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
-                                bogParameters[1 + kR] + 0.05 * randn(eltype(bogParameters[1 + kR])),
+                                bogParameters[1 + kR] +
+                                0.05 * randn(eltype(bogParameters[1 + kR])),
                                 LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4)
                                 # scale! = _scale!, 
                                 # add! = _add!, 
@@ -598,5 +599,4 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
 
     # return optimized finiteMPS
     return finiteMPS, bogParameters, truncationErrors
-
 end

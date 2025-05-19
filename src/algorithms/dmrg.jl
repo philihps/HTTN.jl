@@ -465,7 +465,9 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] -= optimalXi;
                             bogParameters[kR] += optimalXi
-                            QFTModel = updateBogoliubovParameters(QFTModel, bogoliubovRot = true, bogParameters = bogParameters)
+                            QFTModel = updateBogoliubovParameters(QFTModel;
+                                                                  bogoliubovRot = true,
+                                                                  bogParameters = bogParameters)
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
@@ -643,7 +645,9 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] -= optimalXi;
                             bogParameters[kR] += optimalXi
-                            QFTModel = updateBogoliubovParameters(QFTModel, bogoliubovRot = true, bogParameters = bogParameters)
+                            QFTModel = updateBogoliubovParameters(QFTModel;
+                                                                  bogoliubovRot = true,
+                                                                  bogParameters = bogParameters)
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
@@ -1217,7 +1221,9 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                             # update QFTModel with new bogParameters
                             # bogParameters[kR] -= optimalXi;
                             bogParameters[kR] += optimalXi
-                            QFTModel = updateBogoliubovParameters(QFTModel, bogoliubovRot = true, bogParameters = bogParameters)
+                            QFTModel = updateBogoliubovParameters(QFTModel;
+                                                                  bogoliubovRot = true,
+                                                                  bogParameters = bogParameters)
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
@@ -1419,7 +1425,9 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                             # update QFTModel with new bogParameters
                             bogParameters[kR] -= optimalXi
                             # bogParameters[kR] += optimalXi;
-                            QFTModel = updateBogoliubovParameters(QFTModel, bogoliubovRot = true, bogParameters = bogParameters)
+                            QFTModel = updateBogoliubovParameters(QFTModel;
+                                                                  bogoliubovRot = true,
+                                                                  bogParameters = bogParameters)
                             alg.verbosePrint > 0 && println(bogParameters, "\n")
 
                             # recreate modified MPO
