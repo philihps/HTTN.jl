@@ -39,7 +39,7 @@ function CoupledRotorsModel(truncationParameters::NamedTuple,
     return CoupledRotorsModel(modelParameters, modeOccupations, physSpaces)
 end
 
-function generate_H0(Model::Union{MassiveSchwingerModel,SineGordonModel})
+function generate_H0(Model::CoupledRotorsModel)
     mpo_H0 = generate_H0(Model.modelParameters, Model.modeOccupations, Model.physSpaces)
     return mpo_H0
 end
@@ -52,8 +52,8 @@ end
 function generate_MPO_cR(Model::CoupledRotorsModel)
 
     # construct non-interacting and interacting MPO
-    mpo_H0 = generate_H0(Model.modelParameters, Model.modeOccupations, Model.physSpaces)
-    mpo_H1 = generate_H1(Model.modelParameters, Model.modeOccupations, Model.physSpaces)
+    mpo_H0 = generate_H0(Model)
+    mpo_H1 = generate_H1(Model)
 
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     mpo_cR = mpo_H1 == 0 ? mpo_H0 : mpo_H0 + mpo_H1
@@ -137,8 +137,7 @@ function initializeVacuumMPS(Model::CoupledRotorsModel)
     return SparseMPS(mpsTensors; normalizeMPS = true)
 end
 
-function initializeMPS(Model::CoupledRotorsModel, initMPS::SparseMPS;
-                       modeOrdering::Bool = true)
+function initializeMPS(Model::CoupledRotorsModel, initMPS::SparseMPS)
     """ construct random MPS tensor with physVecSpaces and virtVecSpaces """
 
     # construct physical and virtual vector spaces for the MPS
@@ -151,22 +150,12 @@ function initializeMPS(Model::CoupledRotorsModel, initMPS::SparseMPS;
 
     numSites = length(physSpaces)
     mpsTensors = Vector{TensorMap{ComplexF64}}(undef, numSites)
-    if modeOrdering
-        zeroSitePos = 1
-    else
-        zeroSitePos = Int((numSites - 1) / 2 + 1)
-    end
-
     for siteIdx in 1:numSites
         initTensor = convert(Array, initMPS[siteIdx])
         siteTensor = randn(ComplexF64,
                            virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
                            virtSpaces[siteIdx + 1])
-        if siteIdx == zeroSitePos
-            siteTensor = 1e-1 * convert(Array, siteTensor)
-        else
-            siteTensor = 1e-2 * convert(Array, siteTensor)
-        end
+        siteTensor = 1e-1 * convert(Array, siteTensor)
         minTensorDim = min(size(initTensor), size(siteTensor))
         siteTensor[1:minTensorDim[1], 1:minTensorDim[2], 1:minTensorDim[3]] += initTensor[1:minTensorDim[1],
                                                                                           1:minTensorDim[2],
@@ -256,23 +245,30 @@ function generate_H1(modelParameters::CoupledRotorsParameters,
     β = hamiltonianParameters[:β]
     ω = hamiltonianParameters[:ω]
     κ = hamiltonianParameters[:κ]
+    boundaryConditions = hamiltonianParameters[:boundaryConditions]
 
     # get momentumModes
     momentumModes = modeOccupations[1, :]
     modeOccupations = modeOccupations[2, :]
 
     # get number of momentum modes
-    numSites = length(momentumModes)
+    N = length(momentumModes)
 
     # initialize vector of individual MPOs
     storeIndividualMPOs = Vector{SparseMPO}[]
 
+    # collect all constant contributions in identity MPO
+    constantFactor = ω^2 * M + κ * (M - 1)
+    if boundaryConditions == "DBC"
+        constantFactor += 2 * κ
+    elseif boundaryConditions == "PBC"
+        constantFactor += 1 * κ
+    end
+    identityMPO = constantFactor * constructIdentityMPO(physSpaces, oneunit(ComplexSpace))
+    storeIndividualMPOs = vcat(storeIndividualMPOs, [identityMPO])
+
     # cosine self-interaction
     if ω != 0
-
-        # add identity MPO for cosine self-interaction
-        identityMPO = ω^2 * M * constructIdentityMPO(physSpaces, oneunit(ComplexSpace))
-        storeIndividualMPOs = vcat(storeIndividualMPOs, [identityMPO])
 
         # add cosine self-interaction MPOs
         for siteIdx in eachindex(physSpaces)
@@ -290,10 +286,6 @@ function generate_H1(modelParameters::CoupledRotorsParameters,
     # nearest-neighbor cosine interaction
     if κ != 0
 
-        # add identity MPO for nearest-neighbor cosine interaction
-        identityMPO = κ * (M - 1) * constructIdentityMPO(physSpaces, oneunit(ComplexSpace))
-        storeIndividualMPOs = vcat(storeIndividualMPOs, [identityMPO])
-
         # add nearest-neighbor cosine interaction MPOs
         for siteIdx in eachindex(physSpaces[1:(end - 1)])
             localOperators = localIdentityOp.(physSpaces)
@@ -308,6 +300,50 @@ function generate_H1(modelParameters::CoupledRotorsParameters,
             localOperators = localIdentityOp.(physSpaces)
             localOperators[siteIdx + 0] = localPosShiftOperator(physSpaces[siteIdx + 0])
             localOperators[siteIdx + 1] = localNegShiftOperator(physSpaces[siteIdx + 1])
+            mpoShiftOperator = -0.5 * κ *
+                               convertLocalOperatorsToMPO(localOperators;
+                                                          qnL = oneunit(ComplexSpace),
+                                                          qnR = oneunit(ComplexSpace))
+            storeIndividualMPOs = vcat(storeIndividualMPOs, [mpoShiftOperator])
+        end
+
+        # add term for DBC
+        if boundaryConditions == "DBC"
+
+            localOperators = localIdentityOp.(physSpaces)
+            localOperators[1] = localNegShiftOperator(physSpaces[1]) +
+                                localPosShiftOperator(physSpaces[1])
+            mpoShiftOperator = -0.5 * κ *
+                               convertLocalOperatorsToMPO(localOperators;
+                                                          qnL = oneunit(ComplexSpace),
+                                                          qnR = oneunit(ComplexSpace))
+            storeIndividualMPOs = vcat(storeIndividualMPOs, [mpoShiftOperator])
+
+            localOperators = localIdentityOp.(physSpaces)
+            localOperators[N] = localNegShiftOperator(physSpaces[N]) +
+                                localPosShiftOperator(physSpaces[N])
+            mpoShiftOperator = -0.5 * κ *
+                               convertLocalOperatorsToMPO(localOperators;
+                                                          qnL = oneunit(ComplexSpace),
+                                                          qnR = oneunit(ComplexSpace))
+            storeIndividualMPOs = vcat(storeIndividualMPOs, [mpoShiftOperator])
+        end
+
+        # add term for PBC
+        if boundaryConditions == "PBC"
+
+            localOperators = localIdentityOp.(physSpaces)
+            localOperators[1] = localNegShiftOperator(physSpaces[1])
+            localOperators[N] = localPosShiftOperator(physSpaces[N])
+            mpoShiftOperator = -0.5 * κ *
+                               convertLocalOperatorsToMPO(localOperators;
+                                                          qnL = oneunit(ComplexSpace),
+                                                          qnR = oneunit(ComplexSpace))
+            storeIndividualMPOs = vcat(storeIndividualMPOs, [mpoShiftOperator])
+
+            localOperators = localIdentityOp.(physSpaces)
+            localOperators[1] = localPosShiftOperator(physSpaces[1])
+            localOperators[N] = localNegShiftOperator(physSpaces[N])
             mpoShiftOperator = -0.5 * κ *
                                convertLocalOperatorsToMPO(localOperators;
                                                           qnL = oneunit(ComplexSpace),
