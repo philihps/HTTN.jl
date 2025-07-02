@@ -57,14 +57,14 @@ function generate_MPO_cR(Model::CoupledRotorsModel)
 
     # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
     mpo_cR = mpo_H1 == 0 ? mpo_H0 : mpo_H0 + mpo_H1
-
-    # check if Hamiltonian is real
-    realMPO = [norm(imag(mpo_cR[siteIdx])) for siteIdx in eachindex(mpo_cR)]
-    if all(realMPO .< 1e-12)
-        return real(mpo_cR)
-    else
-        return mpo_cR
-    end
+    return mpo_cR
+    # # check if Hamiltonian is real
+    # realMPO = [norm(imag(mpo_cR[siteIdx])) for siteIdx in eachindex(mpo_cR)]
+    # if all(realMPO .< 1e-12)
+    #     return real(mpo_cR)
+    # else
+    #     return mpo_cR
+    # end
 end
 
 function modelSetup(modelParameters::CoupledRotorsParameters)

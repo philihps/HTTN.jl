@@ -59,15 +59,20 @@ export mps2vec, mpo2mat
 export compress_MPO, convert_MPO_33block, convert_33block_MPO
 
 # export expectation value functions
-export expectation_value_mpo, expectation_values
+export expectation_value_mpo, expectation_values, expectation_values_density_matrix
 export compute_entanglement_spectra,
        compute_entanglement_entropies,
        compute_arbitrary_bipartition,
        compute_mutual_information
 export compute_phase_distribution
 
+# export thermal state functions
+export initializeThermalDensityMatrix, expectation_values_density_matrix
+export constructIdentiyMPO
+export produceThermalState, costFunctionGGE
+
 # export utility functions
-export normalizeMPS, dotMPS, normalizeMPO
+export normalizeMPS, dotMPS, normalizeMPO, dotMPO, multiplyMPOs
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
@@ -100,5 +105,6 @@ include("algorithms/expectation_values.jl")
 include("algorithms/entanglement_quantities.jl")
 include("algorithms/full_counting_statistics.jl")
 include("algorithms/mpo_compression.jl")
+include("algorithms/thermal_states.jl")
 
 end

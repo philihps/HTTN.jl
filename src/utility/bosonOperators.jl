@@ -138,7 +138,7 @@ function localNegShiftOperator(physVecSpace::ElementarySpace, conserveZ2::Bool =
     dimPhyVecSpace = dim(physVecSpace)
     auxVecSpace = !conserveZ2 ? ComplexSpace(1) : Rep[ℤ₂](1 => 1)
     negShiftOp = LinearAlgebra.diagm(+1 => ones(dimPhyVecSpace - 1))
-    negShiftOperator = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    negShiftOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
     if conserveZ2
         rowColPerm = vcat(collect(1:2:dim(physVecSpace)), collect(2:2:dim(physVecSpace)))
         negShiftOperator[:, :, 1] = negShiftOp[rowColPerm, rowColPerm]
@@ -156,7 +156,7 @@ function localPosShiftOperator(physVecSpace::ElementarySpace, conserveZ2::Bool =
     dimPhyVecSpace = dim(physVecSpace)
     auxVecSpace = !conserveZ2 ? ComplexSpace(1) : Rep[ℤ₂](1 => 1)
     posShiftOp = LinearAlgebra.diagm(-1 => ones(dimPhyVecSpace - 1))
-    posShiftOperator = zeros(Float64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    posShiftOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
     if conserveZ2
         rowColPerm = vcat(collect(1:2:dim(physVecSpace)), collect(2:2:dim(physVecSpace)))
         posShiftOperator[:, :, 1] = posShiftOp[rowColPerm, rowColPerm]
