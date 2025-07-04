@@ -140,7 +140,7 @@ function Base.similar(M::SparseMPO{A}) where {A}
 end
 
 # elementary operations
-Base.:-(a::SparseMPO) = -one(scalartype(a)) * a;
+Base.:-(a::SparseMPO) = -1 * a;
 
 # addition
 function Base.:+(mpoA::H, mpoB::H) where {H<:SparseMPO}
@@ -266,6 +266,19 @@ function dotMPO(MPOA::SparseMPO, MPOB::SparseMPO)
     end
     overlapMPO = tr(overlapMPO)
     return overlapMPO
+
+end
+
+function trMPO(finiteMPO::SparseMPO)
+    """ Compute the trace for finiteMPO """
+
+    # compute trace of finiteMPO
+    traceMPO = ones(space(finiteMPO[1], 1), space(finiteMPO[1], 1))
+    for siteIdx = eachindex(finiteMPO)
+        @tensor traceMPO[-1; -2] := traceMPO[1, 2] * conj(finiteMPO[siteIdx][1, 3, -1, 4]) * finiteMPO[siteIdx][2, 3, -2, 4]
+    end
+    traceMPO = tr(traceMPO)
+    return traceMPO
 
 end
 
@@ -532,10 +545,8 @@ function multiplyMPOs(MPOA::SparseMPO, MPOB::SparseMPO;
     elseif compressionAlg == "zipUp"
 
         # construct left and right isomorphism
-        # isomoL = isomorphism(Matrix{eltype(compressedMPO[1])}, fuse(space(MPOA[1], 1), space(MPOB[1], 1)), space(MPOA[1], 1) ⊗ space(MPOB[1], 1));
-        # isomoR = isomorphism(Matrix{eltype(compressedMPO[N])}, space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)', fuse(space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)'));
-        isomoL = isomorphism(fuse(space(MPOA[1], 1), space(MPOB[1], 1)), space(MPOA[1], 1) ⊗ space(MPOB[1], 1));
-        isomoR = isomorphism(space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)', fuse(space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)'));
+        isomoL = isometry(fuse(space(MPOA[1], 1), space(MPOB[1], 1)), space(MPOA[1], 1) ⊗ space(MPOB[1], 1));
+        isomoR = isometry(space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)', fuse(space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)'));
 
         # zip-up from left to right
         for siteIdx = 1 : N
@@ -583,7 +594,7 @@ function multiplyMPOs(MPOA::SparseMPO, MPOB::SparseMPO;
                 @tensor newTheta[-1 -2 -3; -4 -5 -6] := mpoEnvL[siteIdx][-2, 3, 1] * MPOA[siteIdx][1, 2, 4, -1] * MPOB[siteIdx][3, -3, 6, 2] * MPOA[siteIdx + 1][4, 5, 7, -6] * MPOB[siteIdx + 1][6, -4, 8, 5] * mpoEnvR[siteIdx + 1][7, 8, -5];
 
                 #  perform SVD and truncate to desired bond dimension
-                U, S, V, ϵ = tsvd(newTheta, (1, 2, 3), (4, 5, 6), trunc = truncdim(maxDim) & truncerr(truncErr));
+                U, S, V, ϵ = tsvd(newTheta, (1, 2, 3), (4, 5, 6), trunc = truncdim(maxDim) & truncerr(truncErr), alg = TensorKit.SVD());
                 # S /= norm(S);
                 U = permute(U, (2, 3), (4, 1));
                 V = permute(S * V, (1, 2), (3, 4));
@@ -604,7 +615,7 @@ function multiplyMPOs(MPOA::SparseMPO, MPOB::SparseMPO;
                 @tensor newTheta[-1 -2 -3; -4 -5 -6] := mpoEnvL[siteIdx][-2, 3, 1] * MPOA[siteIdx][1, 2, 4, -1] * MPOB[siteIdx][3, -3, 6, 2] * MPOA[siteIdx + 1][4, 5, 7, -6] * MPOB[siteIdx + 1][6, -4, 8, 5] * mpoEnvR[siteIdx + 1][7, 8, -5];
 
                 #  perform SVD and truncate to desired bond dimension
-                U, S, V, ϵ = tsvd(newTheta, (1, 2, 3), (4, 5, 6), trunc = truncdim(maxDim) & truncerr(truncErr));
+                U, S, V, ϵ = tsvd(newTheta, (1, 2, 3), (4, 5, 6), trunc = truncdim(maxDim) & truncerr(truncErr), alg = TensorKit.SVD());
                 # S /= norm(S);
                 U = permute(U * S, (2, 3), (4, 1));
                 V = permute(V, (1, 2), (3, 4));

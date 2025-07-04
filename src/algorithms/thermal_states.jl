@@ -46,23 +46,24 @@ function initializeThermalDensityMatrix(
 
     # sum up Taylor series
     thermalDensityMatrix = identityMPO + sum(mpoPowers)
-    thermalDensityMatrix = normalizeMPO(thermalDensityMatrix);
+    thermalDensityMatrix = normalizeMPO(thermalDensityMatrix)
     return thermalDensityMatrix
 
 end
 
 function produceThermalState(
     finiteMPO::SparseMPO,
-    β::Float64;
+    targetEnergy::Float64;
     δβ::Float64 = 1e-2,
     expansionOrder::Int64 = 3,
     truncErr::Float64 = 1e-6,
     maxDim::Int64 = 2500,
+    convTol::Float64 = 1e-2,
     verbosePrint::Int64 = 0,
 )
 
-    # set number of cooling steps for imaginary time evolution
-    numCoolingSteps = Int(round(β / δβ))
+    # # set number of cooling steps for imaginary time evolution
+    # numCoolingSteps = Int(round(β / δβ))
 
     # initialize array to store energy expectation value
     storeEnergy = zeros(Float64, 0, 2)
@@ -75,24 +76,39 @@ function produceThermalState(
     # create infinitesimal thermal density matrix
     infinitesimalTDM = initializeThermalDensityMatrix(finiteMPO, δβ = δβ, expansionOrder = expansionOrder, truncErr = truncErr, maxDim = maxDim)
 
-    # run TDVP to evolve the pre-quench ground state with the post-quench Hamiltonian
-    for timeStep in 0 : numCoolingSteps
+    # compute energy of cooled state
+    thermalStateEnergy = expectation_values_density_matrix(thermalDensityMatrix, finiteMPO)
 
-        verbosePrint == 1 && @printf("timeStep = %d/%d\n", timeStep, numCoolingSteps)
+    # run TDVP to evolve the pre-quench ground state with the post-quench Hamiltonian
+    timeStep = 0
+    while (thermalStateEnergy - targetEnergy) > convTol
+
+        println((thermalStateEnergy - targetEnergy))
+
+        verbosePrint == 1 && @printf("timeStep = %d\n", timeStep)
 
         # perform cooling step
         if timeStep > 0
-            thermalDensityMatrix = multiplyMPOs(thermalDensityMatrix, infinitesimalTDM, truncErr = 1e-6, maxDim = 128)
+            thermalDensityMatrix = multiplyMPOs(thermalDensityMatrix, infinitesimalTDM, 
+                truncErr = truncErr,
+                maxDim = maxDim,
+                compressionAlg = "zipUp",
+                )
             thermalDensityMatrix = normalizeMPO(thermalDensityMatrix)
         end
 
         # compute energy of cooled state
-        energyExpectationValue = expectation_values_density_matrix(thermalDensityMatrix, finiteMPO)
-        storeEnergy = vcat(storeEnergy, [δβ * timeStep real(energyExpectationValue)])
+        thermalStateEnergy = expectation_values_density_matrix(thermalDensityMatrix, finiteMPO)
+        storeEnergy = vcat(storeEnergy, [δβ * timeStep real(thermalStateEnergy)])
+
+        # increase timeStep
+        timeStep += 1
 
     end
 
-    return thermalDensityMatrix, storeEnergy
+    @printf("target energy reached after %d cooling steps\n", timeStep)
+
+    return thermalDensityMatrix, δβ * timeStep, storeEnergy
 
 end
 
@@ -127,28 +143,59 @@ function costFunctionGGE(
 end
 
 function reducedDensityMatrixHalfSystem(finiteMPO::SparseMPO)
+    
     N = length(finiteMPO)
-    qnL = space(finiteMPO[1], 1)
-    qnR = space(finiteMPO[N], 3)
-    boundaryL = TensorMap(ones, one(qnL), qnL)
-    boundaryR = TensorMap(ones, qnR', one(qnR))
-    indexList = Vector{Vector{Int}}(undef, N + 2)
-    cOffset = N/2 + 1
-    for idxT in eachindex(indexList)
-        if idxT == 1
-            indexList[idxT] = [idxT]
-        elseif idxT <= length(indexList) / 2
-            indexList[idxT] = [idxT - 1, -(idxT - 1), idxT, -(idxT - 1) - N/2]
-        elseif length(indexList) / 2 < idxT < length(indexList)
-            indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0, cOffset + 2 * (idxT - cOffset - 1) + 1, cOffset + 2 * (idxT - cOffset - 1) + 2, cOffset + 2 * (idxT - cOffset - 1) + 1]
-        elseif idxT == length(indexList)
-            indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0]
-        end
+    if N == 2
+        mpoTrace = ones(space(finiteMPO[1], 1), space(finiteMPO[1], 1))
+        @tensor mpoTrace[-1 -2; -3 -4] := mpoTrace[1, 3] * conj(finiteMPO[1][1, 2, -2, -1]) * finiteMPO[1][3, 2, -4, -3]
+        @tensor mpoTrace[-1; -2] := mpoTrace[-1, 1, -2, 3] * conj(finiteMPO[2][1, 2, 5, 4]) * finiteMPO[2][3, 2, 5, 4]
+    elseif N == 4
+        mpoTrace = ones(space(finiteMPO[1], 1), space(finiteMPO[1], 1))
+        @tensor mpoTrace[-1 -2; -3 -4] := mpoTrace[1, 3] * conj(finiteMPO[1][1, 2, -2, -1]) * finiteMPO[1][3, 2, -4, -3]
+        @tensor mpoTrace[-1 -2 -3; -4 -5 -6] := mpoTrace[-1, 1, -4, 3] * conj(finiteMPO[2][1, 2, -3, -2]) * finiteMPO[2][3, 2, -6, -5]
+        @tensor mpoTrace[-1 -2 -3; -4 -5 -6] := mpoTrace[-1, -2, 1, -4, -5, 3] * conj(finiteMPO[3][1, 2, -3, 4]) * finiteMPO[3][3, 2, -6, 4]
+        @tensor mpoTrace[-1 -2; -3 -4] := mpoTrace[-1, -2, 1, -3, -4, 3] * conj(finiteMPO[4][1, 2, 5, 4]) * finiteMPO[4][3, 2, 5, 4]
     end
-    mpoTensor = ncon(vcat(boundaryL, finiteMPO..., boundaryR), indexList)
-    mpoTensor = permute(mpoTensor, Tuple(Int.(1:N/2)), Tuple(Int.((N/2 + 1):(N))))
-    # mpoTensor = convert(Array, mpoTensor)
-    # sizeMPOTensor = size(mpoTensor)
-    # mpoMatrix = reshape(mpoTensor, prod(sizeMPOTensor[1:N]), prod(sizeMPOTensor[1:N]))
-    return mpoTensor
+    return mpoTrace
+
 end
+
+# function reducedDensityMatrixHalfSystem(finiteMPO::SparseMPO)
+    
+#     # get system size
+#     N = length(finiteMPO)
+
+#     # fuse rho(β/2)^† and rho(β/2)
+#     doubleLayerMPO = Vector{TensorMap}(undef, N)
+#     for siteIdx in eachindex(finiteMPO)
+#         isoL = isometry(fuse(space(finiteMPO[siteIdx], 1), space(finiteMPO[siteIdx], 1)), space(finiteMPO[siteIdx], 1) ⊗ space(finiteMPO[siteIdx], 1)')
+#         isoR = isometry(space(finiteMPO[siteIdx], 3) ⊗ space(finiteMPO[siteIdx], 3)', fuse(space(finiteMPO[siteIdx], 3)', space(finiteMPO[siteIdx], 3)'))
+#         @tensor doubleTensor[-1 -2; -3 -4] := isoL[-1, 2, 3] * conj(finiteMPO[siteIdx][3, 1, 5, -2]) * finiteMPO[siteIdx][2, 1, 4, -4] * isoR[4, 5, -3]
+#         doubleLayerMPO[siteIdx] = doubleTensor
+#     end
+
+#     # trace over doubleLayerMPO
+#     qnL = space(doubleLayerMPO[1], 1)
+#     qnR = space(doubleLayerMPO[N], 3)
+#     boundaryL = TensorMap(ones, one(qnL), qnL)
+#     boundaryR = TensorMap(ones, qnR', one(qnR))
+#     indexList = Vector{Vector{Int}}(undef, N + 2)
+#     cOffset = N/2 + 1
+#     for idxT in eachindex(indexList)
+#         if idxT == 1
+#             indexList[idxT] = [idxT]
+#         elseif idxT <= length(indexList) / 2
+#             indexList[idxT] = [idxT - 1, -(idxT - 1), idxT, -(idxT - 1) - N/2]
+#         elseif length(indexList) / 2 < idxT < length(indexList)
+#             indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0, cOffset + 2 * (idxT - cOffset - 1) + 1, cOffset + 2 * (idxT - cOffset - 1) + 2, cOffset + 2 * (idxT - cOffset - 1) + 1]
+#         elseif idxT == length(indexList)
+#             indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0]
+#         end
+#     end
+#     mpoTensor = ncon(vcat(boundaryL, doubleLayerMPO..., boundaryR), indexList)
+#     mpoTensor = permute(mpoTensor, Tuple(Int.(1:N/2)), Tuple(Int.((N/2 + 1):(N))))
+#     # mpoTensor = convert(Array, mpoTensor)
+#     # sizeMPOTensor = size(mpoTensor)
+#     # mpoMatrix = reshape(mpoTensor, prod(sizeMPOTensor[1:N]), prod(sizeMPOTensor[1:N]))
+#     return mpoTensor
+# end

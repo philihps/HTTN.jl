@@ -37,7 +37,7 @@ export MassiveSchwingerModel
 export CoupledRotorsParameters
 export CoupledRotorsModel
 export initializeVacuumMPS, initializeMPS
-export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG, generate_MPO_cR, generate_H0_CM, generate_MPO_cR_CM_REL
+export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG, generate_MPO_cR, generate_H0_CM
 export updateBogoliubovParameters
 export local_number_operators
 export pairing_operators
@@ -72,7 +72,7 @@ export constructIdentiyMPO
 export produceThermalState, costFunctionGGE, reducedDensityMatrixHalfSystem
 
 # export utility functions
-export normalizeMPS, dotMPS, normalizeMPO, dotMPO, multiplyMPOs
+export normalizeMPS, dotMPS, normalizeMPO, dotMPO, trMPO, multiplyMPOs
 export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS

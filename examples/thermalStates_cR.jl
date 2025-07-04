@@ -24,21 +24,17 @@ using TensorKit
     # set truncation parameters
     modelName = "coupledRotors"
     BC = "NBC" # "NBC, "DBC", or "PBC"
-    M = 4 # number of coupled rotors
-    N = 2 # maximal eigenvalue of momentum operator
+    M = 2 # number of coupled rotors
+    N = 10 # maximal eigenvalue of momentum operator
 
     # set model parameters
     β = 1.0
-    ωPre = sqrt(1.0)
+    ωPre = sqrt(1.5)
     ωPost = 0.0
-    κ = 2.0
-
-    # set λP and λM for GGE
-    λP = 1.0
-    λM = 1.0
+    κ = 10.0
 
     # set DMRG and TDVP truncation parameters
-    bondDim = 64
+    bondDim = 128
     truncErrD = 1e-6
     truncErrT = 1e-6
 
@@ -46,8 +42,8 @@ using TensorKit
     truncationParameters = (M = M, N = N)
 
     # create NamedTuple for model parameters
-    hamiltonianParameters_Pre = (β = β, ω = ωPre, κ = κ, BC = BC, λP = λP, λM = λM)
-    hamiltonianParameters_Post = (β = β, ω = ωPost, κ = κ, BC = BC, λP = λP, λM = λM)
+    hamiltonianParameters_Pre = (β = β, ω = ωPre, κ = κ, BC = BC)
+    hamiltonianParameters_Post = (β = β, ω = ωPost, κ = κ, BC = BC)
     
     # construct coupled rotors model
     cR_Pre = CoupledRotorsModel(truncationParameters, hamiltonianParameters_Pre)
@@ -68,17 +64,21 @@ using TensorKit
     println("MPO bond dimensions post-quench (ω = 0):")
     println(getLinkDimsMPO(postQuenchMPO), "\n")
 
-    # # construct post-quench MPO
-    # postQuenchMPO = generate_MPO_cR_CM_REL(cR_Post)
-    # println("MPO bond dimensions post-quench (ω = 0):")
-    # println(getLinkDimsMPO(postQuenchMPO), "\n")
+
+    # -------------------------------------------------------------
+
+    # construct center-of-mass Hamiltonian (P) and relative Hamiltonian (M) MPO
+    mpoP = generate_H0_CM(cR_Post)
+    mpoM = generate_MPO_cR(cR_Post) - mpoP
+    # mpoM = generate_MPO_cR(cR_Post)
+
 
     # -------------------------------------------------------------
     # DMRG
 
     # initialize vaccum MPS (ground state of non-interacting Hamiltonian)
-    vacuumMPS = initializeVacuumMPS(cR_Post)
-    initialMPS = initializeMPS(cR_Post, vacuumMPS)
+    vacuumMPS = initializeVacuumMPS(cR_Pre)
+    initialMPS = initializeMPS(cR_Pre, vacuumMPS)
 
     # run DMRG to compute pre-quench ground state
     groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, preQuenchMPO,
@@ -88,7 +88,21 @@ using TensorKit
                                                                             maxIterations = 2,
                                                                             subspaceExpansion = false,
                                                                             verbosePrint = 1))
-    @printf("ground state energy E0 post-quench = %0.8f\n\n", groundStateEnergy)
+    @printf("ground state energy E0 pre-quench = %0.8f\n\n", groundStateEnergy)
+
+    # # initialize vaccum MPS (ground state of non-interacting Hamiltonian)
+    # vacuumMPS = initializeVacuumMPS(cR_Post)
+    # initialMPS = initializeMPS(cR_Post, vacuumMPS)
+
+    # # run DMRG to compute post-quench ground state
+    # groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, postQuenchMPO,
+    #                                                                 DMRG2(; bondDim = bondDim,
+    #                                                                         truncErr = truncErrD,
+    #                                                                         maxIterationsInit = 20,
+    #                                                                         maxIterations = 2,
+    #                                                                         subspaceExpansion = false,
+    #                                                                         verbosePrint = 1))
+    # @printf("ground state energy E0 post-quench = %0.8f\n\n", groundStateEnergy)
 
 
     # # -------------------------------------------------------------
@@ -183,102 +197,145 @@ using TensorKit
     # -------------------------------------------------------------
     # GGE
 
-    # set infinitesimal temperature step and maximal inverse temperature
-    δβ = 1e-2
-    β = 5.0
-    
-    # construct center-of-mass Hamiltonian (P) and relative Hamiltonian (M) MPO
-    mpoP = generate_H0_CM(cR_Post)
-    mpoM = generate_MPO_cR(cR_Post) + (-1 * mpoP)
-
     # compute energy of initial state for both P and M Hamiltonian
     targetEnergyP = real(expectation_value_mpo(groundStateMPS, mpoP))
     targetEnergyM = real(expectation_value_mpo(groundStateMPS, mpoM))
     println("target energy P = ", targetEnergyP)
     println("target energy M = ", targetEnergyM)
 
-    # cooling process for mpoP
-    _, thermalEnergyP = produceThermalState(
-        mpoP, β; δβ = δβ, verbosePrint = 1
-    )
+    # set infinitesimal temperature step and maximal inverse temperature
+    δβ = 1e-2
 
-    # interpolate thermal state energy
-    linear_interpolP = linear_interpolation(thermalEnergyP[:, 1], thermalEnergyP[:, 2])
+    # # cooling process for mpoP
+    # _, thermalEnergyP = produceThermalState(
+    #     mpoP, β; δβ = δβ, verbosePrint = 1
+    # )
+
+    # # interpolate thermal state energy
+    # linear_interpolP = linear_interpolation(thermalEnergyP[:, 1], thermalEnergyP[:, 2])
+
+    # # plot for the energy over time
+    # plotEnergyP = plot(; xaxis = :identity, xlabel = L"T", ylabel = L"E(T)", frame = :box)
+    # plot!(plotEnergyP,
+    #     1 .* thermalEnergyP[:, 1],
+    #     thermalEnergyP[:, 2];
+    #     linewidth = 2.0,
+    #     markers = :circle,
+    #     label = "MPO data",
+    # )
+
+    # plot!(plotEnergyP,
+    #     1 .* thermalEnergyP[:, 1],
+    #     linear_interpolP.(1 .* thermalEnergyP[:, 1],),
+    #     linewidth = 2.0,
+    #     linestyle = :dot,
+    #     label = "linear interp."
+    # )
+
+    # display(plotEnergyP)
+
+    # # define function to compute root of
+    # rootFuncP(β::Float64) = linear_interpolP(β) - targetEnergyP
+    # λP = find_zero(rootFuncP, (0.0, β))
+
+
+    # # cooling process for mpoM
+    # _, thermalEnergyM = produceThermalState(
+    #     mpoM, β; δβ = δβ, verbosePrint = 1
+    # )
+
+    # # interpolate thermal state energy
+    # linear_interpolM = linear_interpolation(thermalEnergyM[:, 1], thermalEnergyM[:, 2])
+
+    # # plot for the energy over time
+    # plotEnergyM = plot(; xaxis = :identity, xlabel = L"T", ylabel = L"E(T)", frame = :box)
+    # plot!(plotEnergyM,
+    #     1 .* thermalEnergyM[:, 1],
+    #     thermalEnergyM[:, 2];
+    #     linewidth = 2.0,
+    #     markers = :circle,
+    #     label = "MPO data",
+    # )
+
+    # plot!(plotEnergyM,
+    #     1 .* thermalEnergyM[:, 1],
+    #     linear_interpolM.(1 .* thermalEnergyM[:, 1],),
+    #     linewidth = 2.0,
+    #     linestyle = :dot,
+    #     label = "linear interp."
+    # )
+    # display(plotEnergyM)
+
+    # # define function to compute root of
+    # rootFuncM(β::Float64) = linear_interpolM(β) - targetEnergyM
+    # λM = find_zero(rootFuncM, (0.0, β))
+
+    # # generate thermal density matrix for mpoP
+    # tdm_P, thermalEnergyP = produceThermalState(
+    #     mpoP, λP; δβ = δβ, verbosePrint = 1
+    # )
+
+    # # generate thermal density matrix for mpoM
+    # tdm_M, thermalEnergyM = produceThermalState(
+    #     mpoM, λM; δβ = δβ, verbosePrint = 1
+    # )
+
+
+
+    # compute thermal density matrix for mpoP
+    tdm_P, λP, thermalEnergiesP = produceThermalState(
+        mpoP,
+        targetEnergyP;
+        δβ = δβ,
+        truncErr= 1e-10,
+        maxDim = 64,
+        convTol = 1e-3,
+        verbosePrint = 0,
+    )
+    println("optimal λP = ", λP)
 
     # plot for the energy over time
     plotEnergyP = plot(; xaxis = :identity, xlabel = L"T", ylabel = L"E(T)", frame = :box)
     plot!(plotEnergyP,
-        1 .* thermalEnergyP[:, 1],
-        thermalEnergyP[:, 2];
+        1 .* thermalEnergiesP[:, 1],
+        thermalEnergiesP[:, 2];
         linewidth = 2.0,
         markers = :circle,
         label = "MPO data",
     )
-
-    plot!(plotEnergyP,
-        1 .* thermalEnergyP[:, 1],
-        linear_interpolP.(1 .* thermalEnergyP[:, 1],),
-        linewidth = 2.0,
-        linestyle = :dot,
-        label = "linear interp."
-    )
-
     display(plotEnergyP)
 
-    # define function to compute root of
-    rootFuncP(β::Float64) = linear_interpolP(β) - targetEnergyP
-    λP = find_zero(rootFuncP, (0.0, β))
 
-
-    # cooling process for mpoM
-    _, thermalEnergyM = produceThermalState(
-        mpoM, β; δβ = δβ, verbosePrint = 1
+    # compute thermal density matrix for mpoM
+    tdm_M, λM, thermalEnergiesM = produceThermalState(
+        mpoM, 
+        targetEnergyM;
+        δβ = δβ,
+        truncErr= 1e-10,
+        maxDim = 64,
+        convTol = 1e-2,
+        verbosePrint = 0,
     )
-
-    # interpolate thermal state energy
-    linear_interpolM = linear_interpolation(thermalEnergyM[:, 1], thermalEnergyM[:, 2])
+    println("optimal λM = ", λM)
 
     # plot for the energy over time
     plotEnergyM = plot(; xaxis = :identity, xlabel = L"T", ylabel = L"E(T)", frame = :box)
     plot!(plotEnergyM,
-        1 .* thermalEnergyM[:, 1],
-        thermalEnergyM[:, 2];
+        1 .* thermalEnergiesM[:, 1],
+        thermalEnergiesM[:, 2];
         linewidth = 2.0,
         markers = :circle,
         label = "MPO data",
     )
-
-    plot!(plotEnergyM,
-        1 .* thermalEnergyM[:, 1],
-        linear_interpolM.(1 .* thermalEnergyM[:, 1],),
-        linewidth = 2.0,
-        linestyle = :dot,
-        label = "linear interp."
-    )
     display(plotEnergyM)
 
-    # define function to compute root of
-    rootFuncM(β::Float64) = linear_interpolM(β) - targetEnergyM
-    λM = find_zero(rootFuncM, (0.0, β))
-
-    # generate thermal density matrix for mpoP
-    tdm_P, thermalEnergyP = produceThermalState(
-        mpoP, λP; δβ = δβ, verbosePrint = 1
-    )
-
-    # generate thermal density matrix for mpoM
-    tdm_M, thermalEnergyM = produceThermalState(
-        mpoM, λM; δβ = δβ, verbosePrint = 1
-    )
-
     # compute final thermal density matrix
-    tdm_GGE = multiplyMPOs(tdm_P, tdm_M, truncErr = 1e-6, maxDim = 256)
-    tdm_GGE = real(normalizeMPO(tdm_GGE))
+    tdm_GGE = multiplyMPOs(tdm_P, tdm_M, truncErr = 1e-8, maxDim = 128)
+    tdm_GGE = normalizeMPO(tdm_GGE)
 
     # compute half-system von Neumann entropy
-    rdm_HS = reducedDensityMatrixHalfSystem(mpoP)
-    D, V = eig(rdm_HS)
-    SvN = -real(tr(D * log(D)))
+    rdm_HS = real(reducedDensityMatrixHalfSystem(tdm_GGE))
+    SvN = -real(tr(rdm_HS * log(rdm_HS)))
     println("von Neumann entropy S = ", SvN)
 
 # end
