@@ -70,7 +70,6 @@ using TensorKit
     # construct center-of-mass Hamiltonian (P) and relative Hamiltonian (M) MPO
     mpoP = generate_H0_CM(cR_Post)
     mpoM = generate_MPO_cR(cR_Post) - mpoP
-    # mpoM = generate_MPO_cR(cR_Post)
 
 
     # -------------------------------------------------------------
@@ -204,16 +203,16 @@ using TensorKit
     println("target energy M = ", targetEnergyM)
 
     # set infinitesimal temperature step and maximal inverse temperature
-    δβ = 1e-2
+    δβ = 5e-3
 
-    
+
     # compute thermal density matrix for mpoP
     tdm_P, λP, thermalEnergiesP = produceThermalState(
         mpoP,
         targetEnergyP;
         δβ = δβ,
-        truncErr= 1e-10,
-        maxDim = 64,
+        truncErr= 1e-8,
+        maxDim = 128,
         convTol = 1e-3,
         verbosePrint = 0,
     )
@@ -236,8 +235,8 @@ using TensorKit
         mpoM, 
         targetEnergyM;
         δβ = δβ,
-        truncErr= 1e-10,
-        maxDim = 64,
+        truncErr= 1e-8,
+        maxDim = 128,
         convTol = 1e-2,
         verbosePrint = 0,
     )
