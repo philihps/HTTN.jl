@@ -72,24 +72,6 @@ function generate_MPO_cR(Model::CoupledRotorsModel)
     # end
 end
 
-function generate_MPO_cR_CM_REL(Model::CoupledRotorsModel)
-
-    # get λ+ and λ-
-    hamiltonianParameters = Model.modelParameters.hamiltonianParameters
-    λP = hamiltonianParameters[:λP]
-    λM = hamiltonianParameters[:λM]
-
-    # construct center-of-mass MPO
-    mpo_CM = generate_H0_CM(Model)
-
-    # construct relative MPO
-    mpo_RL = generate_H0(Model) + generate_H1(Model) + (-1 * mpo_CM)
-
-    # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
-    mpo_cR = λP * mpo_CM + λM * mpo_RL
-    return mpo_cR
-end
-
 function modelSetup(modelParameters::CoupledRotorsParameters)
 
     # get truncationParameters
@@ -283,27 +265,27 @@ function generate_H0_CM(modelParameters::CoupledRotorsParameters,
         if siteIdx == 1
             mpoBlock = zeros(ComplexF64, 1, dimHS, 4, dimHS)
             mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
-            mpoBlock[1, :, 2, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
-            mpoBlock[1, :, 3, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[1, :, 2, :] = generateMomentumOperator(modeOccupation)
+            mpoBlock[1, :, 3, :] = generateMomentumOperator(modeOccupation)
             mpoBlock[1, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)^2
         elseif siteIdx == numSites
             mpoBlock = zeros(ComplexF64, 4, dimHS, 1, dimHS)
             mpoBlock[1, :, 1, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)^2
-            mpoBlock[2, :, 1, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
-            mpoBlock[3, :, 1, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[2, :, 1, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)
+            mpoBlock[3, :, 1, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)
             mpoBlock[4, :, 1, :] = getIdentityOperator(dimHS)
         else
             mpoBlock = zeros(ComplexF64, 4, dimHS, 4, dimHS)
             mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
-            mpoBlock[1, :, 2, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
-            mpoBlock[1, :, 3, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[1, :, 2, :] = generateMomentumOperator(modeOccupation)
+            mpoBlock[1, :, 3, :] = generateMomentumOperator(modeOccupation)
             mpoBlock[1, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)^2
 
             mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
-            mpoBlock[2, :, 4, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[2, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)
 
             mpoBlock[3, :, 3, :] = getIdentityOperator(dimHS)
-            mpoBlock[3, :, 4, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[3, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)
 
             mpoBlock[4, :, 4, :] = getIdentityOperator(dimHS)
         end
