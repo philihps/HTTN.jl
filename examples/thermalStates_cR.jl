@@ -97,7 +97,7 @@ using TensorKit
     # groundStateMPS, groundStateEnergy, truncErrors = find_groundstate(initialMPS, postQuenchMPO,
     #                                                                 DMRG2(; bondDim = bondDim,
     #                                                                         truncErr = truncErrD,
-    #                                                                         maxIterationsInit = 20,
+    #                                                                         maxIterationsInit = 10,
     #                                                                         maxIterations = 2,
     #                                                                         subspaceExpansion = false,
     #                                                                         verbosePrint = 1))
@@ -219,7 +219,7 @@ using TensorKit
     println("optimal λP = ", λP)
 
     # plot for the energy over time
-    plotEnergyP = plot(; xaxis = :identity, xlabel = L"T", ylabel = L"E(T)", frame = :box)
+    plotEnergyP = plot(; xaxis = :identity, xlabel = L"\beta", ylabel = L"E(\beta)", frame = :box)
     plot!(plotEnergyP,
         1 .* thermalEnergiesP[:, 1],
         thermalEnergiesP[:, 2];
@@ -243,7 +243,7 @@ using TensorKit
     println("optimal λM = ", λM)
 
     # plot for the energy over time
-    plotEnergyM = plot(; xaxis = :identity, xlabel = L"T", ylabel = L"E(T)", frame = :box)
+    plotEnergyM = plot(; xaxis = :identity, xlabel = L"\beta", ylabel = L"E(\beta)", frame = :box)
     plot!(plotEnergyM,
         1 .* thermalEnergiesM[:, 1],
         thermalEnergiesM[:, 2];
