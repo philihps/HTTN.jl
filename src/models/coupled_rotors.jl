@@ -44,6 +44,11 @@ function generate_H0(Model::CoupledRotorsModel)
     return mpo_H0
 end
 
+function generate_H0_CM(Model::CoupledRotorsModel)
+    mpo_H0 = generate_H0_CM(Model.modelParameters, Model.modeOccupations, Model.physSpaces)
+    return mpo_H0
+end
+
 function generate_H1(Model::CoupledRotorsModel)
     mpo_H1 = generate_H1(Model.modelParameters, Model.modeOccupations, Model.physSpaces)
     return mpo_H1
@@ -65,6 +70,24 @@ function generate_MPO_cR(Model::CoupledRotorsModel)
     # else
     #     return mpo_cR
     # end
+end
+
+function generate_MPO_cR_CM_REL(Model::CoupledRotorsModel)
+
+    # get λ+ and λ-
+    hamiltonianParameters = Model.modelParameters.hamiltonianParameters
+    λP = hamiltonianParameters[:λP]
+    λM = hamiltonianParameters[:λM]
+
+    # construct center-of-mass MPO
+    mpo_CM = generate_H0_CM(Model)
+
+    # construct relative MPO
+    mpo_RL = generate_H0(Model) + generate_H1(Model) + (-1 * mpo_CM)
+
+    # apply Hamiltonian prefactors and add mpo_H0 and mpo_H1
+    mpo_cR = λP * mpo_CM + λM * mpo_RL
+    return mpo_cR
 end
 
 function modelSetup(modelParameters::CoupledRotorsParameters)
@@ -219,6 +242,70 @@ function generate_H0(modelParameters::CoupledRotorsParameters,
             mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
             mpoBlock[1, :, 2, :] = 1 / 2 * generateMomentumOperator(modeOccupation)^2
             mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
+        end
+
+        # convert mpoBlock to TensorMap
+        mpo_H0[siteIdx] = TensorMap(mpoBlock,
+                                    ComplexSpace(size(mpoBlock, 1)) ⊗ physSpaces[siteIdx],
+                                    ComplexSpace(size(mpoBlock, 3)) ⊗ physSpaces[siteIdx])
+    end
+    return SparseMPO(mpo_H0)
+end
+
+function generate_H0_CM(modelParameters::CoupledRotorsParameters,
+                     modeOccupations::Matrix{Int64},
+                     physSpaces::Vector{<:Union{ElementarySpace,
+                                                CompositeSpace{ElementarySpace}}})
+    """
+    Compute 1 / (2M) * (∑_{i = 1}^{M} P_i)^2
+    """
+
+    # get hamiltonianParameters
+    hamiltonianParameters = modelParameters.hamiltonianParameters
+    β = hamiltonianParameters[:β]
+    ω = hamiltonianParameters[:ω]
+    κ = hamiltonianParameters[:κ]
+
+    # get momentumModes
+    momentumModes = modeOccupations[1, :]
+    modeOccupations = modeOccupations[2, :]
+    numSites = length(physSpaces)
+
+    # construct H0
+    mpo_H0 = Vector{TensorMap{ComplexF64}}(undef, numSites)
+    for (siteIdx, momentumVal) in enumerate(momentumModes)
+
+        # get physical vector space
+        physVecSpace = physSpaces[siteIdx]
+        dimHS = dim(physVecSpace)
+        modeOccupation = modeOccupations[siteIdx]
+
+        if siteIdx == 1
+            mpoBlock = zeros(ComplexF64, 1, dimHS, 4, dimHS)
+            mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
+            mpoBlock[1, :, 2, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[1, :, 3, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[1, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)^2
+        elseif siteIdx == numSites
+            mpoBlock = zeros(ComplexF64, 4, dimHS, 1, dimHS)
+            mpoBlock[1, :, 1, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)^2
+            mpoBlock[2, :, 1, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[3, :, 1, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[4, :, 1, :] = getIdentityOperator(dimHS)
+        else
+            mpoBlock = zeros(ComplexF64, 4, dimHS, 4, dimHS)
+            mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
+            mpoBlock[1, :, 2, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[1, :, 3, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+            mpoBlock[1, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)^2
+
+            mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
+            mpoBlock[2, :, 4, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+
+            mpoBlock[3, :, 3, :] = getIdentityOperator(dimHS)
+            mpoBlock[3, :, 4, :] = 1 / (2 * sqrt(numSites)) * generateMomentumOperator(modeOccupation)
+
+            mpoBlock[4, :, 4, :] = getIdentityOperator(dimHS)
         end
 
         # convert mpoBlock to TensorMap

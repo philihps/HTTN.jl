@@ -58,10 +58,14 @@ function produceThermalState(
     expansionOrder::Int64 = 3,
     truncErr::Float64 = 1e-6,
     maxDim::Int64 = 2500,
+    verbosePrint::Int64 = 0,
 )
 
     # set number of cooling steps for imaginary time evolution
     numCoolingSteps = Int(round(β / δβ))
+
+    # initialize array to store energy expectation value
+    storeEnergy = zeros(Float64, 0, 2)
 
     # create initial thermal density matrix
     physSpaces = [space(finiteMPO[i], 2) for i in eachindex(finiteMPO)]
@@ -74,7 +78,7 @@ function produceThermalState(
     # run TDVP to evolve the pre-quench ground state with the post-quench Hamiltonian
     for timeStep in 0 : numCoolingSteps
 
-        @printf("timeStep = %d/%d\n", timeStep, numCoolingSteps)
+        verbosePrint == 1 && @printf("timeStep = %d/%d\n", timeStep, numCoolingSteps)
 
         # perform cooling step
         if timeStep > 0
@@ -82,9 +86,13 @@ function produceThermalState(
             thermalDensityMatrix = normalizeMPO(thermalDensityMatrix)
         end
 
+        # compute energy of cooled state
+        energyExpectationValue = expectation_values_density_matrix(thermalDensityMatrix, finiteMPO)
+        storeEnergy = vcat(storeEnergy, [δβ * timeStep real(energyExpectationValue)])
+
     end
 
-    return thermalDensityMatrix
+    return thermalDensityMatrix, storeEnergy
 
 end
 
@@ -96,6 +104,7 @@ function costFunctionGGE(
     expansionOrder::Int64 = 3,
     truncErr::Float64 = 1e-6,
     maxDim::Int64 = 2500,
+    verbosePrint::Int64 = 0,
 )
 
     # compute thermal density matrix at inverse temperature β
@@ -104,13 +113,42 @@ function costFunctionGGE(
         δβ = δβ,
         expansionOrder = expansionOrder,
         truncErr = truncErr,
-        maxDim = maxDim)
+        maxDim = maxDim,
+        verbosePrint = verbosePrint
+    )
 
     # compute energy of thermal state
-    thermalStateEnergy = expectation_values_density_matrix(thermalDensityMatrix, finiteMPO)
+    thermalStateEnergy = real(expectation_values_density_matrix(thermalDensityMatrix, finiteMPO))
 
     # compute cost function
-    costFunction = targetEnergy - thermalStateEnergy
+    costFunction = thermalStateEnergy - targetEnergy
     return costFunction
 
+end
+
+function reducedDensityMatrixHalfSystem(finiteMPO::SparseMPO)
+    N = length(finiteMPO)
+    qnL = space(finiteMPO[1], 1)
+    qnR = space(finiteMPO[N], 3)
+    boundaryL = TensorMap(ones, one(qnL), qnL)
+    boundaryR = TensorMap(ones, qnR', one(qnR))
+    indexList = Vector{Vector{Int}}(undef, N + 2)
+    cOffset = N/2 + 1
+    for idxT in eachindex(indexList)
+        if idxT == 1
+            indexList[idxT] = [idxT]
+        elseif idxT <= length(indexList) / 2
+            indexList[idxT] = [idxT - 1, -(idxT - 1), idxT, -(idxT - 1) - N/2]
+        elseif length(indexList) / 2 < idxT < length(indexList)
+            indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0, cOffset + 2 * (idxT - cOffset - 1) + 1, cOffset + 2 * (idxT - cOffset - 1) + 2, cOffset + 2 * (idxT - cOffset - 1) + 1]
+        elseif idxT == length(indexList)
+            indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0]
+        end
+    end
+    mpoTensor = ncon(vcat(boundaryL, finiteMPO..., boundaryR), indexList)
+    mpoTensor = permute(mpoTensor, Tuple(Int.(1:N/2)), Tuple(Int.((N/2 + 1):(N))))
+    # mpoTensor = convert(Array, mpoTensor)
+    # sizeMPOTensor = size(mpoTensor)
+    # mpoMatrix = reshape(mpoTensor, prod(sizeMPOTensor[1:N]), prod(sizeMPOTensor[1:N]))
+    return mpoTensor
 end
