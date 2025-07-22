@@ -62,11 +62,11 @@ function produceThermalState(
     verbosePrint::Int64 = 0,
 )
 
-    # # set number of cooling steps for imaginary time evolution
-    # numCoolingSteps = Int(round(β / δβ))
-
     # initialize array to store energy expectation value
     storeEnergy = zeros(Float64, 0, 2)
+
+    # initialize time step
+    timeStep = 0
 
     # create initial thermal density matrix
     physSpaces = [space(finiteMPO[i], 2) for i in eachindex(finiteMPO)]
@@ -78,31 +78,79 @@ function produceThermalState(
 
     # compute energy of cooled state
     thermalStateEnergy = expectation_values_density_matrix(thermalDensityMatrix, finiteMPO)
+    storeEnergy = vcat(storeEnergy, [δβ * timeStep real(thermalStateEnergy)])
 
-    # run TDVP to evolve the pre-quench ground state with the post-quench Hamiltonian
-    timeStep = 0
-    while (thermalStateEnergy - targetEnergy) > convTol
-
-        println((thermalStateEnergy - targetEnergy))
+    # use exponential cooling as long as thermal state energy is above target energy
+    println("exponential cooling as long as thermal state energy is above target energy")
+    runExponentialCooling = true
+    while runExponentialCooling
 
         verbosePrint == 1 && @printf("timeStep = %d\n", timeStep)
 
         # perform cooling step
-        if timeStep > 0
-            thermalDensityMatrix = multiplyMPOs(thermalDensityMatrix, infinitesimalTDM, 
+        if timeStep == 0
+
+            # apply infinitesimal thermal density matrix
+            newThermalDensityMatrix = multiplyMPOs(thermalDensityMatrix, infinitesimalTDM, 
                 truncErr = truncErr,
                 maxDim = maxDim,
                 compressionAlg = "zipUp",
-                )
-            thermalDensityMatrix = normalizeMPO(thermalDensityMatrix)
+            )
+
+            # increase timeStep
+            newTimeStep = timeStep + 1
+
+        elseif timeStep > 0
+
+            # apply thermal density matrix onto itself
+            newThermalDensityMatrix = multiplyMPOs(thermalDensityMatrix, thermalDensityMatrix, 
+                truncErr = truncErr,
+                maxDim = maxDim,
+                compressionAlg = "zipUp",
+            )
+
+            # increase timeStep
+            newTimeStep = 2 * timeStep
+
         end
+        newThermalDensityMatrix = normalizeMPO(newThermalDensityMatrix)
+
+        # compute energy of cooled state
+        newThermalStateEnergy = expectation_values_density_matrix(newThermalDensityMatrix, finiteMPO)
+
+        # check if new thermal state energy is below target energy
+        if newThermalStateEnergy > targetEnergy
+            thermalDensityMatrix = newThermalDensityMatrix
+            thermalStateEnergy = newThermalStateEnergy
+            timeStep = newTimeStep
+            storeEnergy = vcat(storeEnergy, [δβ * timeStep real(thermalStateEnergy)])
+            # println([thermalStateEnergy targetEnergy (thermalStateEnergy - targetEnergy)])
+        else
+            runExponentialCooling = false
+        end
+
+    end
+
+    # use linear cooling until thermal state energy is close to target energy
+    println("linear cooling until thermal state energy is close to target energy")
+    while (thermalStateEnergy - targetEnergy) > convTol
+
+        verbosePrint == 1 && @printf("timeStep = %d\n", timeStep)
+
+        # apply infinitesimal thermal density matrix
+        thermalDensityMatrix = multiplyMPOs(thermalDensityMatrix, infinitesimalTDM, 
+            truncErr = truncErr,
+            maxDim = maxDim,
+            compressionAlg = "zipUp",
+        )
+        thermalDensityMatrix = normalizeMPO(thermalDensityMatrix)
+
+        # increase timeStep
+        timeStep += 1
 
         # compute energy of cooled state
         thermalStateEnergy = expectation_values_density_matrix(thermalDensityMatrix, finiteMPO)
         storeEnergy = vcat(storeEnergy, [δβ * timeStep real(thermalStateEnergy)])
-
-        # increase timeStep
-        timeStep += 1
 
     end
 
