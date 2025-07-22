@@ -203,47 +203,25 @@ function reducedDensityMatrixHalfSystem(finiteMPO::SparseMPO)
         @tensor mpoTrace[-1 -2 -3; -4 -5 -6] := mpoTrace[-1, 1, -4, 3] * conj(finiteMPO[2][1, 2, -3, -2]) * finiteMPO[2][3, 2, -6, -5]
         @tensor mpoTrace[-1 -2 -3; -4 -5 -6] := mpoTrace[-1, -2, 1, -4, -5, 3] * conj(finiteMPO[3][1, 2, -3, 4]) * finiteMPO[3][3, 2, -6, 4]
         @tensor mpoTrace[-1 -2; -3 -4] := mpoTrace[-1, -2, 1, -3, -4, 3] * conj(finiteMPO[4][1, 2, 5, 4]) * finiteMPO[4][3, 2, 5, 4]
+    elseif N == 6
+        mpoTrace = ones(space(finiteMPO[1], 1), space(finiteMPO[1], 1))
+        @tensor mpoTrace[-1 -2; -3 -4] := mpoTrace[1, 3] * conj(finiteMPO[1][1, 2, -2, -1]) * finiteMPO[1][3, 2, -4, -3]
+        @tensor mpoTrace[-1 -2 -3; -4 -5 -6] := mpoTrace[-1, 1, -4, 3] * conj(finiteMPO[2][1, 2, -3, -2]) * finiteMPO[2][3, 2, -6, -5]
+        @tensor mpoTrace[-1 -2 -3 -4; -5 -6 -7 -8] := mpoTrace[-1, -2, 1, -5, -6, 3] * conj(finiteMPO[3][1, 2, -4, -3]) * finiteMPO[3][3, 2, -8, -7]
+        @tensor mpoTrace[-1 -2 -3 -4; -5 -6 -7 -8] := mpoTrace[-1, -2, -3, 1, -5, -6, -7, 3] * conj(finiteMPO[4][1, 2, -4, 4]) * finiteMPO[4][3, 2, -8, 4]
+        @tensor mpoTrace[-1 -2 -3 -4; -5 -6 -7 -8] := mpoTrace[-1, -2, -3, 1, -5, -6, -7, 3] * conj(finiteMPO[5][1, 2, -4, 4]) * finiteMPO[5][3, 2, -8, 4]
+        @tensor mpoTrace[-1 -2 -3; -4 -5 -6] := mpoTrace[-1, -2, -3, 1, -4, -5, -6, 3] * conj(finiteMPO[6][1, 2, 5, 4]) * finiteMPO[6][3, 2, 5, 4]
+    elseif N == 8
+        mpoTrace = ones(space(finiteMPO[1], 1), space(finiteMPO[1], 1))
+        @tensor mpoTrace[-1 -2; -3 -4] := mpoTrace[1, 3] * conj(finiteMPO[1][1, 2, -2, -1]) * finiteMPO[1][3, 2, -4, -3]
+        @tensor mpoTrace[-1 -2 -3; -4 -5 -6] := mpoTrace[-1, 1, -4, 3] * conj(finiteMPO[2][1, 2, -3, -2]) * finiteMPO[2][3, 2, -6, -5]
+        @tensor mpoTrace[-1 -2 -3 -4; -5 -6 -7 -8] := mpoTrace[-1, -2, 1, -5, -6, 3] * conj(finiteMPO[3][1, 2, -4, -3]) * finiteMPO[3][3, 2, -8, -7]
+        @tensor mpoTrace[-1 -2 -3 -4 -5; -6 -7 -8 -9 -10] := mpoTrace[-1, -2, -3, 1, -6, -7, -8, 3] * conj(finiteMPO[4][1, 2, -5, -4]) * finiteMPO[4][3, 2, -10, -9]
+        @tensor mpoTrace[-1 -2 -3 -4 -5; -6 -7 -8 -9 -10] := mpoTrace[-1, -2, -3, -4, 1, -6, -7, -8, -9, 3] * conj(finiteMPO[5][1, 2, -5, 4]) * finiteMPO[5][3, 2, -10, 4]
+        @tensor mpoTrace[-1 -2 -3 -4 -5; -6 -7 -8 -9 -10] := mpoTrace[-1, -2, -3, -4, 1, -6, -7, -8, -9, 3] * conj(finiteMPO[6][1, 2, -5, 4]) * finiteMPO[6][3, 2, -10, 4]
+        @tensor mpoTrace[-1 -2 -3 -4 -5; -6 -7 -8 -9 -10] := mpoTrace[-1, -2, -3, -4, 1, -6, -7, -8, -9, 3] * conj(finiteMPO[7][1, 2, -5, 4]) * finiteMPO[7][3, 2, -10, 4]
+        @tensor mpoTrace[-1 -2 -3 -4; -5 -6 -7 -8] := mpoTrace[-1, -2, -3, -4, 1, -5, -6, -7, -8, 3] * conj(finiteMPO[8][1, 2, 5, 4]) * finiteMPO[8][3, 2, 5, 4]
     end
     return mpoTrace
 
 end
-
-# function reducedDensityMatrixHalfSystem(finiteMPO::SparseMPO)
-    
-#     # get system size
-#     N = length(finiteMPO)
-
-#     # fuse rho(β/2)^† and rho(β/2)
-#     doubleLayerMPO = Vector{TensorMap}(undef, N)
-#     for siteIdx in eachindex(finiteMPO)
-#         isoL = isometry(fuse(space(finiteMPO[siteIdx], 1), space(finiteMPO[siteIdx], 1)), space(finiteMPO[siteIdx], 1) ⊗ space(finiteMPO[siteIdx], 1)')
-#         isoR = isometry(space(finiteMPO[siteIdx], 3) ⊗ space(finiteMPO[siteIdx], 3)', fuse(space(finiteMPO[siteIdx], 3)', space(finiteMPO[siteIdx], 3)'))
-#         @tensor doubleTensor[-1 -2; -3 -4] := isoL[-1, 2, 3] * conj(finiteMPO[siteIdx][3, 1, 5, -2]) * finiteMPO[siteIdx][2, 1, 4, -4] * isoR[4, 5, -3]
-#         doubleLayerMPO[siteIdx] = doubleTensor
-#     end
-
-#     # trace over doubleLayerMPO
-#     qnL = space(doubleLayerMPO[1], 1)
-#     qnR = space(doubleLayerMPO[N], 3)
-#     boundaryL = TensorMap(ones, one(qnL), qnL)
-#     boundaryR = TensorMap(ones, qnR', one(qnR))
-#     indexList = Vector{Vector{Int}}(undef, N + 2)
-#     cOffset = N/2 + 1
-#     for idxT in eachindex(indexList)
-#         if idxT == 1
-#             indexList[idxT] = [idxT]
-#         elseif idxT <= length(indexList) / 2
-#             indexList[idxT] = [idxT - 1, -(idxT - 1), idxT, -(idxT - 1) - N/2]
-#         elseif length(indexList) / 2 < idxT < length(indexList)
-#             indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0, cOffset + 2 * (idxT - cOffset - 1) + 1, cOffset + 2 * (idxT - cOffset - 1) + 2, cOffset + 2 * (idxT - cOffset - 1) + 1]
-#         elseif idxT == length(indexList)
-#             indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0]
-#         end
-#     end
-#     mpoTensor = ncon(vcat(boundaryL, doubleLayerMPO..., boundaryR), indexList)
-#     mpoTensor = permute(mpoTensor, Tuple(Int.(1:N/2)), Tuple(Int.((N/2 + 1):(N))))
-#     # mpoTensor = convert(Array, mpoTensor)
-#     # sizeMPOTensor = size(mpoTensor)
-#     # mpoMatrix = reshape(mpoTensor, prod(sizeMPOTensor[1:N]), prod(sizeMPOTensor[1:N]))
-#     return mpoTensor
-# end
