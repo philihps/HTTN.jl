@@ -17,7 +17,7 @@ end
     convTolE::Float64 = 1e-6
     eigsTol::Float64 = 1e-8
     maxIterationsInit::Int64 = 10
-    maxIterations::Int64 = 1
+    maxIterations::Int64 = 5
     subspaceExpansion::Bool = true
     startOptimization::Int = 1
     verbosePrint::Int64 = 0
@@ -294,8 +294,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
     end
 
     # initialize array to store Bogoliubov parameters
-    storeBogoliubovParameters = zeros(Float64, 0,
-                                      QFTModel.modelParameters.truncationParameters[:kMax])
+    storeBogoliubovParameters = zeros(Float64, 0, length(bogParameters))
     # storeBogoliubovParameters = vcat(storeBogoliubovParameters, reshape(bogParameters, 1, length(bogParameters)));
 
     # initialize mpsEnergy
@@ -383,13 +382,6 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
                             storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp,
                                                                                                            newTheta))
-                            storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ,
-                                                                                      nMax,
-                                                                                      kL,
-                                                                                      kR,
-                                                                                      PL,
-                                                                                      PR,
-                                                                                      newTheta)
                         end
 
                         titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
@@ -402,31 +394,17 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                                                 label = L"S(\xi)",
                                                 frame = :box,
                                                 title = titleString,)
-                        plot!(renyiEntropyPlot,
-                              listOfXiValues,
-                              storeAnalyticGradient;
-                              linewidth = 2.0,
-                              label = L"\partial S(\xi)/\partial \xi",)
                         display(renyiEntropyPlot)
                     end
 
-                    # find optimimal ξ by roots of gradient
-                    # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL,
-                    #                                                          kR, PL, PR,
-                    #                                                          newTheta),
-                    #                        -0.25,
-                    #                        +0.25)
-                    optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR,
-                                                                            PL, PR,
-                                                                            newTheta), 0.0)
-                    @show optimalXi
-
-                    # # optimize twoSiteUnitary
-                    # optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
-                    #     scale! = _scale!, 
-                    #     add! = _add!, 
-                    # );
-                    # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
+                    # optimize twoSiteUnitary
+                    optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR,
+                                                                newTheta),
+                                        bogParameters[1 + kR] +
+                                        0.05 * randn(eltype(bogParameters[1 + kR])),
+                                        LBFGS(12; verbosity = 1, maxiter = 50,
+                                              gradtol = 1e-4))
+                    optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
                     if any(abs.(optimalXi) .> 1e-3)
 
@@ -442,7 +420,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             costFuncPost = computeRenyiEntropy(optimizedTheta)
                             vNEntropyPost = computeEntropy(optimizedTheta)
                             # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR + 1], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
                             # println()
 
                             newCostFunction[idx] = costFuncPost
@@ -454,7 +432,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                         # @show optimalXi
 
                         # decompose optimizedTheta
-                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR],
+                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR + 1],
                                            optimalXi)
 
                             # update two site tensor
@@ -463,8 +441,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            # bogParameters[kR] -= optimalXi;
-                            bogParameters[kR] += optimalXi
+                            bogParameters[1 + kR] += optimalXi
                             QFTModel = updateBogoliubovParameters(QFTModel;
                                                                   bogoliubovRot = true,
                                                                   bogParameters = bogParameters)
@@ -563,13 +540,6 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
                             storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp,
                                                                                                            newTheta))
-                            storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ,
-                                                                                      nMax,
-                                                                                      kL,
-                                                                                      kR,
-                                                                                      PL,
-                                                                                      PR,
-                                                                                      newTheta)
                         end
 
                         titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
@@ -582,31 +552,17 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                                                 label = L"S(\xi)",
                                                 frame = :box,
                                                 title = titleString,)
-                        plot!(renyiEntropyPlot,
-                              listOfXiValues,
-                              storeAnalyticGradient;
-                              linewidth = 2.0,
-                              label = L"\partial S(\xi)/\partial \xi",)
                         display(renyiEntropyPlot)
                     end
 
-                    # find optimimal ξ by roots of gradient
-                    # optimalXi = find_zeros(ξ -> analyticGradientCostFunction(ξ, nMax, kL,
-                    #                                                          kR, PL, PR,
-                    #                                                          newTheta),
-                    #                        -0.25,
-                    #                        +0.25)
-                    optimalXi = find_zero(ξ -> analyticGradientCostFunction(ξ, nMax, kL, kR,
-                                                                            PL, PR,
-                                                                            newTheta), 0.0)
-                    @show optimalXi
-
-                    # # optimize twoSiteUnitary
-                    # optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
-                    #     scale! = _scale!, 
-                    #     add! = _add!, 
-                    # );
-                    # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
+                    # optimize twoSiteUnitary
+                    optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR,
+                                                                newTheta),
+                                        bogParameters[1 + kR] +
+                                        0.05 * randn(eltype(bogParameters[1 + kR])),
+                                        LBFGS(12; verbosity = 1, maxiter = 50,
+                                              gradtol = 1e-4))
+                    optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
                     if any(abs.(optimalXi) .> 1e-3)
 
@@ -622,7 +578,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             costFuncPost = computeRenyiEntropy(optimizedTheta)
                             vNEntropyPost = computeEntropy(optimizedTheta)
                             # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR + 1], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
                             # println()
 
                             newCostFunction[idx] = costFuncPost
@@ -634,7 +590,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                         # @show optimalXi
 
                         # decompose optimizedTheta
-                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR],
+                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR + 1],
                                            optimalXi)
 
                             # update two site tensor
@@ -643,8 +599,7 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            # bogParameters[kR] -= optimalXi;
-                            bogParameters[kR] += optimalXi
+                            bogParameters[1 + kR] += optimalXi
                             QFTModel = updateBogoliubovParameters(QFTModel;
                                                                   bogoliubovRot = true,
                                                                   bogParameters = bogParameters)
@@ -1178,7 +1133,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                     alg.verbosePrint > 0 && @show optimalXi
 
                     # # optimize twoSiteUnitary
-                    # optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
+                    # optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR + 1], optimAlg,
                     #     scale! = _scale!, 
                     #     add! = _add!, 
                     # );
@@ -1198,7 +1153,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                             costFuncPost = computeRenyiEntropy(optimizedTheta)
                             vNEntropyPost = computeEntropy(optimizedTheta)
                             # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR + 1], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
                             # println()
 
                             newCostFunction[idx] = costFuncPost
@@ -1210,7 +1165,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                         # @show optimalXi
 
                         # decompose optimizedTheta
-                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR],
+                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR + 1],
                                            optimalXi)
 
                             # update two site tensor
@@ -1219,8 +1174,8 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                             alg.verbosePrint > 0 && println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            # bogParameters[kR] -= optimalXi;
-                            bogParameters[kR] += optimalXi
+                            # bogParameters[kR + 1] -= optimalXi;
+                            bogParameters[kR + 1] += optimalXi
                             QFTModel = updateBogoliubovParameters(QFTModel;
                                                                   bogoliubovRot = true,
                                                                   bogParameters = bogParameters)
@@ -1382,7 +1337,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                     alg.verbosePrint > 0 && @show optimalXi
 
                     # # optimize twoSiteUnitary
-                    # optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR], optimAlg,
+                    # optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, newTheta), bogParameters[kR + 1], optimAlg,
                     #     scale! = _scale!, 
                     #     add! = _add!, 
                     # );
@@ -1402,7 +1357,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                             costFuncPost = computeRenyiEntropy(optimizedTheta)
                             vNEntropyPost = computeEntropy(optimizedTheta)
                             # display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
+                            # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR + 1], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
                             # println()
 
                             newCostFunction[idx] = costFuncPost
@@ -1414,7 +1369,7 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                         # @show optimalXi
 
                         # decompose optimizedTheta
-                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR],
+                        if checkAcceptance(costFuncPre, costFuncPost, bogParameters[kR + 1],
                                            optimalXi)
 
                             # update two site tensor
@@ -1423,8 +1378,8 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            bogParameters[kR] -= optimalXi
-                            # bogParameters[kR] += optimalXi;
+                            bogParameters[kR + 1] -= optimalXi
+                            # bogParameters[kR + 1] += optimalXi;
                             QFTModel = updateBogoliubovParameters(QFTModel;
                                                                   bogoliubovRot = true,
                                                                   bogParameters = bogParameters)
