@@ -14,9 +14,13 @@
 function removeDegeneracyQN(vecSpace; degenCutOff::Int64 = 1)
     """ Function to remove degeneracies of QNs """
 
-    qnSectors = vecSpace.dims
-    truncatedVectorSpace = typeof(vecSpace)([key => min(qnSectors[key], degenCutOff)
-                                             for key in keys(qnSectors)])
+    if spacetype(vecSpace) == ComplexSpace
+        return ComplexSpace(min(dim(vecSpace), degenCutOff))
+    else
+        qnSectors = vecSpace.dims
+        truncatedVectorSpace = typeof(vecSpace)([key => min(qnSectors[key], degenCutOff)
+                                                 for key in keys(qnSectors)])
+    end
     return truncatedVectorSpace
 end
 

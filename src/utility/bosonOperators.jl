@@ -34,17 +34,18 @@ end
 function getDisplacementOperator(nMax::Int64, α::Number)
     """
     Construct displacement operator:
-    D(z) = e^{-|z|^2 / 2} . e^{α a†} . e^{-α* a}
+    D(z) = e^{-|z|^2 / 2} . e^{α a†} . e^{-α^* a}
     """
     displacementOp = exp(-abs(α)^2 / 2) * exp(α * getCreationOperator(nMax)) *
                      exp(-conj(α) * getAnnihilationOperator(nMax))
     return displacementOp
 end
 
-function localAnnihilationOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool = false)
+function localAnnihilationOp(k::Int64, physVecSpace::ElementarySpace,
+                             conserveZ2::Bool = false)
     """ Construct a(k) for a momentum-conserving MPO """
 
-    # get dimension of physVecSpace 
+    # get dimension of physVecSpace
     dimPhyVecSpace = dim(physVecSpace)
     auxVecSpace = !conserveZ2 ? U1Space(-k => 1) : Rep[U₁ × ℤ₂]((-k, 1) => 1)
     annihilationOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
@@ -55,7 +56,7 @@ function localAnnihilationOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bo
     return annihilationOperator
 end
 
-function localCreationOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool = false)
+function localCreationOp(k::Int64, physVecSpace::ElementarySpace, conserveZ2::Bool = false)
     """ Construct a(k)^dag for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
@@ -68,7 +69,7 @@ function localCreationOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool =
     return creationOperator
 end
 
-function localNumberOp(physVecSpace::GradedSpace, conserveZ2::Bool = false)
+function localNumberOp(physVecSpace::ElementarySpace, conserveZ2::Bool = false)
     """ Construct n(k) for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
@@ -81,12 +82,16 @@ function localNumberOp(physVecSpace::GradedSpace, conserveZ2::Bool = false)
     return numberOperator
 end
 
-function localIdentityOp(physVecSpace::GradedSpace, conserveZ2::Bool = false)
+function localIdentityOp(physVecSpace::ElementarySpace, conserveZ2::Bool = false)
     """ Construct I for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
     dimPhyVecSpace = dim(physVecSpace)
-    auxVecSpace = !conserveZ2 ? U1Space(0 => 1) : Rep[U₁ × ℤ₂]((0, 0) => 1)
+    if spacetype(physVecSpace) == ComplexSpace
+        auxVecSpace = !conserveZ2 ? ComplexSpace(1) : Rep[ℤ₂](0 => 1)
+    elseif spacetype(physVecSpace) == U1Space
+        auxVecSpace = !conserveZ2 ? U1Space(0 => 1) : Rep[U₁ × ℤ₂]((0, 0) => 1)
+    end
     identityOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
     identityOperator[:, :, 1] = diagm(ones(dimPhyVecSpace))
     identityOperator = TensorMap(identityOperator, physVecSpace,
@@ -94,7 +99,7 @@ function localIdentityOp(physVecSpace::GradedSpace, conserveZ2::Bool = false)
     return identityOperator
 end
 
-function localMomentumOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool = false)
+function localMomentumOp(k::Int64, physVecSpace::ElementarySpace, conserveZ2::Bool = false)
     """ Construct k * n(k) for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
@@ -107,7 +112,8 @@ function localMomentumOp(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool =
     return momentumOperator
 end
 
-function localParityOperator(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bool = false)
+function localParityOperator(k::Int64, physVecSpace::ElementarySpace,
+                             conserveZ2::Bool = false)
     """ Construct exp(iπ n(k)) for a momentum-conserving MPO """
 
     # get dimension of physVecSpace 
@@ -123,4 +129,40 @@ function localParityOperator(k::Int64, physVecSpace::GradedSpace, conserveZ2::Bo
     end
     parityOperator = TensorMap(parityOperator, physVecSpace, physVecSpace ⊗ auxVecSpace)
     return parityOperator
+end
+
+function localNegShiftOperator(physVecSpace::ElementarySpace, conserveZ2::Bool = false)
+    """ Construct local operator for δ(n', n-1) """
+
+    # get dimension of physVecSpace 
+    dimPhyVecSpace = dim(physVecSpace)
+    auxVecSpace = !conserveZ2 ? ComplexSpace(1) : Rep[ℤ₂](1 => 1)
+    negShiftOp = LinearAlgebra.diagm(+1 => ones(dimPhyVecSpace - 1))
+    negShiftOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    if conserveZ2
+        rowColPerm = vcat(collect(1:2:dim(physVecSpace)), collect(2:2:dim(physVecSpace)))
+        negShiftOperator[:, :, 1] = negShiftOp[rowColPerm, rowColPerm]
+    else
+        negShiftOperator[:, :, 1] = negShiftOp
+    end
+    negShiftOperator = TensorMap(negShiftOperator, physVecSpace, physVecSpace ⊗ auxVecSpace)
+    return negShiftOperator
+end
+
+function localPosShiftOperator(physVecSpace::ElementarySpace, conserveZ2::Bool = false)
+    """ Construct local operator for δ(n', n+1) """
+
+    # get dimension of physVecSpace 
+    dimPhyVecSpace = dim(physVecSpace)
+    auxVecSpace = !conserveZ2 ? ComplexSpace(1) : Rep[ℤ₂](1 => 1)
+    posShiftOp = LinearAlgebra.diagm(-1 => ones(dimPhyVecSpace - 1))
+    posShiftOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace, dim(auxVecSpace))
+    if conserveZ2
+        rowColPerm = vcat(collect(1:2:dim(physVecSpace)), collect(2:2:dim(physVecSpace)))
+        posShiftOperator[:, :, 1] = posShiftOp[rowColPerm, rowColPerm]
+    else
+        posShiftOperator[:, :, 1] = posShiftOp
+    end
+    posShiftOperator = TensorMap(posShiftOperator, physVecSpace, physVecSpace ⊗ auxVecSpace)
+    return posShiftOperator
 end

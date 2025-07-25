@@ -218,7 +218,6 @@ function generate_MPO_sG(sGModel::SineGordonModel; localOp::String = "displaceme
     else
         return mpo_sG
     end
-
 end
 
 function modelSetup(modelParameters::Union{MassiveSchwingerParameters,
@@ -371,9 +370,9 @@ function initializeMPS(Model::Union{MassiveSchwingerModel,SineGordonModel},
                            virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
                            virtSpaces[siteIdx + 1])
         if siteIdx == zeroSitePos
-            siteTensor = 1e-1 * convert(Array, siteTensor)
+            siteTensor = 1e-0 * convert(Array, siteTensor)
         else
-            siteTensor = 1e-2 * convert(Array, siteTensor)
+            siteTensor = 1e-0 * convert(Array, siteTensor)
         end
         minTensorDim = min(size(initTensor), size(siteTensor))
         siteTensor[1:minTensorDim[1], 1:minTensorDim[2], 1:minTensorDim[3]] += initTensor[1:minTensorDim[1],
@@ -573,7 +572,7 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
                             physSpaces::Vector{<:Union{ElementarySpace,
                                                        CompositeSpace{ElementarySpace}}})
     """
-    Compute 2 . ∑_{k>0} E_k . μ_k . ν_k . [A†_{-k} A†_{+k} + A_{+k} A_{-k}]
+    Compute ∑_{k>0} E_k . [ μ_k . ν_k . A†_{-k} A†_{+k} + μ_k . ν_k^* . A_{+k} A_{-k}]
     """
 
     # get truncationParameters
@@ -605,9 +604,9 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             for (siteIdx, momentumVal) in enumerate(momentumModes)
                 if momentumVal == 0
                     localOperators[siteIdx] = mergeLocalOperators(localCreationOp(momentumVal,
-                                                               physSpaces[siteIdx]),
-                                               localCreationOp(momentumVal,
-                                                               physSpaces[siteIdx]))
+                                                                                  physSpaces[siteIdx]),
+                                                                  localCreationOp(momentumVal,
+                                                                                  physSpaces[siteIdx]))
                 else
                     localOperators[siteIdx] = localIdentityOp(physSpaces[siteIdx])
                 end
@@ -618,9 +617,9 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             for (siteIdx, momentumVal) in enumerate(momentumModes)
                 if momentumVal == 0
                     localOperators[siteIdx] = mergeLocalOperators(localAnnihilationOp(momentumVal,
-                                                                   physSpaces[siteIdx]),
-                                               localAnnihilationOp(momentumVal,
-                                                                   physSpaces[siteIdx]))
+                                                                                      physSpaces[siteIdx]),
+                                                                  localAnnihilationOp(momentumVal,
+                                                                                      physSpaces[siteIdx]))
                 else
                     localOperators[siteIdx] = localIdentityOp(physSpaces[siteIdx])
                 end
@@ -671,8 +670,8 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             ξ = bogParameters[abs(kVal) + 1]
             μ = cosh(abs(ξ))
             ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
-            mpoCrCr *= modeEnergy(kVal, L, M) * μ * ν
-            mpoAnAn *= modeEnergy(kVal, L, M) * μ * conj(ν)
+            mpoCrCr *= 2 * modeEnergy(kVal, L, M) * μ * ν
+            mpoAnAn *= 2 * modeEnergy(kVal, L, M) * μ * conj(ν)
 
             # store sum of MPOs
             storeIndividualMPOs[kIdx] = mpoAnAn + mpoCrCr
@@ -929,7 +928,6 @@ function localDisplacementOp(modelParameters,
 
     # construct local interaction for k = 0 or k ≂̸ 0
     if k == 0
-
         if M == 0.0
 
             # fill interactionTensor of massless zero mode: this is a "free particle" instead of a harmonic mode, so the exponential is a jump operator between the levels 
@@ -961,19 +959,20 @@ function localDisplacementOp(modelParameters,
                 μ = cosh(abs(ξ))
                 ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
                 argDisplacementOp = μ * (1im * w) - ν * conj(1im * w)
+                # argDisplacementOp = 1im * w * (μ + ν)
                 displacementOp = exp(w^2 / 2) *
-                                getDisplacementOperator(dimPhyVecSpace - 1, argDisplacementOp)
+                                 getDisplacementOperator(dimPhyVecSpace - 1,
+                                                         argDisplacementOp)
             else
-                displacementOp = exp(w^2 / 2) * getDisplacementOperator(dimPhyVecSpace - 1, 1im * w)
+                displacementOp = exp(w^2 / 2) *
+                                 getDisplacementOperator(dimPhyVecSpace - 1, 1im * w)
             end
-            displacementOp = displacementOp' # required to match with local vertex operator construction
+            # displacementOp = displacementOp' # required to match with local vertex operator construction
 
             # fill interactionTensor for massive zero mode: this is now a harmonic mode (independently of whether it is massless or massive, there is no quantum number constraint for the zero mode, so it should be costructed differently from the nonzero modes) 
-            w = α / sqrt(2 * modeEnergy(k, L, M) * L)
             interactionTensor = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
                                       dimAuxVecSpace)
             for nBra in 0:(dimPhyVecSpace - 1), nKet in 0:(dimPhyVecSpace - 1)
-                # interactionTensor[nBra + 1, nKet + 1, 1] = G(nBra, nKet, w)
                 interactionTensor[nBra + 1, nKet + 1, 1] = displacementOp[nBra + 1,
                                                                           nKet + 1]
             end
@@ -991,11 +990,12 @@ function localDisplacementOp(modelParameters,
             ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
             argDisplacementOp = μ * (1im * w) - ν * conj(1im * w)
             displacementOp = exp(w^2 / 2) *
-                            getDisplacementOperator(dimPhyVecSpace - 1, argDisplacementOp)
+                             getDisplacementOperator(dimPhyVecSpace - 1, argDisplacementOp)
         else
-            displacementOp = exp(w^2 / 2) * getDisplacementOperator(dimPhyVecSpace - 1, 1im * w)
+            displacementOp = exp(w^2 / 2) *
+                             getDisplacementOperator(dimPhyVecSpace - 1, 1im * w)
         end
-        displacementOp = displacementOp' # required to match with local vertex operator construction
+        # displacementOp = displacementOp' # required to match with local vertex operator construction
 
         # get ordering of QNs in physVecSpace and kronDelSpace
         phyQNSectors = physVecSpace.dims
@@ -1165,7 +1165,7 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     # get number of momentum modes
     numSites = length(momentumModes)
 
-    # compute :V_β: and :V_{-β}:
+    # compute :V_{+β}: and :V_{-β}:
     localOperators_neg = Vector{TensorMap{ComplexF64}}(undef, numSites)
     localOperators_pos = Vector{TensorMap{ComplexF64}}(undef, numSites)
     for (siteIdx, momentumVal) in enumerate(momentumModes)

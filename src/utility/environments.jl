@@ -26,6 +26,18 @@ function update_MPOEnvR(mpoEnvR, mpsTensorK, mpoTensor, mpsTensorB)
     return newER
 end
 
+function update_MPOMPOEnvL(mpoEnvL, mpoTensorK, mpoTensor, mpoTensorB)
+    @tensor newEL[-1; -2 -3] := mpoEnvL[1, 3, 5] * mpoTensorK[5, 4, -3, 6] *
+                                mpoTensor[3, 2, -2, 4] * conj(mpoTensorB[1, 2, -1, 6])
+    return newEL
+end
+
+function update_MPOMPOEnvR(mpoEnvR, mpoTensorK, mpoTensor, mpoTensorB)
+    @tensor newER[-1 -2; -3] := mpoTensorK[-1, 2, 1, 6] * mpoTensor[-2, 4, 3, 2] *
+                                conj(mpoTensorB[-3, 4, 5, 6]) * mpoEnvR[1, 3, 5]
+    return newER
+end
+
 function initializeMPOEnvironments(finiteMPS::SparseMPS, finiteMPO::SparseMPO;
                                    centerPos::Int64 = 1)
 

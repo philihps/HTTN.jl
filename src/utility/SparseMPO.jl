@@ -140,7 +140,7 @@ function Base.similar(M::SparseMPO{A}) where {A}
 end
 
 # elementary operations
-Base.:-(a::SparseMPO) = -one(scalartype(a)) * a;
+Base.:-(a::SparseMPO) = -1 * a;
 
 # addition
 function Base.:+(mpoA::H, mpoB::H) where {H<:SparseMPO}
@@ -250,6 +250,37 @@ function normalizeMPO(finiteMPO::SparseMPO)
     normMPO = real(tr(finiteMPO[1]' * finiteMPO[1]))
     finiteMPO[1] /= sqrt(normMPO)
     return finiteMPO
+end
+
+function dotMPO(MPOA::SparseMPO, MPOB::SparseMPO)
+    """ Compute the overlap < MPO_A | MPO_B > """
+
+    # get length of MPOs
+    N = length(MPOA)
+    N != length(MPOB) &&
+        throw(DimensionMismatch("lengths of MPO A ($N) and MPO B ($length(MPOB)) do not match"))
+
+    # initialize overlap
+    overlapMPO = ones(space(MPOA[1], 1), space(MPOB[1], 1))
+    for siteIdx in 1:N
+        @tensor overlapMPO[-1; -2] := overlapMPO[1, 2] * conj(MPOA[siteIdx][1, 3, -1, 4]) *
+                                      MPOB[siteIdx][2, 3, -2, 4]
+    end
+    overlapMPO = tr(overlapMPO)
+    return overlapMPO
+end
+
+function trMPO(finiteMPO::SparseMPO)
+    """ Compute the trace for finiteMPO """
+
+    # compute trace of finiteMPO
+    traceMPO = ones(space(finiteMPO[1], 1), space(finiteMPO[1], 1))
+    for siteIdx in eachindex(finiteMPO)
+        @tensor traceMPO[-1; -2] := traceMPO[1, 2] * conj(finiteMPO[siteIdx][1, 3, -1, 4]) *
+                                    finiteMPO[siteIdx][2, 3, -2, 4]
+    end
+    traceMPO = tr(traceMPO)
+    return traceMPO
 end
 
 function applyMPO(finiteMPO::SparseMPO,
@@ -457,6 +488,211 @@ function applyMPO(finiteMPO::SparseMPO,
         end
     end
     return compressedMPS
+end
+
+function multiplyMPOs(MPOA::SparseMPO, MPOB::SparseMPO;
+                      truncErr::Float64 = 1e-6,
+                      maxDim::Int64 = 2500,
+                      normalize::Bool = false,
+                      compressionAlg::String = "variationalContraction",)
+    """ Multiplies the two input MPOs and truncates resulting MPO to bond dimension dMPO """
+
+    # make copy of MPOA
+    compressedMPO = copy(MPOA)
+
+    # get length of MPOs
+    N = length(compressedMPO)
+
+    if compressionAlg == "densityMatrix"
+
+        # construct MPO environments
+        mpoEnvL = Vector{TensorMap}(undef, N)
+        mpoEnvR = Vector{TensorMap}(undef, N)
+
+        # initialize end-points of mpoEnvL and mpoEnvR
+        # mpoEnvL[1] = ones(eltype(compressedMPO[1]), space(compressedMPO[1], 1) ⊗ space(MPOB[1], 1), space(MPOB[1], 1) ⊗ space(compressedMPO[1], 1));
+        # mpoEnvR[N] = ones(eltype(compressedMPO[N]), space(compressedMPO[N], 3)' ⊗ space(MPOB[N], 3)', oneunit(spacetype(compressedMPO[N])));
+        mpoEnvL[1] = ones(space(compressedMPO[1], 1) ⊗ space(MPOB[1], 1),
+                          space(MPOB[1], 1) ⊗ space(compressedMPO[1], 1))
+        mpoEnvR[N] = ones(space(compressedMPO[N], 3)' ⊗ space(MPOB[N], 3)',
+                          oneunit(spacetype(compressedMPO[N])))
+
+        # compute mpoEnvL
+        for siteIdx in 1:(N - 1)
+            @tensor mpoEnvL[siteIdx + 1][-1 -2; -3 -4] := mpoEnvL[siteIdx][1, 2, 4, 6] *
+                                                          conj(compressedMPO[siteIdx][1, 3,
+                                                                                      -1,
+                                                                                      8]) *
+                                                          conj(MPOB[siteIdx][2, 5, -2, 3]) *
+                                                          MPOB[siteIdx][4, 5, -3, 7] *
+                                                          compressedMPO[siteIdx][6, 7, -4,
+                                                                                 8]
+        end
+
+        # sweep from right to left and compress MPO * MPS
+        for siteIdx in N:-1:1
+
+            # construct density matrix
+            @tensor rho[-1 -2 -3; -4 -5 -6] := mpoEnvL[siteIdx][1, 2, 4, 5] *
+                                               conj(compressedMPO[siteIdx][1, 3, 9, -3]) *
+                                               conj(MPOB[siteIdx][2, -1, 10, 3]) *
+                                               MPOB[siteIdx][4, -4, 8, 6] *
+                                               compressedMPO[siteIdx][5, 6, 7, -6] *
+                                               conj(mpoEnvR[siteIdx][9, 10, -2]) *
+                                               mpoEnvR[siteIdx][7, 8, -5]
+            rho /= tr(rho)
+
+            # make eigen decomposition of rho and truncate to maximal bond dimension
+            U, S, V = tsvd(rho; trunc = truncdim(maxDim) & truncerr(truncErr))
+
+            # compute right environment for the site to the left
+            if siteIdx > 1
+                @tensor mpoEnvR[siteIdx - 1][-1 -2; -3] := compressedMPO[siteIdx][-1, 3, 1,
+                                                                                  6] *
+                                                           MPOB[siteIdx][-2, 4, 2, 3] *
+                                                           mpoEnvR[siteIdx][1, 2, 5] *
+                                                           U[4, 5, 6, -3]
+            end
+
+            # update MPS site
+            compressedMPO[siteIdx] = permute(V, (1, 2), (3, 4))
+        end
+
+        compressedMPO = normalizeMPO(compressedMPO)
+
+    elseif compressionAlg == "zipUp"
+
+        # construct left and right isomorphism
+        isomoL = isometry(fuse(space(MPOA[1], 1), space(MPOB[1], 1)),
+                          space(MPOA[1], 1) ⊗ space(MPOB[1], 1))
+        isomoR = isometry(space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)',
+                          fuse(space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)'))
+
+        # zip-up from left to right
+        for siteIdx in 1:N
+            if siteIdx < N
+                @tensor localTensor[-1 -2 -3; -4 -5] := isomoL[-2, 1, 3] *
+                                                        compressedMPO[siteIdx][1, 2, -4,
+                                                                               -1] *
+                                                        MPOB[siteIdx][3, -3, -5, 2]
+                U, S, V = tsvd(localTensor, (1, 2, 3), (4, 5);
+                               trunc = truncdim(maxDim) & truncerr(truncErr),
+                               alg = TensorKit.SVD())
+                compressedMPO[siteIdx] = permute(U, (2, 3), (4, 1))
+                isomoL = S * V
+            else
+                @tensor compressedMPO[siteIdx][-1 -2; -3 -4] := isomoL[-1, 1, 3] *
+                                                                compressedMPO[siteIdx][1, 2,
+                                                                                       4,
+                                                                                       -4] *
+                                                                MPOB[siteIdx][3, -2, 5, 2] *
+                                                                isomoR[4, 5, -3]
+            end
+        end
+
+        # orthogonalize MPO
+        orthogonalizeMPO!(compressedMPO, 1)
+
+    elseif compressionAlg == "variationalContraction"
+
+        # construct MPO environments
+        mpoEnvL = Vector{TensorMap}(undef, N)
+        mpoEnvR = Vector{TensorMap}(undef, N)
+
+        # initialize end-points of mpoEnvL and mpoEnvR
+        # mpoEnvL[1] = ones(eltype(compressedMPO[1]), space(compressedMPO[1], 1), space(MPOB[1], 1) ⊗ space(MPOA[1], 1));
+        # mpoEnvR[N] = ones(eltype(compressedMPO[N]), space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)', space(compressedMPO[N], 3)');
+        mpoEnvL[1] = ones(ComplexF64, space(compressedMPO[1], 1),
+                          space(MPOB[1], 1) ⊗ space(MPOA[1], 1))
+        mpoEnvR[N] = ones(ComplexF64, space(MPOA[N], 3)' ⊗ space(MPOB[N], 3)',
+                          space(compressedMPO[N], 3)')
+
+        # compute mpoEnvR, since the MPS is in right-canonical form
+        for siteIdx in N:-1:2
+            mpoEnvR[siteIdx - 1] = update_MPOMPOEnvR(mpoEnvR[siteIdx], MPOA[siteIdx],
+                                                     MPOB[siteIdx], compressedMPO[siteIdx])
+        end
+
+        # variational sweep
+        variationalOverlap = 1.0
+        runVariationalSweep = true
+        while runVariationalSweep
+
+            # sweep L ---> R
+            for siteIdx in 1:+1:(N - 1)
+
+                # construct two-site tensor
+                @tensor newTheta[-1 -2 -3; -4 -5 -6] := mpoEnvL[siteIdx][-2, 3, 1] *
+                                                        MPOA[siteIdx][1, 2, 4, -1] *
+                                                        MPOB[siteIdx][3, -3, 6, 2] *
+                                                        MPOA[siteIdx + 1][4, 5, 7, -6] *
+                                                        MPOB[siteIdx + 1][6, -4, 8, 5] *
+                                                        mpoEnvR[siteIdx + 1][7, 8, -5]
+
+                #  perform SVD and truncate to desired bond dimension
+                U, S, V, ϵ = tsvd(newTheta, (1, 2, 3), (4, 5, 6);
+                                  trunc = truncdim(maxDim) & truncerr(truncErr),
+                                  alg = TensorKit.SVD())
+                # S /= norm(S);
+                U = permute(U, (2, 3), (4, 1))
+                V = permute(S * V, (1, 2), (3, 4))
+
+                # assign updated tensors
+                compressedMPO[siteIdx + 0] = U
+                compressedMPO[siteIdx + 1] = V
+
+                # update mpoEnvL
+                mpoEnvL[siteIdx + 1] = update_MPOMPOEnvL(mpoEnvL[siteIdx], MPOA[siteIdx],
+                                                         MPOB[siteIdx],
+                                                         compressedMPO[siteIdx])
+            end
+
+            # sweep L <--- R
+            for siteIdx in (N - 1):-1:1
+
+                # construct two-site tensor
+                @tensor newTheta[-1 -2 -3; -4 -5 -6] := mpoEnvL[siteIdx][-2, 3, 1] *
+                                                        MPOA[siteIdx][1, 2, 4, -1] *
+                                                        MPOB[siteIdx][3, -3, 6, 2] *
+                                                        MPOA[siteIdx + 1][4, 5, 7, -6] *
+                                                        MPOB[siteIdx + 1][6, -4, 8, 5] *
+                                                        mpoEnvR[siteIdx + 1][7, 8, -5]
+
+                #  perform SVD and truncate to desired bond dimension
+                U, S, V, ϵ = tsvd(newTheta, (1, 2, 3), (4, 5, 6);
+                                  trunc = truncdim(maxDim) & truncerr(truncErr),
+                                  alg = TensorKit.SVD())
+                # S /= norm(S);
+                U = permute(U * S, (2, 3), (4, 1))
+                V = permute(V, (1, 2), (3, 4))
+
+                # assign updated tensors
+                compressedMPO[siteIdx + 0] = U
+                compressedMPO[siteIdx + 1] = V
+
+                # update mpoEnvR
+                mpoEnvR[siteIdx + 0] = update_MPOMPOEnvR(mpoEnvR[siteIdx + 1],
+                                                         MPOA[siteIdx + 1],
+                                                         MPOB[siteIdx + 1],
+                                                         compressedMPO[siteIdx + 1])
+            end
+
+            # normalize MPO after sweep
+            if normalize
+                mpoNorm = real(tr(compressedMPO[1]' * compressedMPO[1]))
+                compressedMPO[1] /= sqrt(mpoNorm)
+            end
+
+            # compute overlap || C - A || and check convergence
+            newVarOverlap = dotMPO(compressedMPO, MPOA)
+            diffOverlap = abs(variationalOverlap - newVarOverlap)
+            if diffOverlap < 1e-6
+                runVariationalSweep = false
+            end
+            variationalOverlap = newVarOverlap
+        end
+    end
+    return compressedMPO
 end
 
 # #--------------------------------------------------------------

@@ -61,3 +61,27 @@ function expectation_values(finiteMPS::SparseMPS,
     end
     return expVals
 end
+
+function expectation_values_density_matrix(thermalDensityMatrix::SparseMPO,
+                                           finiteMPO::SparseMPO)
+    """ Calculates expectation values for thermal states using an MPO """
+
+    # get length of thermalDensityMatrix
+    N = length(thermalDensityMatrix)
+
+    # contract from left to right
+    boundaryL = ones(space(thermalDensityMatrix[1], 1),
+                     space(finiteMPO[1], 1) ⊗ space(thermalDensityMatrix[1], 1))
+    for siteIdx in 1:+1:N
+        @tensor boundaryL[-1; -2 -3] := boundaryL[1, 3, 5] *
+                                        thermalDensityMatrix[siteIdx][5, 4, -3, 6] *
+                                        finiteMPO[siteIdx][3, 2, -2, 4] *
+                                        conj(thermalDensityMatrix[siteIdx][1, 2, -1, 6])
+    end
+    boundaryR = ones(space(thermalDensityMatrix[N], 3)' ⊗ space(finiteMPO[N], 3)',
+                     space(thermalDensityMatrix[N], 3)')
+
+    # contact to get expectation value
+    expectationVal = @tensor boundaryL[1, 2, 3] * boundaryR[3, 2, 1]
+    return real(expectationVal)
+end
