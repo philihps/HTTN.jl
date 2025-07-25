@@ -235,9 +235,9 @@ function generate_H0(modelParameters::CoupledRotorsParameters,
 end
 
 function generate_H0_CM(modelParameters::CoupledRotorsParameters,
-                     modeOccupations::Matrix{Int64},
-                     physSpaces::Vector{<:Union{ElementarySpace,
-                                                CompositeSpace{ElementarySpace}}})
+                        modeOccupations::Matrix{Int64},
+                        physSpaces::Vector{<:Union{ElementarySpace,
+                                                   CompositeSpace{ElementarySpace}}})
     """
     Compute 1 / (2M) * (∑_{i = 1}^{M} P_i)^2
     """
@@ -267,25 +267,32 @@ function generate_H0_CM(modelParameters::CoupledRotorsParameters,
             mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
             mpoBlock[1, :, 2, :] = generateMomentumOperator(modeOccupation)
             mpoBlock[1, :, 3, :] = generateMomentumOperator(modeOccupation)
-            mpoBlock[1, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)^2
+            mpoBlock[1, :, 4, :] = 1 / (2 * numSites) *
+                                   generateMomentumOperator(modeOccupation)^2
         elseif siteIdx == numSites
             mpoBlock = zeros(ComplexF64, 4, dimHS, 1, dimHS)
-            mpoBlock[1, :, 1, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)^2
-            mpoBlock[2, :, 1, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)
-            mpoBlock[3, :, 1, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)
+            mpoBlock[1, :, 1, :] = 1 / (2 * numSites) *
+                                   generateMomentumOperator(modeOccupation)^2
+            mpoBlock[2, :, 1, :] = 1 / (2 * numSites) *
+                                   generateMomentumOperator(modeOccupation)
+            mpoBlock[3, :, 1, :] = 1 / (2 * numSites) *
+                                   generateMomentumOperator(modeOccupation)
             mpoBlock[4, :, 1, :] = getIdentityOperator(dimHS)
         else
             mpoBlock = zeros(ComplexF64, 4, dimHS, 4, dimHS)
             mpoBlock[1, :, 1, :] = getIdentityOperator(dimHS)
             mpoBlock[1, :, 2, :] = generateMomentumOperator(modeOccupation)
             mpoBlock[1, :, 3, :] = generateMomentumOperator(modeOccupation)
-            mpoBlock[1, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)^2
+            mpoBlock[1, :, 4, :] = 1 / (2 * numSites) *
+                                   generateMomentumOperator(modeOccupation)^2
 
             mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
-            mpoBlock[2, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)
+            mpoBlock[2, :, 4, :] = 1 / (2 * numSites) *
+                                   generateMomentumOperator(modeOccupation)
 
             mpoBlock[3, :, 3, :] = getIdentityOperator(dimHS)
-            mpoBlock[3, :, 4, :] = 1 / (2 * numSites) * generateMomentumOperator(modeOccupation)
+            mpoBlock[3, :, 4, :] = 1 / (2 * numSites) *
+                                   generateMomentumOperator(modeOccupation)
 
             mpoBlock[4, :, 4, :] = getIdentityOperator(dimHS)
         end
@@ -378,7 +385,6 @@ function generate_H1(modelParameters::CoupledRotorsParameters,
 
         # add term for DBC
         if BC == "DBC"
-
             localOperators = localIdentityOp.(physSpaces)
             localOperators[1] = localNegShiftOperator(physSpaces[1]) +
                                 localPosShiftOperator(physSpaces[1])
@@ -400,7 +406,6 @@ function generate_H1(modelParameters::CoupledRotorsParameters,
 
         # add term for PBC
         if BC == "PBC"
-
             localOperators = localIdentityOp.(physSpaces)
             localOperators[1] = localNegShiftOperator(physSpaces[1])
             localOperators[N] = localPosShiftOperator(physSpaces[N])

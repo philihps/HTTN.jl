@@ -45,7 +45,7 @@ function localAnnihilationOp(k::Int64, physVecSpace::ElementarySpace,
                              conserveZ2::Bool = false)
     """ Construct a(k) for a momentum-conserving MPO """
 
-    # get dimension of physVecSpace 
+    # get dimension of physVecSpace
     dimPhyVecSpace = dim(physVecSpace)
     auxVecSpace = !conserveZ2 ? U1Space(-k => 1) : Rep[U₁ × ℤ₂]((-k, 1) => 1)
     annihilationOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,

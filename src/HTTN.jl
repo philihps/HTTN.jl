@@ -37,7 +37,8 @@ export MassiveSchwingerModel
 export CoupledRotorsParameters
 export CoupledRotorsModel
 export initializeVacuumMPS, initializeMPS
-export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG, generate_MPO_cR, generate_H0_CM
+export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG, generate_MPO_cR,
+       generate_H0_CM
 export updateBogoliubovParameters
 export local_number_operators
 export pairing_operators
