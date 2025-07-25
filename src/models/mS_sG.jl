@@ -436,8 +436,7 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
         if bogoliubovRot
             kIdx = abs(momentumVal) + 1
             ξ = bogParameters[kIdx]
-            μ = cosh(abs(ξ))
-            ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
+            μ, ν = convertSqueezingParameter(ξ)
         end
 
         if momentumVal == 0
@@ -628,8 +627,7 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
 
             # apply Bogoliubov rotation parameters
             ξ = bogParameters[abs(kVal) + 1]
-            μ = cosh(abs(ξ))
-            ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
+            μ, ν = convertSqueezingParameter(ξ)
             mpoCrCrZM *= 0.5 * M * μ * ν
             mpoAnAnZM *= 0.5 * M * μ * conj(ν)
 
@@ -668,8 +666,7 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
 
             # apply Bogoliubov rotation parameters
             ξ = bogParameters[abs(kVal) + 1]
-            μ = cosh(abs(ξ))
-            ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
+            μ, ν = convertSqueezingParameter(ξ)
             mpoCrCr *= 2 * modeEnergy(kVal, L, M) * μ * ν
             mpoAnAn *= 2 * modeEnergy(kVal, L, M) * μ * conj(ν)
 
@@ -956,8 +953,7 @@ function localDisplacementOp(modelParameters,
             w = α / sqrt(2 * modeEnergy(k, L, M) * L)
             if bogoliubovRot
                 ξ = truncationParameters[:bogParameters][abs(k) + 1]
-                μ = cosh(abs(ξ))
-                ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
+                μ, ν = convertSqueezingParameter(ξ)
                 argDisplacementOp = μ * (1im * w) - ν * conj(1im * w)
                 # argDisplacementOp = 1im * w * (μ + ν)
                 displacementOp = exp(w^2 / 2) *
@@ -986,8 +982,7 @@ function localDisplacementOp(modelParameters,
         w = α / sqrt(2 * modeEnergy(k, L, M) * L)
         if bogoliubovRot
             ξ = truncationParameters[:bogParameters][abs(k) + 1]
-            μ = cosh(abs(ξ))
-            ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
+            μ, ν = convertSqueezingParameter(ξ)
             argDisplacementOp = μ * (1im * w) - ν * conj(1im * w)
             displacementOp = exp(w^2 / 2) *
                              getDisplacementOperator(dimPhyVecSpace - 1, argDisplacementOp)
@@ -1050,8 +1045,7 @@ end
 #     w = α / sqrt(2 * modeEnergy(k, L, M) * L) # parameter for the G function
 #     if bogoliubovRot
 #         ξ = truncationParameters[:bogParameters][abs(k) + 1]
-#         μ = cosh(ξ)
-#         ν = sinh(ξ)
+#         μ, ν = convertSqueezingParameter(ξ)
 #         factorBCH = exp(-w^2 * (ν^2 + μ * ν))
 #     end
 

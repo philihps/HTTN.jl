@@ -1,3 +1,12 @@
+function convertSqueezingParameter(ξ::Number)
+    """
+    Convert squeezing parameter ξ to μ and ν.
+    """
+    μ = cosh(abs(ξ))
+    ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
+    return μ, ν
+end
+
 function convertLocalOperatorsToTwoBodyGate(localOperators::Vector{<:AbstractTensorMap})
     kroneckerTensor = ones(ComplexF64, space(localOperators[1], 3)',
                            space(localOperators[2], 3))
@@ -62,9 +71,7 @@ function squeezingOp(ξ::Number,
     K_A_plus = CrCr
 
     # compute μ and ν
-    μ = cosh(abs(ξ))
-    ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
-    # println([ξ, μ, ν])
+    μ, ν = convertSqueezingParameter(ξ)
 
     # construct squeezing operator
     # S = exp(-1 * tanh(ξ) * K_A_plus) * exp(-2 * log(cosh(ξ)) * K_A_0) * exp(tanh(ξ) * K_A_min)
@@ -176,8 +183,7 @@ end
 #     IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localNumberOp(PR)])
 
 #     # compute μ and ν
-#     μ = cosh(ξ)
-#     ν = sinh(ξ)
+#     μ, ν = convertSqueezingParameter(ξ)
 
 #     # construct K0, K1 and K2
 #     # K0 = -log(μ) * (NuId + IdNu + IdId);
