@@ -378,7 +378,7 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # vecξ = [real(bogParameters[1 + kR]), imag(bogParameters[1 + kR])]
             optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
                                 bogParameters[1 + kR] +
-                                0.05 * randn(eltype(bogParameters[1 + kR])),
+                                0.1 * randn(eltype(bogParameters[1 + kR])),
                                 LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4)
                                 # scale! = _scale!, 
                                 # add! = _add!, 
@@ -519,7 +519,7 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # vecξ = [real(bogParameters[1 + kR]), imag(bogParameters[1 + kR])]
             optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
                                 bogParameters[1 + kR] +
-                                0.05 * randn(eltype(bogParameters[1 + kR])),
+                                0.1 * randn(eltype(bogParameters[1 + kR])),
                                 LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4)
                                 # scale! = _scale!, 
                                 # add! = _add!, 

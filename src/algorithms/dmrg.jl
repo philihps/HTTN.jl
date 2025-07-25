@@ -269,7 +269,7 @@ end
 
 # function to check acceptance of new basis
 function checkAcceptance(oldVal::Float64, newVal::Float64, oldXi::Number, newXi::Number)
-    if (oldVal - newVal > 1e-6)
+    if (oldVal - newVal > 1e-3)
         return true
     else
         return false
