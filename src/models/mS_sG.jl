@@ -465,7 +465,6 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
                     end
 
                 else
-                    
                     if bogoliubovRot
                         modeFactor *= (μ^2 + abs(ν)^2)
                     end
@@ -489,7 +488,7 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
                     end
                 end
             end
-            
+
             if modelParameters isa SineGordonParameters
                 # Compute O_{sG} = (1 / 2) L . Π0²
 

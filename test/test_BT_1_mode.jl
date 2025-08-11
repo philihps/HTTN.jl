@@ -45,12 +45,10 @@ H0MPO = generate_H0(mS)
 H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
 
 @testset "Test BT 1 mode" begin
-    
     @info "Free part of the Hamiltonian"
     eigValsFree, eigVecs = eigen(H0Mat)
     groundStateMPS = TensorMap(eigVecs[:, 1], virtSpaces[1] ⊗ physSpaces[1], virtSpaces[2])
     groundStateMPS = SparseMPS([groundStateMPS]; normalizeMPS = true)
-
 
     ξ = 0.2
     @info "Free part of the transformed Hamiltonian w/ real $ξ"
@@ -74,7 +72,6 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     println("Norm of the squeezed (vacuum) state: $normSQState")
     groundStateSqMPS = SparseMPS([groundStateSqMPS]; normalizeMPS = true)
     @test abs(abs(dotMPS(vacuumMPS, groundStateSqMPS))) - 1.0 < 1e-8
-
 
     # TODO: check norm of squeezed state for complex squeezing parameter
     # ξ = 0.2 + 0.1im
@@ -100,14 +97,12 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     # groundStateSqMPS = SparseMPS([groundStateSqMPS]; normalizeMPS = true)
     # @test abs(abs(dotMPS(vacuumMPS, groundStateSqMPS))) - 1.0 < 1e-8
 
-
     @info "Full Hamiltonian"
     HMPO = generate_MPO_mS(mS)
     HMat = reshape(convert(Array, HMPO[1]), (zeroDim, zeroDim))
     eigValsFull, eigVecs = eigen(HMat)
     groundStateMPS = TensorMap(eigVecs[:, 1], virtSpaces[1] ⊗ physSpaces[1], virtSpaces[2])
     groundStateMPS = SparseMPS([groundStateMPS]; normalizeMPS = true)
-
 
     ξ = 0.2
     @info "Full transformed Hamiltonian with real $ξ"

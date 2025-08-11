@@ -304,9 +304,6 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
     bogParameters = QFTModel.modelParameters.truncationParameters[:bogParameters]
     println(bogParameters)
 
-    # # initialize MPO environments
-    # mpoEnvL, mpoEnvR = initializeMPOEnvironments(finiteMPS, finiteMPO)
-
     # initialize truncationErrors
     truncationErrors = Float64[]
 
@@ -331,7 +328,7 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
 
             # compute cost function pre optimization
             costFuncPre = computeRenyiEntropy(AC2)
-            # vNEntropyPre = computeEntropy(AC2);
+            # vNEntropyPre = computeEntropy(AC2)
 
             # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
             if alg.verbosePrint == 2
@@ -375,59 +372,27 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # println(gval)
 
             # optimize twoSiteUnitary
-            # vecξ = [real(bogParameters[1 + kR]), imag(bogParameters[1 + kR])]
             optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
                                 bogParameters[1 + kR] +
-                                0.1 * randn(eltype(bogParameters[1 + kR])),
-                                LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4)
-                                # scale! = _scale!, 
-                                # add! = _add!, 
-                                # inner = _inner, 
-                                )
+                                0.2 * randn(eltype(bogParameters[1 + kR])),
+                                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1e-4))
             optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
-            if any(abs.(optimalXi) .> 1e-3)
+            # apply rotation and decompose optimizedTheta
+            if checkAcceptance(costFuncPre, optimCostFunc, bogParameters[1 + kR], optimalXi)
 
-                # check acceptance of optimalXi
-                newCostFunction = zeros(Float64, length(optimalXi))
-                for (idx, ξ) in enumerate(optimalXi)
+                # update two site tensor
+                optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                AC2 = applyTwoModeTransformation(optimalS, AC2)
+                println("new optimal ξ = ", optimalXi)
 
-                    # transform AC2 with optimalS
-                    optimalS = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-                    optimizedTheta = applyTwoModeTransformation(optimalS, AC2)
+                println(real.(reshape(convert(Array, optimalS * optimalS'), 36, 36)))
 
-                    # compute cost function post optimiization
-                    costFuncPost = computeRenyiEntropy(optimizedTheta)
-                    # vNEntropyPost = computeEntropy(optimizedTheta);
-                    display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                    # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[1 + kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
-                    # println()
-
-                    newCostFunction[idx] = costFuncPost
-                end
-
-                # select optimalXi corresponding to lowest costFuncPost
-                costFuncPost, minIdx = findmin(newCostFunction)
-                optimalXi = optimalXi[minIdx]
-
-                # decompose optimizedTheta
-                if checkAcceptance(costFuncPre, costFuncPost, bogParameters[1 + kR],
-                                   optimalXi)
-
-                    # update two site tensor
-                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
-                    AC2 = applyTwoModeTransformation(optimalS, AC2)
-                    println("new optimal ξ = ", optimalXi)
-
-                    # update QFTModel with new bogParameters
-                    bogParameters[1 + kR] += optimalXi
-                    QFTModel = updateBogoliubovParameters(QFTModel; bogoliubovRot = true,
-                                                          bogParameters = bogParameters)
-                    println(bogParameters, "\n")
-
-                    # # recreate modified MPO
-                    # finiteMPO = mpoHandle(QFTModel)
-                end
+                # update QFTModel with new bogParameters
+                bogParameters[1 + kR] += optimalXi
+                QFTModel = updateBogoliubovParameters(QFTModel; bogoliubovRot = true,
+                                                      bogParameters = bogParameters)
+                println(bogParameters, "\n")
             end
         end
 
@@ -446,13 +411,6 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
         # assign updated tensors
         finiteMPS[siteIdx + 0] = U
         finiteMPS[siteIdx + 1] = V
-
-        # # update mpoEnvL
-        # mpoEnvL[siteIdx + 1] = update_MPOEnvL(mpoEnvL[siteIdx],
-        #                             finiteMPS[siteIdx],
-        #                             finiteMPO[siteIdx],
-        #                             finiteMPS[siteIdx])
-
     end
 
     # sweep L <--- R
@@ -476,7 +434,7 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
 
             # compute cost function pre optimization
             costFuncPre = computeRenyiEntropy(AC2)
-            # vNEntropyPre = computeEntropy(AC2);
+            # vNEntropyPre = computeEntropy(AC2)
 
             # see landscape of ξ and compute analytic gradient of the cost function with respect to ξ
             if alg.verbosePrint == 2
@@ -516,60 +474,25 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # @show optimalXi
 
             # optimize twoSiteUnitary
-            # vecξ = [real(bogParameters[1 + kR]), imag(bogParameters[1 + kR])]
             optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
                                 bogParameters[1 + kR] +
-                                0.1 * randn(eltype(bogParameters[1 + kR])),
-                                LBFGS(12; verbosity = 1, maxiter = 50, gradtol = 1e-4)
-                                # scale! = _scale!, 
-                                # add! = _add!, 
-                                # inner = _inner, 
-                                )
+                                0.2 * randn(eltype(bogParameters[1 + kR])),
+                                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1e-4))
             optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
-            if any(abs.(optimalXi) .> 1e-3)
+            # apply rotation and decompose optimizedTheta
+            if checkAcceptance(costFuncPre, optimCostFunc, bogParameters[1 + kR], optimalXi)
 
-                # check acceptance of optimalXi
-                newCostFunction = zeros(Float64, length(optimalXi))
-                for (idx, ξ) in enumerate(optimalXi)
+                # update two site tensor
+                optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                AC2 = applyTwoModeTransformation(optimalS, AC2)
+                println("new optimal ξ = ", optimalXi)
 
-                    # transform AC2 with optimalS
-                    optimalS = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-                    optimizedTheta = applyTwoModeTransformation(optimalS, AC2)
-
-                    # compute cost function post optimiization
-                    costFuncPost = computeRenyiEntropy(optimizedTheta)
-                    # vNEntropyPost = computeEntropy(optimizedTheta);
-                    display([costFuncPre costFuncPost costFuncPre > costFuncPost])
-                    # display([costFuncPre costFuncPost checkAcceptance(costFuncPre, costFuncPost, bogParameters[1 + kR], optimalXi) ; vNEntropyPre vNEntropyPost vNEntropyPre > vNEntropyPost])
-                    # println()
-
-                    newCostFunction[idx] = costFuncPost
-                end
-
-                # select optimalXi corresponding to lowest costFuncPost
-                costFuncPost, minIdx = findmin(newCostFunction)
-                optimalXi = optimalXi[minIdx]
-                # @show optimalXi
-
-                # decompose optimizedTheta
-                if checkAcceptance(costFuncPre, costFuncPost, bogParameters[1 + kR],
-                                   optimalXi)
-
-                    # update two site tensor
-                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
-                    AC2 = applyTwoModeTransformation(optimalS, AC2)
-                    println("new optimal ξ = ", optimalXi)
-
-                    # update QFTModel with new bogParameters
-                    bogParameters[1 + kR] += optimalXi
-                    QFTModel = updateBogoliubovParameters(QFTModel; bogoliubovRot = true,
-                                                          bogParameters = bogParameters)
-                    println(bogParameters, "\n")
-
-                    # # recreate modified MPO
-                    # finiteMPO = mpoHandle(QFTModel)
-                end
+                # update QFTModel with new bogParameters
+                bogParameters[1 + kR] += optimalXi
+                QFTModel = updateBogoliubovParameters(QFTModel; bogoliubovRot = true,
+                                                      bogParameters = bogParameters)
+                println(bogParameters, "\n")
             end
         end
 
@@ -588,13 +511,6 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
         # assign updated tensors
         finiteMPS[siteIdx + 0] = U
         finiteMPS[siteIdx + 1] = V
-
-        # # update mpoEnvR
-        # mpoEnvR[siteIdx + 0] = update_MPOEnvR(mpoEnvR[siteIdx + 1],
-        #                             finiteMPS[siteIdx + 1],
-        #                             finiteMPO[siteIdx + 1],
-        #                             finiteMPS[siteIdx + 1])
-
     end
 
     # return optimized finiteMPS

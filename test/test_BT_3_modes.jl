@@ -115,7 +115,6 @@ initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
     groundStateSqMPS = SparseMPS(groundStateSqMPS; normalizeMPS = true)
     @test abs(real(dotMPS(vacuumMPS, groundStateSqMPS))) - 1.0 < 1e-8
 
-
     @info "Full Hamiltonian"
     HMPO = generate_MPO_mS(mS)
 
