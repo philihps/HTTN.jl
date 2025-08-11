@@ -42,14 +42,17 @@ physSpaces = mS.physSpaces;
 virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
                                  removeDegeneracy = true);
 
-# initialize ones MPS
-initialTensors = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces));
-for siteIdx in eachindex(physSpaces)
-    physSpace = physSpaces[siteIdx]
-    initialTensors[siteIdx] = ones(ComplexF64, virtSpaces[siteIdx] ⊗ physSpace,
-                                   virtSpaces[siteIdx + 1])
-end
-initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
+# # initialize ones MPS
+# initialTensors = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces));
+# for siteIdx in eachindex(physSpaces)
+#     physSpace = physSpaces[siteIdx]
+#     initialTensors[siteIdx] = ones(ComplexF64, virtSpaces[siteIdx] ⊗ physSpace,
+#                                    virtSpaces[siteIdx + 1])
+# end
+# initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
+
+vacuumMPS = initializeVacuumMPS(mS; modeOrdering = modeOrdering)
+initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
 
 @testset "Test BT 3 modes" begin
     @info "Free part of the Hamiltonian"
@@ -58,7 +61,7 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
                                          DMRG2(; bondDim = 1000,
                                                truncErr = 1e-6,
                                                verbosePrint = true))
-    @test abs(real(dotMPS(groundStateMPS, vacuumMPS)) - 1.0) < 1e-8
+    @test abs(abs(dotMPS(groundStateMPS, vacuumMPS)) - 1.0) < 1e-8
 
     boundaryL = TensorMap(ones, one(U1Space()), space(H0MPO[1], 1))
     boundaryR = TensorMap(ones, space(H0MPO[3], 3)', one(U1Space()))
@@ -111,6 +114,7 @@ initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
     groundStateSqMPS[3] = V
     groundStateSqMPS = SparseMPS(groundStateSqMPS; normalizeMPS = true)
     @test abs(real(dotMPS(vacuumMPS, groundStateSqMPS))) - 1.0 < 1e-8
+
 
     @info "Full Hamiltonian"
     HMPO = generate_MPO_mS(mS)

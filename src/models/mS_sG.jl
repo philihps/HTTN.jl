@@ -370,9 +370,9 @@ function initializeMPS(Model::Union{MassiveSchwingerModel,SineGordonModel},
                            virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
                            virtSpaces[siteIdx + 1])
         if siteIdx == zeroSitePos
-            siteTensor = 1e-0 * convert(Array, siteTensor)
+            siteTensor = 1e-6 * convert(Array, siteTensor)
         else
-            siteTensor = 1e-0 * convert(Array, siteTensor)
+            siteTensor = 1e-1 * convert(Array, siteTensor)
         end
         minTensorDim = min(size(initTensor), size(siteTensor))
         siteTensor[1:minTensorDim[1], 1:minTensorDim[2], 1:minTensorDim[3]] += initTensor[1:minTensorDim[1],
@@ -445,7 +445,27 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
             if modelParameters isa MassiveSchwingerParameters
                 modeFactor = M
 
-                if numSites != 1
+                if numSites == 1
+                    mpoBlock = zeros(ComplexF64, 1, dimHS, 1, dimHS)
+                    if bogoliubovRot
+                        # 𝒪 = M [(μ² + ν²).A^†A + μν.(A^†)^2 + μν'.(A^2) + ν².Id]
+                        partA = (μ^2 + abs(ν)^2) * getNumberOperator(dimHS - 1)
+                        # partB = μ * ν * getCreationOperator(dimHS - 1) *
+                        #         getCreationOperator(dimHS - 1) +
+                        #         μ * conj(ν) *
+                        #         getAnnihilationOperator(dimHS - 1) *
+                        #         getAnnihilationOperator(dimHS - 1)
+                        # partC = ν^2 * getIdentityOperator(dimHS)
+                        # mpoBlock[1, :, 1, :] = modeFactor * (partA + partB + partC)
+                        mpoBlock[1, :, 1, :] = modeFactor * partA
+                    else
+                        # 𝒪 for μ = 1 and ν = 0
+                        mpoBlock[1, :, 1, :] = modeFactor *
+                                               getNumberOperator(dimHS - 1)
+                    end
+
+                else
+                    
                     if bogoliubovRot
                         modeFactor *= (μ^2 + abs(ν)^2)
                     end
@@ -467,25 +487,9 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
                                                getNumberOperator(dimHS - 1)
                         mpoBlock[2, :, 2, :] = getIdentityOperator(dimHS)
                     end
-                else
-                    mpoBlock = zeros(ComplexF64, 1, dimHS, 1, dimHS)
-                    if bogoliubovRot
-                        # 𝒪 = M [(μ² + ν²).A^†A + μν.(A^†)^2 + μν'.(A^2) + ν².Id]
-                        partA = (μ^2 + abs(ν)^2) * getNumberOperator(dimHS - 1)
-                        partB = μ * ν * getCreationOperator(dimHS - 1) *
-                                getCreationOperator(dimHS - 1) +
-                                μ * conj(ν) *
-                                getAnnihilationOperator(dimHS - 1) *
-                                getAnnihilationOperator(dimHS - 1)
-                        partC = ν^2 * getIdentityOperator(dimHS)
-                        mpoBlock[1, :, 1, :] = modeFactor * (partA + partB + partC)
-                    else
-                        # 𝒪 for μ = 1 and ν = 0
-                        mpoBlock[1, :, 1, :] = modeFactor *
-                                               getNumberOperator(dimHS - 1)
-                    end
                 end
             end
+            
             if modelParameters isa SineGordonParameters
                 # Compute O_{sG} = (1 / 2) L . Π0²
 
@@ -596,8 +600,18 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
     numSites = length(physSpaces)
 
     # construct H0 part B
-    storeIndividualMPOs = Vector{SparseMPO}(undef, kMax)
-    for (kIdx, kVal) in enumerate(collect(1:kMax))
+    if abs(bogParameters[1]) > 1e-6
+        useMomentumModes = collect(0:kMax)
+    else
+        useMomentumModes = collect(1:kMax)
+    end
+    storeIndividualMPOs = Vector{SparseMPO}(undef, length(useMomentumModes))
+    for (kIdx, kVal) in enumerate(useMomentumModes)
+
+        # get Bogoliubov rotation parameters
+        ξ = bogParameters[abs(kVal) + 1]
+        μ, ν = convertSqueezingParameter(ξ)
+
         if kVal == 0
             localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites)
             for (siteIdx, momentumVal) in enumerate(momentumModes)
@@ -626,10 +640,8 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             mpoAnAnZM = convertLocalOperatorsToMPO(localOperators)
 
             # apply Bogoliubov rotation parameters
-            ξ = bogParameters[abs(kVal) + 1]
-            μ, ν = convertSqueezingParameter(ξ)
-            mpoCrCrZM *= 0.5 * M * μ * ν
-            mpoAnAnZM *= 0.5 * M * μ * conj(ν)
+            mpoCrCrZM *= modeEnergy(kVal, L, M) * μ * ν
+            mpoAnAnZM *= modeEnergy(kVal, L, M) * μ * conj(ν)
 
             # store sum of MPOs
             storeIndividualMPOs[kIdx] = mpoAnAnZM + mpoCrCrZM
@@ -665,8 +677,6 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
             mpoAnAn = convertLocalOperatorsToMPO(localOperators)
 
             # apply Bogoliubov rotation parameters
-            ξ = bogParameters[abs(kVal) + 1]
-            μ, ν = convertSqueezingParameter(ξ)
             mpoCrCr *= 2 * modeEnergy(kVal, L, M) * μ * ν
             mpoAnAn *= 2 * modeEnergy(kVal, L, M) * μ * conj(ν)
 
@@ -709,8 +719,17 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
     numSites = length(physSpaces)
 
     # construct H0 Part C
-    storeIndividualMPOs = Vector{SparseMPO}(undef, kMax)
-    for (kIdx, kVal) in enumerate(collect(1:kMax))
+    if abs(bogParameters[1]) > 1e-6
+        useMomentumModes = collect(0:kMax)
+    else
+        useMomentumModes = collect(1:kMax)
+    end
+    storeIndividualMPOs = Vector{SparseMPO}(undef, length(useMomentumModes))
+    for (kIdx, kVal) in enumerate(useMomentumModes)
+
+        # get Bogoliubov rotation parameters
+        ξ = bogParameters[abs(kVal) + 1]
+        μ, ν = convertSqueezingParameter(ξ)
 
         # construct momentum-presering identity MPO (constant energy term after Bogoliubov rotation)
         localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites)
@@ -722,8 +741,6 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
         mpoIdId = convertLocalOperatorsToMPO(localOperators)
 
         # get Bogoliubov rotation parameters (this is not checked for complex ξ)
-        ξ = bogParameters[abs(kVal) + 1]
-        ν = exp(1im * angle(ξ)) * sinh(abs(ξ))
         if kVal == 0
             mpoIdId *= modeEnergy(kVal, L, M) * abs(ν)^2
         else
@@ -756,7 +773,7 @@ function generate_H0(modelParameters::Union{MassiveSchwingerParameters,
     mpo_H0 = generate_H0_Part_A(modelParameters, modeOccupations, physSpaces)
 
     # get additional parts due to the Bogoliubov rotation
-    if bogoliubovRot && kMax > 0
+    if bogoliubovRot
         mpo_H0 += generate_H0_Part_B(modelParameters, modeOccupations,
                                      physSpaces)
         mpo_H0 += generate_H0_Part_C(modelParameters,
