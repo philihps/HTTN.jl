@@ -155,34 +155,106 @@ function produceThermalState(finiteMPO::SparseMPO,
     return thermalDensityMatrix, δβ * timeStep, storeEnergy
 end
 
-function costFunctionGGE(β::Float64,
-                         targetEnergy::Float64,
-                         finiteMPO::SparseMPO;
-                         δβ::Float64 = 1e-2,
-                         expansionOrder::Int64 = 3,
-                         truncErr::Float64 = 1e-6,
-                         maxDim::Int64 = 2500,
-                         verbosePrint::Int64 = 0,)
+# function costFunctionGGE(β::Float64,
+#                          targetEnergy::Float64,
+#                          finiteMPO::SparseMPO;
+#                          δβ::Float64 = 1e-2,
+#                          expansionOrder::Int64 = 3,
+#                          truncErr::Float64 = 1e-6,
+#                          maxDim::Int64 = 2500,
+#                          verbosePrint::Int64 = 0,)
 
-    # compute thermal density matrix at inverse temperature β
-    thermalDensityMatrix = produceThermalState(finiteMPO,
-                                               β;
-                                               δβ = δβ,
-                                               expansionOrder = expansionOrder,
-                                               truncErr = truncErr,
-                                               maxDim = maxDim,
-                                               verbosePrint = verbosePrint)
+#     # compute thermal density matrix at inverse temperature β
+#     thermalDensityMatrix = produceThermalState(finiteMPO,
+#                                                β;
+#                                                δβ = δβ,
+#                                                expansionOrder = expansionOrder,
+#                                                truncErr = truncErr,
+#                                                maxDim = maxDim,
+#                                                verbosePrint = verbosePrint)
 
-    # compute energy of thermal state
-    thermalStateEnergy = real(expectation_values_density_matrix(thermalDensityMatrix,
-                                                                finiteMPO))
+#     # compute energy of thermal state
+#     thermalStateEnergy = real(expectation_values_density_matrix(thermalDensityMatrix,
+#                                                                 finiteMPO))
 
-    # compute cost function
-    costFunction = thermalStateEnergy - targetEnergy
-    return costFunction
+#     # compute cost function
+#     costFunction = thermalStateEnergy - targetEnergy
+#     return costFunction
+# end
+
+function approximateFullTDM(TDM::SparseMPO; truncErr::Float64 = 1e-6, maxDim::Int64 = 2500)
+    """ Approximates ρ(β) ≈ ρ(β/2)^† * ρ(β/2) with an MPO of bond dimension maxDim """
+
+    # make copy of TDM
+    compressedMPO = copy(TDM)
+
+    # get length of MPOs
+    N = length(compressedMPO)
+
+    # construct left and right isomorphism
+    isomL = isometry(fuse(space(TDM[1], 1), space(TDM[1], 1)),
+                     space(TDM[1], 1) ⊗ space(TDM[1], 1)')
+    isomR = isometry(space(TDM[N], 3)' ⊗ space(TDM[N], 3),
+                     fuse(space(TDM[N], 3)' ⊗ space(TDM[N], 3)))
+
+    # zip-up from left to right
+    for siteIdx in 1:N
+        if siteIdx < N
+            @tensor localTensor[-1 -2 -3; -4 -5] := isomL[-2, 1, 3] *
+                                                    compressedMPO[siteIdx][1, 2, -4, -1] *
+                                                    conj(TDM[siteIdx][3, 2, -5, -3])
+            U, S, V = tsvd(localTensor, (1, 2, 3), (4, 5);
+                           trunc = truncdim(maxDim) & truncerr(truncErr),
+                           alg = TensorKit.SVD())
+            compressedMPO[siteIdx] = permute(U, (2, 3), (4, 1))
+            isomL = S * V
+        else
+            @tensor compressedMPO[siteIdx][-1 -2; -3 -4] := isomL[-1, 1, 3] *
+                                                            compressedMPO[siteIdx][1, 2, 4,
+                                                                                   -4] *
+                                                            conj(TDM[siteIdx][3, 2, 5, -2]) *
+                                                            isomR[4, 5, -3]
+        end
+    end
+
+    # orthogonalize and return MPO
+    orthogonalizeMPO!(compressedMPO, 1)
+    return compressedMPO
 end
 
-function reducedDensityMatrixHalfSystem(finiteMPO::SparseMPO)
+function reducedDensityMatrixHalfSystem_SL(finiteMPO::SparseMPO)
+
+    # assumes that the double-layer MPO for ρ(β) = ρ(β/2)† * ρ(β/2) has already been compressed to a single MPO
+    N = length(finiteMPO)
+    qnL = space(finiteMPO[1], 1)
+    qnR = space(finiteMPO[N], 3)
+    boundaryL = TensorMap(ones, one(qnL), qnL)
+    boundaryR = TensorMap(ones, qnR', one(qnR))
+    indexList = Vector{Vector{Int}}(undef, N + 2)
+    cOffset = N / 2 + 1
+    for idxT in eachindex(indexList)
+        if idxT == 1
+            indexList[idxT] = [idxT]
+        elseif idxT <= length(indexList) / 2
+            indexList[idxT] = [idxT - 1, -(idxT - 1), idxT, -(idxT - 1) - N / 2]
+        elseif length(indexList) / 2 < idxT < length(indexList)
+            indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0,
+                               cOffset + 2 * (idxT - cOffset - 1) + 1,
+                               cOffset + 2 * (idxT - cOffset - 1) + 2,
+                               cOffset + 2 * (idxT - cOffset - 1) + 1]
+        elseif idxT == length(indexList)
+            indexList[idxT] = [cOffset + 2 * (idxT - cOffset - 1) + 0]
+        end
+    end
+    mpoTensor = ncon(vcat(boundaryL, finiteMPO..., boundaryR), indexList)
+    mpoTensor = permute(mpoTensor, Tuple(Int.(1:(N / 2))), Tuple(Int.((N / 2 + 1):(N))))
+    # mpoTensor = convert(Array, mpoTensor)
+    # sizeMPOTensor = size(mpoTensor)
+    # mpoMatrix = reshape(mpoTensor, prod(sizeMPOTensor[1:N]), prod(sizeMPOTensor[1:N]))
+    return mpoTensor
+end
+
+function reducedDensityMatrixHalfSystem_DL(finiteMPO::SparseMPO)
     N = length(finiteMPO)
     if N == 2
         mpoTrace = ones(space(finiteMPO[1], 1), space(finiteMPO[1], 1))

@@ -1,4 +1,6 @@
 
+include("vectorSpaces.jl")
+
 function getIdentityOperator(dimHilbertSpace::Int64)
     bosonOp = LinearAlgebra.diagm(ones(Float64, dimHilbertSpace))
     return bosonOp
@@ -17,18 +19,6 @@ end
 function getCreationOperator(numBosons::Int64)
     bosonOp = +1im * LinearAlgebra.diagm(-1 => sqrt.(collect(1:numBosons)))
     return bosonOp
-end
-
-function mergeLocalOperators(localOpB::TensorMap, localOpT::TensorMap)
-    """
-    Apply localOpT onto localOpB to create a 3-leg MPO 
-    with the spaces of the third legs fused 
-    """
-    fusionIsometry = isometry(space(localOpT, 3)' ⊗ space(localOpB, 3)',
-                              fuse(space(localOpT, 3)', space(localOpB, 3)'))
-    @tensor newLocalOp[-1; -2 -3] := localOpT[1, -2, 2] * localOpB[-1, 1, 3] *
-                                     fusionIsometry[2, 3, -3]
-    return newLocalOp
 end
 
 function getDisplacementOperator(nMax::Int64, α::Number)
@@ -131,6 +121,37 @@ function localParityOperator(k::Int64, physVecSpace::ElementarySpace,
     return parityOperator
 end
 
+function localDisplacementOperator(k::Int64, physVecSpace::ElementarySpace, α::Number,
+                                   conserveZ2::Bool = false)
+    """ Construct D(α) for a momentum-conserving MPO """
+
+    # get dimension of physVecSpace 
+    dimPhyVecSpace = dim(physVecSpace)
+    # auxVecSpace = !conserveZ2 ? U1Space(0 => 1) : Rep[U₁ × ℤ₂]((0, 0) => 1)
+    auxVecSpace = removeDegeneracyQN(fuse(physVecSpace, conj(flip(physVecSpace))))
+
+    # get ordering of QNs in physVecSpace and auxVecSpace
+    phyQNSectors = physVecSpace.dims
+    auxQNSectors = auxVecSpace.dims
+    phyVecSpaceOrdering = [productSector.charge for productSector in keys(phyQNSectors)]
+    auxVecSpaceOrdering = [productSector.charge for productSector in keys(auxQNSectors)]
+
+    # create displacement operator
+    displacementOp = getDisplacementOperator(dimPhyVecSpace - 1, α)
+    displacementOperator = zeros(ComplexF64, dimPhyVecSpace, dimPhyVecSpace,
+                                 dim(auxVecSpace))
+    for nBra in 0:(dim(physVecSpace) - 1), nKet in 0:(dim(physVecSpace) - 1)
+        braIndPos = findfirst(phyVecSpaceOrdering .== (k * nBra))
+        ketIndPos = findfirst(phyVecSpaceOrdering .== (k * nKet))
+        auxIndPos = findfirst(auxVecSpaceOrdering .== (k * (nBra - nKet)))
+        displacementOperator[braIndPos, ketIndPos, auxIndPos] = displacementOp[braIndPos,
+                                                                               ketIndPos]
+    end
+    displacementOperator = TensorMap(displacementOperator, physVecSpace,
+                                     physVecSpace ⊗ auxVecSpace)
+    return displacementOperator
+end
+
 function localNegShiftOperator(physVecSpace::ElementarySpace, conserveZ2::Bool = false)
     """ Construct local operator for δ(n', n-1) """
 
@@ -165,4 +186,16 @@ function localPosShiftOperator(physVecSpace::ElementarySpace, conserveZ2::Bool =
     end
     posShiftOperator = TensorMap(posShiftOperator, physVecSpace, physVecSpace ⊗ auxVecSpace)
     return posShiftOperator
+end
+
+function mergeLocalOperators(localOpB::TensorMap, localOpT::TensorMap)
+    """
+    Apply localOpT onto localOpB to create a 3-leg MPO 
+    with the spaces of the third legs fused 
+    """
+    fusionIsometry = isometry(space(localOpT, 3)' ⊗ space(localOpB, 3)',
+                              fuse(space(localOpT, 3)', space(localOpB, 3)'))
+    @tensor newLocalOp[-1; -2 -3] := localOpT[1, -2, 2] * localOpB[-1, 1, 3] *
+                                     fusionIsometry[2, 3, -3]
+    return newLocalOp
 end

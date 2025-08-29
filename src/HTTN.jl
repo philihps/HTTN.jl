@@ -14,6 +14,7 @@ using KrylovKit
 using OptimKit
 using Printf
 using LaTeXStrings
+using Plots
 using Roots
 using SpecialFunctions
 using TensorKit
@@ -43,6 +44,7 @@ export updateBogoliubovParameters
 export local_number_operators
 export pairing_operators
 export getMomentumModes
+export localDisplacementOperator
 
 # export algorithms
 export find_groundstate, find_excitedstate
@@ -70,7 +72,8 @@ export compute_phase_distribution
 # export thermal state functions
 export initializeThermalDensityMatrix, expectation_values_density_matrix
 export constructIdentiyMPO
-export produceThermalState, costFunctionGGE, reducedDensityMatrixHalfSystem
+export produceThermalState, costFunctionGGE, approximateFullTDM,
+       reducedDensityMatrixHalfSystem_SL, reducedDensityMatrixHalfSystem_DL
 
 # export utility functions
 export normalizeMPS, dotMPS, normalizeMPO, dotMPO, trMPO, multiplyMPOs
@@ -78,11 +81,11 @@ export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
 
-# export save_to_file, load_from_file
-export compute_average
+# # export save_to_file, load_from_file
+# export compute_average
 
 # export Bogoliubov transformation functions
-export squeezingOp, singleSqueezingOp
+export squeezingOp, singleSqueezingOp, applyTwoModeTransformation
 
 # include source files
 include("utility/bosonOperators.jl")
