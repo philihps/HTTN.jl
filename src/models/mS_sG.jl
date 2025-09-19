@@ -230,7 +230,9 @@ function modelSetup(modelParameters::Union{MassiveSchwingerParameters,
     nMaxZM = truncationParameters[:nMaxZM]
     truncMethod = truncationParameters[:truncMethod]
     modeOrdering = truncationParameters[:modeOrdering]
-    bogoliubovRot = truncationParameters[:bogoliubovRot]
+    if haskey(truncationParameters, :bogoliubovRot)
+        bogoliubovRot = truncationParameters[:bogoliubovRot]
+    end
 
     # set momentum values
     momentumModes = convert.(Int64, collect((-kMax):1:(+kMax)))
@@ -397,9 +399,13 @@ function generate_H0_Part_A(modelParameters::Union{MassiveSchwingerParameters,
 
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters
-    bogoliubovRot = truncationParameters[:bogoliubovRot]
-    if bogoliubovRot
-        bogParameters = truncationParameters[:bogParameters]
+    if haskey(truncationParameters, :bogoliubovRot)
+        bogoliubovRot = truncationParameters[:bogoliubovRot]
+        if bogoliubovRot
+            bogParameters = truncationParameters[:bogParameters]
+        end
+    else
+        bogoliubovRot = false
     end
 
     # get hamiltonianParameters
@@ -580,9 +586,13 @@ function generate_H0_Part_B(modelParameters::Union{MassiveSchwingerParameters,
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters
     kMax = truncationParameters[:kMax]
-    bogoliubovRot = truncationParameters[:bogoliubovRot]
-    if bogoliubovRot
-        bogParameters = truncationParameters[:bogParameters]
+    if haskey(truncationParameters, :bogoliubovRot)
+        bogoliubovRot = truncationParameters[:bogoliubovRot]
+        if bogoliubovRot
+            bogParameters = truncationParameters[:bogParameters]
+        end
+    else
+        bogoliubovRot = false
     end
 
     # get hamiltonianParameters
@@ -699,9 +709,13 @@ function generate_H0_Part_C(modelParameters::Union{MassiveSchwingerParameters,
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters
     kMax = truncationParameters[:kMax]
-    bogoliubovRot = truncationParameters[:bogoliubovRot]
-    if bogoliubovRot
-        bogParameters = truncationParameters[:bogParameters]
+    if haskey(truncationParameters, :bogoliubovRot)
+        bogoliubovRot = truncationParameters[:bogoliubovRot]
+        if bogoliubovRot
+            bogParameters = truncationParameters[:bogParameters]
+        end
+    else
+        bogoliubovRot = false
     end
 
     # get hamiltonianParameters
@@ -765,8 +779,11 @@ function generate_H0(modelParameters::Union{MassiveSchwingerParameters,
 
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters
-    bogoliubovRot = truncationParameters[:bogoliubovRot]
-    kMax = modelParameters.truncationParameters[:kMax]
+    if haskey(truncationParameters, :bogoliubovRot)
+        bogoliubovRot = truncationParameters[:bogoliubovRot]
+    else
+        bogoliubovRot = false
+    end
 
     # get diagonal part of H0 (part A)
     mpo_H0 = generate_H0_Part_A(modelParameters, modeOccupations, physSpaces)
@@ -888,7 +905,11 @@ function localVertexOp(modelParameters,
 
         # get truncationParameters
         truncationParameters = modelParameters.truncationParameters
-        bogoliubovRot = truncationParameters[:bogoliubovRot]
+        if haskey(truncationParameters, :bogoliubovRot)
+            bogoliubovRot = truncationParameters[:bogoliubovRot]
+        else
+            bogoliubovRot = false
+        end
         w = α / sqrt(2 * modeEnergy(k, L, M) * L)
         if bogoliubovRot
             ξ = truncationParameters[:bogParameters][abs(k) + 1]
@@ -965,7 +986,11 @@ function localDisplacementOp(modelParameters,
 
             # create non-symmetric displacement operator
             truncationParameters = modelParameters.truncationParameters
-            bogoliubovRot = truncationParameters[:bogoliubovRot]
+            if haskey(truncationParameters, :bogoliubovRot)
+                bogoliubovRot = truncationParameters[:bogoliubovRot]
+            else
+                bogoliubovRot = false
+            end
             w = α / sqrt(2 * modeEnergy(k, L, M) * L)
             if bogoliubovRot
                 ξ = truncationParameters[:bogParameters][abs(k) + 1]
@@ -994,7 +1019,11 @@ function localDisplacementOp(modelParameters,
 
         # create non-symmetric displacement operator
         truncationParameters = modelParameters.truncationParameters
-        bogoliubovRot = truncationParameters[:bogoliubovRot]
+        if haskey(truncationParameters, :bogoliubovRot)
+            bogoliubovRot = truncationParameters[:bogoliubovRot]
+        else
+            bogoliubovRot = false
+        end
         w = α / sqrt(2 * modeEnergy(k, L, M) * L)
         if bogoliubovRot
             ξ = truncationParameters[:bogParameters][abs(k) + 1]
@@ -1147,9 +1176,18 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
 
     # get truncationParameters
     truncationParameters = modelParameters.truncationParameters
-    bogoliubovRot = truncationParameters[:bogoliubovRot]
-    if bogoliubovRot
-        bogParameters = truncationParameters[:bogParameters]
+    if haskey(truncationParameters, :bogoliubovRot)
+        bogoliubovRot = truncationParameters[:bogoliubovRot]
+        if bogoliubovRot
+            bogParameters = truncationParameters[:bogParameters]
+        end
+    else
+        bogoliubovRot = false
+    end
+    if haskey(truncationParameters, :decouplePairs)
+        decouplePairs = truncationParameters[:decouplePairs]
+    else
+        decouplePairs = false
     end
 
     # get hamiltonianParameters
@@ -1201,9 +1239,9 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     # construct momentum-preserving MPO using a kroneckerDelta MPS
     kronDeltaSpaces = [space(localOp, 3)' for localOp in expOperator_neg]
     if localOp == "vertexOp"
-        kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
+        kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces, decouplePairs = decouplePairs)
     elseif localOp == "displacementOp"
-        kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces)
+        kroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDeltaSpaces, decouplePairs = decouplePairs)
     end
 
     ### I added the 1/2 factor here. 

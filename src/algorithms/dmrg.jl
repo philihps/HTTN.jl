@@ -9,6 +9,7 @@
     maxIterations::Int64 = 1
     subspaceExpansion::Bool = true
     verbosePrint::Int64 = 0
+    decouplePairs::Bool = false
 end
 
 @kwdef struct DMRG2BO
@@ -21,6 +22,7 @@ end
     subspaceExpansion::Bool = true
     startOptimization::Int = 1
     verbosePrint::Int64 = 0
+    decouplePairs::Bool = false
 end
 
 function applyH2(X, EL, mpo1, mpo2, ER)
@@ -125,10 +127,14 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                 newEigsEnergies[siteIdx] = eigVal
 
                 #  perform SVD and truncate to desired bond dimension
+                truncDim = alg.bondDim
+                if alg.decouplePairs && mod(siteIdx, 2) == 1
+                    truncDim = 1
+                end
                 U, S, V, ϵ = tsvd(newTheta,
                                   ((1, 2),
                                    (3, 4));
-                                  trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
+                                  trunc = truncdim(truncDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
                 U = permute(U, ((1, 2), (3,)))
@@ -177,10 +183,14 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                 newEigsEnergies[siteIdx] = eigVal
 
                 #  perform SVD and truncate to desired bond dimension
+                truncDim = alg.bondDim
+                if alg.decouplePairs && mod(siteIdx, 2) == 1
+                    truncDim = 1
+                end
                 U, S, V, ϵ = tsvd(newTheta,
                                   ((1, 2),
                                    (3, 4));
-                                  trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
+                                  trunc = truncdim(truncDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
                 U = permute(U * S, ((1, 2), (3,)))
@@ -456,10 +466,14 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                 # ------------------------------------------------------------
 
                 #  perform SVD and truncate to desired bond dimension
+                truncDim = alg.bondDim
+                if alg.decouplePairs && mod(siteIdx, 2) == 1
+                    truncDim = 1
+                end
                 U, S, V, ϵ = tsvd(newTheta,
                                   ((1, 2),
                                    (3, 4));
-                                  trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
+                                  trunc = truncdim(truncDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
                 U = permute(U, ((1, 2), (3,)))
@@ -614,10 +628,14 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                 # ------------------------------------------------------------
 
                 #  perform SVD and truncate to desired bond dimension
+                truncDim = alg.bondDim
+                if alg.decouplePairs && mod(siteIdx, 2) == 1
+                    truncDim = 1
+                end
                 U, S, V, ϵ = tsvd(newTheta,
                                   ((1, 2),
                                    (3, 4));
-                                  trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
+                                  trunc = truncdim(truncDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
                 U = permute(U * S, ((1, 2), (3,)))
@@ -793,10 +811,14 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
                 newTheta = eigenVec[1]
 
                 #  perform SVD and truncate to desired bond dimension
+                truncDim = alg.bondDim
+                if alg.decouplePairs && mod(siteIdx, 2) == 1
+                    truncDim = 1
+                end
                 U, S, V, ϵ = tsvd(newTheta,
                                   ((1, 2),
                                    (3, 4));
-                                  trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
+                                  trunc = truncdim(truncDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
                 U = permute(U, ((1, 2), (3,)))
@@ -877,10 +899,14 @@ function find_excitedstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO,
                 newTheta = eigenVec[1]
 
                 #  perform SVD and truncate to desired bond dimension
+                truncDim = alg.bondDim
+                if alg.decouplePairs && mod(siteIdx, 2) == 1
+                    truncDim = 1
+                end
                 U, S, V, ϵ = tsvd(newTheta,
                                   ((1, 2),
                                    (3, 4));
-                                  trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
+                                  trunc = truncdim(truncDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
                 U = permute(U * S, ((1, 2), (3,)))
@@ -1190,10 +1216,14 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                 # ------------------------------------------------------------
 
                 #  perform SVD and truncate to desired bond dimension
+                truncDim = alg.bondDim
+                if alg.decouplePairs && mod(siteIdx, 2) == 1
+                    truncDim = 1
+                end
                 U, S, V, ϵ = tsvd(newTheta,
                                   ((1, 2),
                                    (3, 4));
-                                  trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
+                                  trunc = truncdim(truncDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
                 U = permute(U, ((1, 2), (3,)))
@@ -1394,10 +1424,14 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                 # ------------------------------------------------------------
 
                 #  perform SVD and truncate to desired bond dimension
+                truncDim = alg.bondDim
+                if alg.decouplePairs && mod(siteIdx, 2) == 1
+                    truncDim = 1
+                end
                 U, S, V, ϵ = tsvd(newTheta,
                                   ((1, 2),
                                    (3, 4));
-                                  trunc = truncdim(alg.bondDim) & truncerr(alg.truncErr),
+                                  trunc = truncdim(truncDim) & truncerr(alg.truncErr),
                                   alg = TensorKit.SVD(),)
                 S /= norm(S)
                 U = permute(U * S, ((1, 2), (3,)))

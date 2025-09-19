@@ -63,7 +63,8 @@ end
 
 function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S;
                              removeDegeneracy::Bool = true,
-                             degenCutOff::Int64 = 1) where {S<:ElementarySpace}
+                             degenCutOff::Int64 = 1,
+                             decouplePairs::Bool = false) where {S<:ElementarySpace}
     """ Constructs vector spaces for virtual bond indices of the MPS """
 
     # get number of momentum modes
@@ -75,7 +76,15 @@ function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S;
     for ind in 1:+1:numSites
         spaceL = virtSpaces_L[end]
         spaceP = physSpaces[ind]
-        spaceR = fuse(spaceL, spaceP)
+        if decouplePairs
+            if mod(ind, 2) == 0
+                spaceR = fuse(spaceL, spaceP)
+            else
+                spaceR = oneunit(S)
+            end
+        else
+            spaceR = fuse(spaceL, spaceP)
+        end
         if removeDegeneracy
             spaceR = removeDegeneracyQN(spaceR; degenCutOff = degenCutOff)
         end
@@ -88,7 +97,15 @@ function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S;
     for ind in numSites:-1:1
         spaceR = virtSpaces_R[1]
         spaceP = physSpaces[ind]
-        spaceL = fuse(conj(flip(spaceP)), spaceR)
+        if decouplePairs
+            if mod(ind, 2) == 1
+                spaceL = fuse(conj(flip(spaceP)), spaceR)
+            else
+                spaceL = oneunit(S)
+            end
+        else
+            spaceL = fuse(conj(flip(spaceP)), spaceR)
+        end
         if removeDegeneracy
             spaceL = removeDegeneracyQN(spaceL)
         end
@@ -106,7 +123,8 @@ function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace,
                                    qnL::ElementarySpace = U1Space(0 => 1),
                                    qnR::ElementarySpace = U1Space(0 => 1),
                                    removeDegeneracy::Bool = true,
-                                   degenCutOff::Int64 = 1,)
+                                   degenCutOff::Int64 = 1,
+                                   decouplePairs::Bool = false)
     """ Function to generate global momentum-conserving MPS to be contracted with local vertex operators to generate full interaction """
 
     # get number of momentum modes
@@ -115,12 +133,13 @@ function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace,
     # create virtSpaces
     virtSpaces = constructVirtSpaces(physSpaces, qnL, qnR;
                                      removeDegeneracy = removeDegeneracy,
-                                     degenCutOff = degenCutOff)
+                                     degenCutOff = degenCutOff,
+                                     decouplePairs = decouplePairs)
 
     # construct MPS with physSpaces and virtSpaces
-    deltaMPS = Vector{TensorMap{ComplexF64}}(undef, numSites)
+    deltaMPS = Vector{TensorMap{Float64}}(undef, numSites)
     for siteIdx in 1:numSites
-        deltaMPS[siteIdx] = ones(ComplexF64,
+        deltaMPS[siteIdx] = ones(Float64,
                                  virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
                                  virtSpaces[siteIdx + 1])
     end
