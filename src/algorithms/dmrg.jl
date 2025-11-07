@@ -5,7 +5,7 @@
     truncErr::Float64 = 1e-6
     convTolE::Float64 = 1e-6
     eigsTol::Float64 = 1e-8
-    maxIterationsInit::Int64 = 10
+    maxIterationsInit::Int64 = 5
     maxIterations::Int64 = 1
     subspaceExpansion::Bool = true
     verbosePrint::Int64 = 0

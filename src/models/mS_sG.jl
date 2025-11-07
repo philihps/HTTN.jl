@@ -352,11 +352,13 @@ function initializeMPS(Model::Union{MassiveSchwingerModel,SineGordonModel},
 
     # construct physical and virtual vector spaces for the MPS
     physSpaces = Model.physSpaces
+    decouplePairs = Model.modelParameters.truncationParameters.decouplePairs
     boundarySpaceL = U1Space(0 => 1)
     boundarySpaceR = U1Space(0 => 1)
     virtSpaces = constructVirtSpaces(Model.physSpaces, boundarySpaceL,
                                      boundarySpaceR;
-                                     removeDegeneracy = true)
+                                     removeDegeneracy = true,
+                                     decouplePairs = decouplePairs)
 
     numSites = length(physSpaces)
     mpsTensors = Vector{TensorMap{ComplexF64}}(undef, numSites)
