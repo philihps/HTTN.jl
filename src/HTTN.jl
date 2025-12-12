@@ -85,7 +85,7 @@ export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_t
 # export compute_average
 
 # export Bogoliubov transformation functions
-export squeezingOp, singleSqueezingOp, applyTwoModeTransformation
+export squeezingOp, singleSqueezingOp, applyTwoModeTransformation, bogTransformMPO
 
 # include source files
 include("utility/bosonOperators.jl")

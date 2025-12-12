@@ -386,8 +386,6 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
                 AC2 = applyTwoModeTransformation(optimalS, AC2)
                 println("new optimal ξ = ", optimalXi)
 
-                println(real.(reshape(convert(Array, optimalS * optimalS'), 36, 36)))
-
                 # update QFTModel with new bogParameters
                 bogParameters[1 + kR] += optimalXi
                 QFTModel = updateBogoliubovParameters(QFTModel; bogoliubovRot = true,

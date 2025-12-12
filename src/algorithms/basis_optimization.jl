@@ -54,18 +54,19 @@ function squeezingOp(ξ::Number,
     """
 
     # construct two-site operators
-    CrCr = convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
-                                               localCreationOp(kR, PR)])
-    AnAn = convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
-                                               localAnnihilationOp(kR, PR)])
-    IdId = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
-    NuId = convertLocalOperatorsToTwoBodyGate([localNumberOp(PL), localIdentityOp(PR)])
-    IdNu = convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localNumberOp(PR)])
 
-    # construct K operators
-    K_A_0 = 1 / 2 * (NuId + IdNu + IdId)
-    K_A_min = AnAn
-    K_A_plus = CrCr
+    CrCr = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
+                                               localCreationOp(kR, PR)])
+    AnAn = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
+                                               localAnnihilationOp(kR, PR)])
+    IdId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
+    NuId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localNumberOp(PL), localIdentityOp(PR)])
+    IdNu = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localNumberOp(PR)])
+
+    # # construct K operators
+    # K_A_0 = 1 / 2 * (NuId + IdNu + IdId)
+    # K_A_min = AnAn
+    # K_A_plus = CrCr
 
     # compute μ and ν
     μ, ν = convertSqueezingParameter(ξ)
@@ -132,4 +133,71 @@ function value_and_gradient(ξ::Number, nMax::Int64, kL::Int64, kR::Int64,
     gval = Zygote.gradient(x -> findDisentanglingRotation(x, nMax, kL, kR, PL, PR,
                                                           twoSiteTensor), ξ)[1]
     return fval, gval
+end
+
+function bogTransformMPO(finiteMPO::SparseMPO, bogParameters::Union{Vector{Float64}, Vector{ComplexF64}}; truncErr::Float64 = 1e-8)
+
+    # bring MPO into canonical form
+    finiteMPO = orthogonalizeMPO(finiteMPO, 1)
+
+    # compute initial norm of the MPO
+    initialNorm = real(tr(finiteMPO[1]' * finiteMPO[1]))
+
+    # loop over all sites and apply squeezing transformation
+    truncationErrors = Float64[]
+    for siteIdx in 1:+1:(length(finiteMPO) - 1)
+
+        # apply squeezing transformation
+        if mod(siteIdx, 2) == 0
+
+            # construct two-site MPO tensor
+            @tensor AC2[-1 -2 -3; -4 -5 -6] := finiteMPO[siteIdx][-1, -2, 1, -4] * finiteMPO[siteIdx + 1][1, -3, -6, -5]
+
+            # get physVecSpaces for squeezing operator
+            PL = space(finiteMPO[siteIdx + 0], 2)
+            PR = space(finiteMPO[siteIdx + 1], 2)
+            nMax = Int(0.5 * (dim(PL) - 1 + dim(PR) - 1))
+
+            # get original bond dimension between the two sites
+            dimVirtSpace = dim(space(finiteMPO[siteIdx + 1], 1))
+
+            # set kL and kR
+            kL = -1 * Int(siteIdx / 2)
+            kR = +1 * Int(siteIdx / 2)
+            # display([kL  kR])
+
+            # construct two-site squeezing operator and transform two-site MPO tensor
+            squeezingOperator = squeezingOp(bogParameters[1 + kR], nMax, kL, kR, PL, PR)
+            @tensor newAC2[-1 -2 -3; -4 -5 -6] := squeezingOperator[-2, -3, 2, 3] * AC2[-1, 2, 3, 4, 5, -6] * squeezingOperator'[4, 5, -4, -5]
+
+            # perform SVD and truncate to desired bond dimension (also move orthogonality center to the right)
+            U, S, V, ϵ = tsvd(newAC2, ((1, 2, 4), (3, 6, 5)); trunc = truncdim(dimVirtSpace) & truncerr(truncErr), alg = TensorKit.SVD(),)
+            # S /= norm(S)
+            finiteMPO[siteIdx + 0] = permute(U, ((1, 2), (4, 3)))
+            finiteMPO[siteIdx + 1] = permute(S * V, ((1, 2), (3, 4)))
+            truncationErrors = vcat(truncationErrors, ϵ)
+
+        else
+
+            (Q, R) = leftorth(finiteMPO[siteIdx], ((4, 1, 2), (3,)); alg = QRpos())
+            finiteMPO[siteIdx + 0] = permute(Q, ((2, 3), (4, 1)))
+            finiteMPO[siteIdx + 1] = permute(R * permute(finiteMPO[siteIdx + 1], ((1,), (2, 3, 4))), ((1, 2), (3, 4)))
+
+        end
+
+    end
+
+    # loop over all sites and restore right-canonical form
+    for siteIdx in length(finiteMPO):-1:2
+        (L, Q) = rightorth(finiteMPO[siteIdx], ((1,), (2, 3, 4)); alg = LQpos())
+        finiteMPO[siteIdx - 1] = permute(permute(finiteMPO[siteIdx - 1], ((4, 1, 2), (3,))) * L, ((2, 3), (4, 1)))
+        finiteMPO[siteIdx - 0] = permute(Q, ((1, 2), (3, 4)))
+    end
+
+    # compute final norm and renormalize the MPO
+    finalNorm = real(tr(finiteMPO[1]' * finiteMPO[1]))
+    finiteMPO[1] *= sqrt(initialNorm / finalNorm)
+
+    return finiteMPO, truncationErrors
+
 end
