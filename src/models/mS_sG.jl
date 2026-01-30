@@ -152,13 +152,25 @@ function generate_H0(Model::Union{MassiveSchwingerModel,SineGordonModel})
     return mpo_H0
 end
 
-function generate_H1(Model::Union{MassiveSchwingerModel,SineGordonModel};
-                     localOp::String = "displacementOp")
+function generate_H1(Model::Union{MassiveSchwingerModel,SineGordonModel}; localOp::String = "displacementOp")
     modeOccupations, physSpaces = constructPhysSpaces(Model.modelParameters)
-    mpo_H1 = generate_H1(Model.modelParameters, modeOccupations, physSpaces;
-                         localOp = localOp)
+    V_neg, V_pos = generate_VertexOperators(Model.modelParameters, modeOccupations, physSpaces; localOp = localOp)
+    mpo_H1 = V_neg + V_pos
     return mpo_H1
 end
+
+function generate_VertexOperators(Model::Union{MassiveSchwingerModel,SineGordonModel}; localOp::String = "displacementOp")
+    modeOccupations, physSpaces = constructPhysSpaces(Model.modelParameters)
+    V_neg, V_pos = generate_VertexOperators(Model.modelParameters, modeOccupations, physSpaces; localOp = localOp)
+    return V_neg, V_pos
+end
+
+function generate_H1(modelParameters::Union{MassiveSchwingerParameters, SineGordonParameters}, modeOccupations::Matrix{Int64}, physSpaces::Vector{<:Union{ElementarySpace, CompositeSpace{ElementarySpace}}}; localOp::String = "vertexOp")
+    V_neg, V_pos = generate_VertexOperators(modelParameters, modeOccupations, physSpaces; localOp = localOp)
+    mpo_H1 = V_neg + V_pos
+    return mpo_H1
+end
+
 
 function generate_MPO_mS(Model::MassiveSchwingerModel; localOp::String = "displacementOp")
 
@@ -1167,12 +1179,12 @@ end
 #                      physVecSpace ⊗ kronDelSpace)
 # end
 
-function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
+function generate_VertexOperators(modelParameters::Union{MassiveSchwingerParameters,
                                             SineGordonParameters},
                      modeOccupations::Matrix{Int64},
                      physSpaces::Vector{<:Union{ElementarySpace,
                                                 CompositeSpace{ElementarySpace}}};
-                     localOp::String = "vertexOp")
+                     localOp::String = "vertexOp", cosSinSign::Float64 = +1.0)
     """ Construct the cosine interaction 
     :cos(βΦ - θ): = 1/2 . [e^{-iθ}:V_β: + e^{iθ}:V_{-β}:]"""
 
@@ -1255,9 +1267,7 @@ function generate_H1(modelParameters::Union{MassiveSchwingerParameters,
     V_neg *= exp(+1im * θ)
     V_pos *= exp(-1im * θ)
 
-    mpo_H1 = V_neg + V_pos
-
-    return mpo_H1
+    return V_neg, V_pos
 end
 
 function local_number_operators(Model::Union{MassiveSchwingerModel,

@@ -39,7 +39,7 @@ export CoupledRotorsParameters
 export CoupledRotorsModel
 export initializeVacuumMPS, initializeMPS
 export generate_H0, generate_H1, generate_MPO_mS, generate_MPO_sG, generate_MPO_cR,
-       generate_H0_CM
+       generate_H0_CM, generate_VertexOperators
 export updateBogoliubovParameters
 export local_number_operators
 export pairing_operators
@@ -86,6 +86,9 @@ export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_t
 
 # export Bogoliubov transformation functions
 export squeezingOp, singleSqueezingOp, applyTwoModeTransformation, bogTransformMPO
+
+# export functions to compute expectation values
+export expectation_value_mpo, variance_mpo, expectation_values, expectation_values_density_matrix
 
 # include source files
 include("utility/bosonOperators.jl")
