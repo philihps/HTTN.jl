@@ -16,7 +16,7 @@ function compute_entanglement_spectra(finiteMPS::SparseMPS; svCutOff::Float64 = 
                         ((1, 2), (3, 4)))
 
         #  perform SVD and truncate to desired bond dimension
-        U, S, V, ϵ = tsvd(theta, ((1, 2), (3, 4)); trunc = truncbelow(svCutOff))
+        U, S, V, ϵ = tsvd(theta, ((1, 2), (3, 4)); trunc = truncbelow(svCutOff), alg = TensorKit.SVD(),)
         S /= norm(S)
         entanglementSpectra[siteIdx] = real.(diagTM(S))
     end
