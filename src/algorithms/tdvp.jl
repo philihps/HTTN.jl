@@ -1,3 +1,13 @@
+@kwdef struct TDVP1
+    bondDim::Int64 = 1000
+    krylovDim::Int = 2
+    compressionAlg::String = "zipUp"
+    truncErrT::Float64 = 1e-6
+    truncErrK::Float64 = 1e-8
+    truncErrM::Float64 = 1e-10
+    extendBasis::Bool = true
+    verbosePrint::Int64 = 0
+end
 
 @kwdef struct TDVP2
     bondDim::Int64 = 1000
@@ -22,6 +32,11 @@ end
 end
 
 #-------------------------------------------------
+
+function applyC(x::TensorMap,  envL::TensorMap, envR::TensorMap)
+    @tensor x[-1; -2] := envL[-1, 3, 1] * x[1, 2] * envR[2, 3, -2]
+    return x
+end
 
 function applyAC(x::TensorMap, mpo::TensorMap, envL::TensorMap, envR::TensorMap)
     @tensor x[-1 -2; -3] := envL[-1, 2, 1] * x[1, 3, 4] * mpo[2, -2, 5, 3] * envR[4, 5, -3]
@@ -136,7 +151,7 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
     return vectorMPS[1]
 end
 
-function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP2,TDVP2BO})
+function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP1, TDVP2,TDVP2BO})
     """ Function to extend the basis of |ψ⟩ by global Krylov vectors H|ψ⟩, (H^2)|ψ⟩, ..., (H^l)|ψ⟩ """
 
     # set maximal bond dimension of finiteMPS
@@ -160,6 +175,121 @@ function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP
 end
 
 #-------------------------------------------------
+
+function perform_timestep!(finiteMPS::SparseMPS,
+                           finiteMPO::SparseMPO,
+                           timeStep::Union{Float64,ComplexF64},
+                           alg::TDVP1)
+    """ 1-site TDVP implementation for finiteMPO with global Krylov subspace expansion """
+
+    if typeof(timeStep) == ComplexF64
+        timeStep = -timeStep # t = -iτ
+    end
+
+    # make basis extension to include a number of global Krylov vectors
+    if alg.extendBasis
+        finiteMPS = extendBasis(finiteMPS, finiteMPO, alg)
+    end
+
+    # initialize MPO environments
+    mpoEnvL, mpoEnvR = initializeMPOEnvironments(finiteMPS, finiteMPO)
+
+    # initialize truncationErrors
+    truncationErrors = Float64[]
+
+    # sweep L ---> R
+    for siteIdx in 1 : +1 : length(finiteMPS)
+
+        # compute H(n) and apply it to AC(n) to evolve it with exp(-1im * δT/2 * H(n))
+        newAC, convHist = exponentiate(x -> applyAC(x,
+                                        finiteMPO[siteIdx],
+                                        mpoEnvL[siteIdx],
+                                        mpoEnvR[siteIdx]),
+                                        -1im * timeStep / 2,
+                                        finiteMPS[siteIdx],
+                                        Lanczos())
+
+        if siteIdx < length(finiteMPS)
+
+            # left-orthogonalize newAC
+            (Q, C) = leftorth(newAC, (1, 2), (3, ), alg = TensorKit.QRpos())
+            C /= norm(C)
+            finiteMPS[siteIdx] = permute(Q, (1, 2), (3, ))
+
+            # update mpoEnvL
+            mpoEnvL[siteIdx + 1] = update_MPOEnvL(mpoEnvL[siteIdx], finiteMPS[siteIdx], finiteMPO[siteIdx], finiteMPS[siteIdx])
+
+            # compute K(n) and apply it to C(n) to evolve it with exp(+1im * δT/2 * H(n))
+            newC, convHist = exponentiate(x -> applyC(x,
+                                        mpoEnvL[siteIdx + 1],
+                                        mpoEnvR[siteIdx]),
+                                        +1im * timeStep / 2,
+                                        C,
+                                        Lanczos())
+
+            # absorb newC into next MPS site
+            finiteMPS[siteIdx + 1] = permute(newC * permute(finiteMPS[siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, ))
+
+        else
+            finiteMPS[siteIdx] = newAC
+        end
+
+    end
+
+    # sweep L <--- R
+    for siteIdx = length(finiteMPS) : -1 : 1
+
+        # compute H(n) and apply it to AC(n) to evolve it with exp(-1im * δT/2 * H(n))
+        newAC, convHist = exponentiate(x -> applyAC(x,
+                                        finiteMPO[siteIdx],
+                                        mpoEnvL[siteIdx],
+                                        mpoEnvR[siteIdx]),
+                                        -1im * timeStep / 2,
+                                        finiteMPS[siteIdx],
+                                        Lanczos())
+
+        if siteIdx > 1
+
+            # right-orthogonalize newAC
+            (C, Q) = rightorth(newAC, (1, ), (2, 3), alg = TensorKit.LQpos())
+            C /= norm(C)
+            finiteMPS[siteIdx] = permute(Q, (1, 2), (3, ))
+
+            # update mpoEnvR
+            mpoEnvR[siteIdx - 1] = update_MPOEnvR(mpoEnvR[siteIdx], finiteMPS[siteIdx], finiteMPO[siteIdx], finiteMPS[siteIdx])
+
+            # compute K(n) and apply it to C(n) to evolve it with exp(+1im * δT/2 * H(n))
+            newC, convHist = exponentiate(x -> applyC(x,
+                                        mpoEnvL[siteIdx],
+                                        mpoEnvR[siteIdx - 1]),
+                                        +1im * timeStep / 2,
+                                        C,
+                                        Lanczos())
+
+            # absorb newC into previous MPS site
+            finiteMPS[siteIdx - 1] = permute(permute(finiteMPS[siteIdx - 1], (1, 2), (3, )) * newC, (1, 2), (3, ))
+
+        else
+            finiteMPS[siteIdx] = newAC
+        end
+
+    end
+
+    # normalize MPS after TDVP step
+    normMPS = real(tr(finiteMPS[1]' * finiteMPS[1]))
+    finiteMPS[1] /= sqrt(normMPS)
+
+    # return optimized finiteMPS
+    return finiteMPS, mpoEnvL, mpoEnvR, []
+
+end
+
+function perform_timestep(finiteMPS::SparseMPS,
+                          finiteMPO::SparseMPO,
+                          timeStep::Union{Float64,ComplexF64},
+                          alg::TDVP1)
+    return perform_timestep!(copy(finiteMPS), finiteMPO, timeStep, alg)
+end
 
 function perform_timestep!(finiteMPS::SparseMPS,
                            finiteMPO::SparseMPO,
