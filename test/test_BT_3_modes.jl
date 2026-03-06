@@ -71,8 +71,8 @@ initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
     )
     @test abs(abs(dotMPS(groundStateMPS, vacuumMPS)) - 1.0) < 1.0e-8
 
-    boundaryL = TensorMap(ones, one(U1Space()), space(H0MPO[1], 1))
-    boundaryR = TensorMap(ones, space(H0MPO[3], 3)', one(U1Space()))
+    boundaryL = ones(one(U1Space()), space(H0MPO[1], 1))
+    boundaryR = ones(space(H0MPO[3], 3)', one(U1Space()))
 
     @tensor H0Mat[-1 -2 -3; -4 -5 -6] := boundaryL[1] * H0MPO[1][1, -1, 2, -4] *
         H0MPO[2][2, -2, 3, -5] *
@@ -95,8 +95,8 @@ initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
         )
     )
 
-    boundaryL = TensorMap(ones, one(U1Space()), space(H0MPOTransf[1], 1))
-    boundaryR = TensorMap(ones, space(H0MPOTransf[3], 3)', one(U1Space()))
+    boundaryL = ones(one(U1Space()), space(H0MPOTransf[1], 1))
+    boundaryR = ones(space(H0MPOTransf[3], 3)', one(U1Space()))
 
     @tensor H0BTMat[-1 -2 -3; -4 -5 -6] := boundaryL[1] * H0MPOTransf[1][1, -1, 2, -4] *
         H0MPOTransf[2][2, -2, 3, -5] *
@@ -132,8 +132,8 @@ initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
     @info "Full Hamiltonian"
     HMPO = generate_MPO_mS(mS)
 
-    boundaryL = TensorMap(ones, one(U1Space()), space(HMPO[1], 1))
-    boundaryR = TensorMap(ones, space(HMPO[3], 3)', one(U1Space()))
+    boundaryL = ones(one(U1Space()), space(HMPO[1], 1))
+    boundaryR = ones(space(HMPO[3], 3)', one(U1Space()))
 
     @tensor HMat[-1 -2 -3; -4 -5 -6] := boundaryL[1] * HMPO[1][1, -1, 2, -4] *
         HMPO[2][2, -2, 3, -5] *
@@ -148,8 +148,8 @@ initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
     transfMS = updateBogoliubovParameters(mS; bogoliubovRot = true, bogParameters = ξ)
     HMPOTransf = generate_MPO_mS(transfMS)
 
-    boundaryL = TensorMap(ones, one(U1Space()), space(HMPOTransf[1], 1))
-    boundaryR = TensorMap(ones, space(HMPOTransf[3], 3)', one(U1Space()))
+    boundaryL = ones(one(U1Space()), space(HMPOTransf[1], 1))
+    boundaryR = ones(space(HMPOTransf[3], 3)', one(U1Space()))
 
     @tensor HMatTransf[-1 -2 -3; -4 -5 -6] := boundaryL[1] * HMPOTransf[1][1, -1, 2, -4] *
         HMPOTransf[2][2, -2, 3, -5] *

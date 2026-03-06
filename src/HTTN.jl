@@ -7,13 +7,12 @@ module HTTN
     using LinearAlgebra: LinearAlgebra
     using LinearAlgebra: diag, diagm
 
+    using ChainRulesCore
     using FFTW
     using JLD2
     using KrylovKit
     using OptimKit
     using Printf
-    # using LaTeXStrings
-    # using Plots
     using Roots
     using SpecialFunctions
     using TensorKit
@@ -70,7 +69,7 @@ module HTTN
     # export thermal state functions
     export initializeThermalDensityMatrix, expectation_values_density_matrix
     export constructIdentiyMPO
-    export produceThermalState, costFunctionGGE, approximateFullTDM,
+    export produceThermalState, approximateFullTDM,
         reducedDensityMatrixHalfSystem_SL, reducedDensityMatrixHalfSystem_DL
 
     # export utility functions

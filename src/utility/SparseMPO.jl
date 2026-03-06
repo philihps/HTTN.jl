@@ -55,7 +55,7 @@ struct SparseMPO{T <: Number, A <: AbstractTensorMap{T}} <: AbstractFiniteMPO
 end
 
 #--------------------------------------------------------------
-# SparseMPO utilities
+# SparseLocalOp utilities
 #--------------------------------------------------------------
 
 """
@@ -66,7 +66,7 @@ Returns the Kronecker-Delta space of the EXP tensor at site 'siteIdx'.
 """
 # function getKroneckerDeltaSpace end
 
-function getKroneckerDeltaSpace(E::SparseMPO, siteIdx::Integer)
+function getKroneckerDeltaSpace(E::SparseLocalOp, siteIdx::Integer)
     return dual(space(E.expTensors[siteIdx], 3))
 end
 
@@ -78,24 +78,15 @@ Returns the physical space of the EXP tensor at site 'siteIdx'.
 """
 # function getPhysicalSpace end
 
-function getPhysicalSpace(E::SparseMPO, siteIdx::Integer)
+function getPhysicalSpace(E::SparseLocalOp, siteIdx::Integer)
     return space(E.expTensors[siteIdx], 1)
 end
 
-Base.getindex(E::SparseMPO, idx) = E.expTensors[idx];
-Base.size(E::SparseMPO, args...) = size(E.expTensors, args...);
-Base.length(E::SparseMPO) = length(E.expTensors);
-Base.iterate(E::SparseMPO, args...) = iterate(E.expTensors, args...);
+Base.getindex(E::SparseLocalOp, idx) = E.expTensors[idx];
+Base.size(E::SparseLocalOp, args...) = size(E.expTensors, args...);
+Base.length(E::SparseLocalOp) = length(E.expTensors);
+Base.iterate(E::SparseLocalOp, args...) = iterate(E.expTensors, args...);
 
-function getLinkDimsMPO(M::SparseMPO)
-    return dim.(
-        vcat(
-            [getVirtualSpaceL(M, idx) for idx in 1:length(M)],
-            getVirtualSpaceR(M, length(M))
-        )
-    )
-end
-maxLinkDimsMPO(M::SparseMPO) = maximum(getLinkDimsMPO(M))
 
 #--------------------------------------------------------------
 # SparseMPO utilities
@@ -136,6 +127,16 @@ Returns the physical space of the MPS tensor at site 'siteIdx'.
 function getPhysicalSpace(M::SparseMPO, siteIdx::Integer)
     return space(M.mpoTensors[siteIdx], 2)
 end
+
+function getLinkDimsMPO(M::SparseMPO)
+    return dim.(
+        vcat(
+            [getVirtualSpaceL(M, idx) for idx in 1:length(M)],
+            getVirtualSpaceR(M, length(M))
+        )
+    )
+end
+maxLinkDimsMPO(M::SparseMPO) = maximum(getLinkDimsMPO(M))
 
 Base.getindex(M::SparseMPO, idx) = M.mpoTensors[idx];
 Base.setindex!(M::SparseMPO, mpoTensor, idx::Int) = (M.mpoTensors[idx] = mpoTensor)

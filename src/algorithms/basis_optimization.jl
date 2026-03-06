@@ -61,21 +61,21 @@ function squeezingOp(
 
     # construct two-site operators
 
-    CrCr = @Zygote.ignore convertLocalOperatorsToTwoBodyGate(
+    CrCr = @ChainRulesCore.ignore_derivatives convertLocalOperatorsToTwoBodyGate(
         [
             localCreationOp(kL, PL),
             localCreationOp(kR, PR),
         ]
     )
-    AnAn = @Zygote.ignore convertLocalOperatorsToTwoBodyGate(
+    AnAn = @ChainRulesCore.ignore_derivatives convertLocalOperatorsToTwoBodyGate(
         [
             localAnnihilationOp(kL, PL),
             localAnnihilationOp(kR, PR),
         ]
     )
-    IdId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
-    NuId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localNumberOp(PL), localIdentityOp(PR)])
-    IdNu = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localNumberOp(PR)])
+    IdId = @ChainRulesCore.ignore_derivatives convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
+    NuId = @ChainRulesCore.ignore_derivatives convertLocalOperatorsToTwoBodyGate([localNumberOp(PL), localIdentityOp(PR)])
+    IdNu = @ChainRulesCore.ignore_derivatives convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localNumberOp(PR)])
 
     # # construct K operators
     # K_A_0 = 1 / 2 * (NuId + IdNu + IdId)

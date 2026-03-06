@@ -87,7 +87,7 @@ groundStateEnergy_TDVP = 0
     for tIndex in eachindex(timeRanges)
         MPS_t, envL, envR, ϵ = perform_timestep!(MPS_t, hamMPO, timeStep, TDVP2())
         if tIndex % 100 == 0
-            groundStateEnergy_TDVP = expectation_value_mpo(MPS_t, hamMPO)
+            groundStateEnergy_TDVP = real(expectation_value_mpo(MPS_t, hamMPO))
             println("Energy at $(tIndex)-step: $(groundStateEnergy_TDVP)")
         end
     end

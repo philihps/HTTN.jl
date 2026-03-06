@@ -436,7 +436,11 @@ function initializeMPS(
 
     # construct physical and virtual vector spaces for the MPS
     physSpaces = Model.physSpaces
-    decouplePairs = Model.modelParameters.truncationParameters.decouplePairs
+    if haskey(Model.modelParameters.truncationParameters, :decouplePairs)
+        decouplePairs = Model.modelParameters.truncationParameters.decouplePairs
+    else
+        decouplePairs = false
+    end
     boundarySpaceL = U1Space(0 => 1)
     boundarySpaceR = U1Space(0 => 1)
     virtSpaces = constructVirtSpaces(

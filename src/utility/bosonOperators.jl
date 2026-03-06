@@ -1,5 +1,3 @@
-include("vectorSpaces.jl")
-
 function getIdentityOperator(dimHilbertSpace::Int64)
     bosonOp = LinearAlgebra.diagm(ones(Float64, dimHilbertSpace))
     return bosonOp

@@ -405,7 +405,7 @@ end
 #                                         space(finiteMPS[2], 2),
 #                                         space(finiteMPS[3], 2)
 
-#     transfOp = TensorMap(randhaar, physSpaceL ⊗ phySpaceC ⊗ physSpaceR,
+#     transfOp = randisometry(physSpaceL ⊗ phySpaceC ⊗ physSpaceR,
 #                          physSpaceL ⊗ phySpaceC ⊗ physSpaceR)
 
 #     @tensor localBond[-1 -2 -3 -4; -5] := transfOp[-2, -3, -4, 1, 3, 5] *
@@ -442,7 +442,7 @@ function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
     for siteIdx in eachindex(finiteMPS)
         if siteIdx == 1 && squeezeZM
             physSpace = space(finiteMPS[1], 2)
-            transfOp = TensorMap(randhaar, physSpace, physSpace)
+            transfOp = randisometry(physSpace, physSpace)
             transfOps[1] = transfOp
 
             @tensor localTensor[-1 -2; -3] := finiteMPS[1][-1, 1, -3] * transfOp[-2, 1]
@@ -451,10 +451,7 @@ function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
         elseif mod(siteIdx, 2) == 0 && squeezeNonZM
             physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2),
                 space(finiteMPS[siteIdx + 1], 2)
-            transfOp = TensorMap(
-                randhaar,
-                physSpaceL ⊗ physSpaceR,
-                physSpaceL ⊗ physSpaceR
+            transfOp = randisometry(physSpaceL ⊗ physSpaceR, physSpaceL ⊗ physSpaceR
             )
             transfOps[siteIdx ÷ 2 + 1] = transfOp
 
@@ -546,10 +543,10 @@ function metts!(
         end
 
         if step <= alg.numWarmUp
-            av_E, err_E = avg_stderr(warmup_energies[:, 1])
+            av_E, err_E = avg_stderr(vcat(warmup_energies[:, 1], mpoExpVal))
             warmup_energies = vcat(warmup_energies, [mpoExpVal av_E err_E])
         else
-            av_E, err_E = avg_stderr(energies[:, 1])
+            av_E, err_E = avg_stderr(vcat(energies[:, 1], mpoExpVal))
             energies = vcat(energies, [mpoExpVal av_E err_E])
             @printf("Energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
             @printf(
@@ -759,10 +756,10 @@ function metts_ZM!(
         end
 
         if step <= alg.numWarmUp
-            av_E, err_E = avg_stderr(warmup_energies[:, 1])
+            av_E, err_E = avg_stderr(vcat(warmup_energies[:, 1], mpoExpVal))
             warmup_energies = vcat(warmup_energies, [mpoExpVal av_E err_E])
         else
-            av_E, err_E = avg_stderr(energies[:, 1])
+            av_E, err_E = avg_stderr(vcat(energies[:, 1], mpoExpVal))
             energies = vcat(energies, [mpoExpVal av_E err_E])
             @printf("Energy of METTS at step %d = %0.4f\n", step - alg.numWarmUp, mpoExpVal)
             @printf(
