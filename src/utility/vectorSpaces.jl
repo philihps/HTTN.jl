@@ -18,8 +18,12 @@ function removeDegeneracyQN(vecSpace; degenCutOff::Int64 = 1)
         return ComplexSpace(min(dim(vecSpace), degenCutOff))
     else
         qnSectors = vecSpace.dims
-        truncatedVectorSpace = typeof(vecSpace)([key => min(qnSectors[key], degenCutOff)
-                                                 for key in keys(qnSectors)])
+        truncatedVectorSpace = typeof(vecSpace)(
+            [
+                key => min(qnSectors[key], degenCutOff)
+                    for key in keys(qnSectors)
+            ]
+        )
     end
     return truncatedVectorSpace
 end
@@ -50,9 +54,11 @@ function infimum_larger_deg(V1::GradedSpace, V2::GradedSpace)
     Construct the union of IRREPS of V1 and V2 with larger degeneracy
     """
     if V1.dual == V2.dual
-        infimumSpace = typeof(V1)(c => min(dim(V1, c), dim(V2, c))
-                                  for c in
-                                      union(sectors(V1), sectors(V2)), dual in V1.dual)
+        infimumSpace = typeof(V1)(
+            c => min(dim(V1, c), dim(V2, c))
+                for c in
+                union(sectors(V1), sectors(V2)), dual in V1.dual
+        )
         infimumSpace = [(c, max(dim(V1, c), dim(V2, c))) for c in sectors(infimumSpace)]
         infimumSpace = U1Space(infimumSpace)
         return infimumSpace
@@ -61,10 +67,12 @@ function infimum_larger_deg(V1::GradedSpace, V2::GradedSpace)
     end
 end
 
-function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S;
-                             removeDegeneracy::Bool = true,
-                             degenCutOff::Int64 = 1,
-                             decouplePairs::Bool = false) where {S<:ElementarySpace}
+function constructVirtSpaces(
+        physSpaces::Vector{S}, qnL::S, qnR::S;
+        removeDegeneracy::Bool = true,
+        degenCutOff::Int64 = 1,
+        decouplePairs::Bool = false
+    ) where {S <: ElementarySpace}
     """ Constructs vector spaces for virtual bond indices of the MPS """
 
     # get number of momentum modes
@@ -113,35 +121,47 @@ function constructVirtSpaces(physSpaces::Vector{S}, qnL::S, qnR::S;
     end
 
     # combine virtual vector spaces
-    virtSpaces = [infimum(virtSpaces_L[i], virtSpaces_R[i])
-                  for i in eachindex(virtSpaces_L)]
+    virtSpaces = [
+        infimum(virtSpaces_L[i], virtSpaces_R[i])
+            for i in eachindex(virtSpaces_L)
+    ]
     return virtSpaces
 end
 
-function generateKroneckerDeltaMPS(physSpaces::Vector{<:Union{ElementarySpace,
-                                                              CompositeSpace{ElementarySpace}}};
-                                   qnL::ElementarySpace = U1Space(0 => 1),
-                                   qnR::ElementarySpace = U1Space(0 => 1),
-                                   removeDegeneracy::Bool = true,
-                                   degenCutOff::Int64 = 1,
-                                   decouplePairs::Bool = false)
+function generateKroneckerDeltaMPS(
+        physSpaces::Vector{
+            <:Union{
+                ElementarySpace,
+                CompositeSpace{ElementarySpace},
+            },
+        };
+        qnL::ElementarySpace = U1Space(0 => 1),
+        qnR::ElementarySpace = U1Space(0 => 1),
+        removeDegeneracy::Bool = true,
+        degenCutOff::Int64 = 1,
+        decouplePairs::Bool = false
+    )
     """ Function to generate global momentum-conserving MPS to be contracted with local vertex operators to generate full interaction """
 
     # get number of momentum modes
     numSites = length(physSpaces)
 
     # create virtSpaces
-    virtSpaces = constructVirtSpaces(physSpaces, qnL, qnR;
-                                     removeDegeneracy = removeDegeneracy,
-                                     degenCutOff = degenCutOff,
-                                     decouplePairs = decouplePairs)
+    virtSpaces = constructVirtSpaces(
+        physSpaces, qnL, qnR;
+        removeDegeneracy = removeDegeneracy,
+        degenCutOff = degenCutOff,
+        decouplePairs = decouplePairs
+    )
 
     # construct MPS with physSpaces and virtSpaces
     deltaMPS = Vector{TensorMap{Float64}}(undef, numSites)
     for siteIdx in 1:numSites
-        deltaMPS[siteIdx] = ones(Float64,
-                                 virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
-                                 virtSpaces[siteIdx + 1])
+        deltaMPS[siteIdx] = ones(
+            Float64,
+            virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
+            virtSpaces[siteIdx + 1]
+        )
     end
     return SparseMPS(deltaMPS; orthogonalizeMPS = false)
 end

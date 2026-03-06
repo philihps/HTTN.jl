@@ -2,9 +2,9 @@
     bondDim::Int64 = 1000
     krylovDim::Int = 2
     compressionAlg::String = "zipUp"
-    truncErrT::Float64 = 1e-6
-    truncErrK::Float64 = 1e-8
-    truncErrM::Float64 = 1e-10
+    truncErrT::Float64 = 1.0e-6
+    truncErrK::Float64 = 1.0e-8
+    truncErrM::Float64 = 1.0e-10
     extendBasis::Bool = true
     verbosePrint::Int64 = 0
 end
@@ -13,9 +13,9 @@ end
     bondDim::Int64 = 1000
     krylovDim::Int = 2
     compressionAlg::String = "zipUp"
-    truncErrT::Float64 = 1e-6
-    truncErrK::Float64 = 1e-8
-    truncErrM::Float64 = 1e-10
+    truncErrT::Float64 = 1.0e-6
+    truncErrK::Float64 = 1.0e-8
+    truncErrM::Float64 = 1.0e-10
     extendBasis::Bool = true
     verbosePrint::Int64 = 0
 end
@@ -24,16 +24,16 @@ end
     bondDim::Int64 = 1000
     krylovDim::Int = 2
     compressionAlg::String = "zipUp"
-    truncErrT::Float64 = 1e-6
-    truncErrK::Float64 = 1e-8
-    truncErrM::Float64 = 1e-10
+    truncErrT::Float64 = 1.0e-6
+    truncErrK::Float64 = 1.0e-8
+    truncErrM::Float64 = 1.0e-10
     extendBasis::Bool = true
     verbosePrint::Int64 = 0
 end
 
 #-------------------------------------------------
 
-function applyC(x::TensorMap,  envL::TensorMap, envR::TensorMap)
+function applyC(x::TensorMap, envL::TensorMap, envR::TensorMap)
     @tensor x[-1; -2] := envL[-1, 3, 1] * x[1, 2] * envR[2, 3, -2]
     return x
 end
@@ -43,19 +43,23 @@ function applyAC(x::TensorMap, mpo::TensorMap, envL::TensorMap, envR::TensorMap)
     return x
 end
 
-function applyAC2(x::TensorMap, mpoL::TensorMap, mpoR::TensorMap, envL::TensorMap,
-                  envR::TensorMap)
-    @tensor x[-1 -2; -3 -4] := envL[-1, 2, 1] *
-                               x[1, 3, 5, 6] *
-                               mpoL[2, -2, 4, 3] *
-                               mpoR[4, -3, 7, 5] *
-                               envR[6, 7, -4]
+function applyAC2(
+        x::TensorMap, mpoL::TensorMap, mpoR::TensorMap, envL::TensorMap,
+        envR::TensorMap
+    )
+    return @tensor x[-1 -2; -3 -4] := envL[-1, 2, 1] *
+        x[1, 3, 5, 6] *
+        mpoL[2, -2, 4, 3] *
+        mpoR[4, -3, 7, 5] *
+        envR[6, 7, -4]
 end
 
 #-------------------------------------------------
 
-function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
-                   truncErrM::Float64 = 1e-6)::SparseMPS
+function extendMPS(
+        finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
+        truncErrM::Float64 = 1.0e-6
+    )::SparseMPS
     """    
     Implement basis extension using Krylov subspace 
     (see arXiv:2005.06104v3 - sec IA. & IB.)
@@ -92,8 +96,10 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
         nullSpaceProjector = one(nullSpaceProjector) - nullSpaceProjector
 
         # construct density matrix for Krylov vectors
-        reducedDensityMatrix = zeros(ComplexF64, codomain(nullSpaceProjector),
-                                     domain(nullSpaceProjector))
+        reducedDensityMatrix = zeros(
+            ComplexF64, codomain(nullSpaceProjector),
+            domain(nullSpaceProjector)
+        )
         for mpsIdx in 2:dimKrylovSpace
             mpsTensor = permute(vectorMPS[mpsIdx][siteIdx], ((1,), (2, 3)))
             @tensor rdm[-1 -2; -3 -4] := mpsTensor'[-1, -2, 1] * mpsTensor[1, -3, -4]
@@ -101,19 +107,21 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
         end
         reducedDensityMatrix /= real(tr(reducedDensityMatrix))
 
-        if norm(nullSpaceProjector) > 1e-8
+        if norm(nullSpaceProjector) > 1.0e-8
 
             # normalize nullSpaceProjector
             nullSpaceProjector /= real(tr(nullSpaceProjector))
 
             # project reducedDensityMatrix by nullSpaceProjector
             reducedDensityMatrix = nullSpaceProjector * reducedDensityMatrix *
-                                   nullSpaceProjector
+                nullSpaceProjector
 
-            # diagonalize projected density matrix to compute UR', which spans part of right 
+            # diagonalize projected density matrix to compute UR', which spans part of right
             # basis of the Krylov vectors, which is orthogonal to right basis of |ψ(t)⟩
-            UR, SR, VR = tsvd(reducedDensityMatrix; trunc = truncerr(truncErrM),
-                              alg = TensorKit.SVD())
+            UR, SR, VR = tsvd(
+                reducedDensityMatrix; trunc = truncerr(truncErrM),
+                alg = TensorKit.SVD()
+            )
 
             # # test if eigVecs is orthogonal to Vdag
             # overLap = UR' * Vdag';
@@ -127,7 +135,7 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
             isoLA = isometry(space(Vdag, 1) ⊕ space(UR', 1), space(Vdag, 1))
             isoLB = leftnull(isoLA)
             @tensor Bx[-1; -2 -3] := isoLA[-1, 1] * Vdag[1, -2, -3] +
-                                     isoLB[-1, 1] * UR'[1, -2, -3]
+                isoLB[-1, 1] * UR'[1, -2, -3]
 
         else
             Bx = Vdag
@@ -138,20 +146,24 @@ function extendMPS(finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
 
         # shift orthogonality center one site to the left using Bx' and replace tensor at site siteIdx with Bx
         for mpsIdx in 1:dimKrylovSpace
-            @tensor vectorMPS[mpsIdx][siteIdx - 1][-1 -2; -3] := vectorMPS[mpsIdx][siteIdx - 1][-1,
-                                                                                                -2,
-                                                                                                1] *
-                                                                 vectorMPS[mpsIdx][siteIdx - 0][1,
-                                                                                                3,
-                                                                                                2] *
-                                                                 conj(Bx[-3, 3, 2])
+            @tensor vectorMPS[mpsIdx][siteIdx - 1][-1 -2; -3] := vectorMPS[mpsIdx][siteIdx - 1][
+                -1,
+                -2,
+                1,
+            ] *
+                vectorMPS[mpsIdx][siteIdx - 0][
+                1,
+                3,
+                2,
+            ] *
+                conj(Bx[-3, 3, 2])
             vectorMPS[mpsIdx][siteIdx - 0] = Bx
         end
     end
     return vectorMPS[1]
 end
 
-function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP1, TDVP2,TDVP2BO})
+function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP1, TDVP2, TDVP2BO})
     """ Function to extend the basis of |ψ⟩ by global Krylov vectors H|ψ⟩, (H^2)|ψ⟩, ..., (H^l)|ψ⟩ """
 
     # set maximal bond dimension of finiteMPS
@@ -162,10 +174,14 @@ function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP
     for idxK in 1:(alg.krylovDim)
         prevMPS = idxK == 1 ? finiteMPS : krylovVectors[idxK - 1]
         # krylovVectors[idxK] = normalizeMPS(applyMPO(finiteMPO, prevMPS, maxDim = maxDimKrylovVectors, truncErr = alg.truncErrK, compressionAlg = alg.compressionAlg));
-        krylovVectors[idxK] = normalizeMPS(applyMPO(finiteMPO,
-                                                    prevMPS;
-                                                    truncErr = alg.truncErrK,
-                                                    compressionAlg = alg.compressionAlg,))
+        krylovVectors[idxK] = normalizeMPS(
+            applyMPO(
+                finiteMPO,
+                prevMPS;
+                truncErr = alg.truncErrK,
+                compressionAlg = alg.compressionAlg,
+            )
+        )
         # println("maxLinkDim Krylov MPS : ", maxLinkDimsMPS(krylovVectors[idxK]))
     end
 
@@ -176,10 +192,12 @@ end
 
 #-------------------------------------------------
 
-function perform_timestep!(finiteMPS::SparseMPS,
-                           finiteMPO::SparseMPO,
-                           timeStep::Union{Float64,ComplexF64},
-                           alg::TDVP1)
+function perform_timestep!(
+        finiteMPS::SparseMPS,
+        finiteMPO::SparseMPO,
+        timeStep::Union{Float64, ComplexF64},
+        alg::TDVP1
+    )
     """ 1-site TDVP implementation for finiteMPO with global Krylov subspace expansion """
 
     if typeof(timeStep) == ComplexF64
@@ -198,37 +216,45 @@ function perform_timestep!(finiteMPS::SparseMPS,
     truncationErrors = Float64[]
 
     # sweep L ---> R
-    for siteIdx in 1 : +1 : length(finiteMPS)
+    for siteIdx in 1:+1:length(finiteMPS)
 
         # compute H(n) and apply it to AC(n) to evolve it with exp(-1im * δT/2 * H(n))
-        newAC, convHist = exponentiate(x -> applyAC(x,
-                                        finiteMPO[siteIdx],
-                                        mpoEnvL[siteIdx],
-                                        mpoEnvR[siteIdx]),
-                                        -1im * timeStep / 2,
-                                        finiteMPS[siteIdx],
-                                        Lanczos())
+        newAC, convHist = exponentiate(
+            x -> applyAC(
+                x,
+                finiteMPO[siteIdx],
+                mpoEnvL[siteIdx],
+                mpoEnvR[siteIdx]
+            ),
+            -1im * timeStep / 2,
+            finiteMPS[siteIdx],
+            Lanczos()
+        )
 
         if siteIdx < length(finiteMPS)
 
             # left-orthogonalize newAC
-            (Q, C) = leftorth(newAC, (1, 2), (3, ), alg = TensorKit.QRpos())
+            (Q, C) = leftorth(newAC, (1, 2), (3,), alg = TensorKit.QRpos())
             C /= norm(C)
-            finiteMPS[siteIdx] = permute(Q, (1, 2), (3, ))
+            finiteMPS[siteIdx] = permute(Q, (1, 2), (3,))
 
             # update mpoEnvL
             mpoEnvL[siteIdx + 1] = update_MPOEnvL(mpoEnvL[siteIdx], finiteMPS[siteIdx], finiteMPO[siteIdx], finiteMPS[siteIdx])
 
             # compute K(n) and apply it to C(n) to evolve it with exp(+1im * δT/2 * H(n))
-            newC, convHist = exponentiate(x -> applyC(x,
-                                        mpoEnvL[siteIdx + 1],
-                                        mpoEnvR[siteIdx]),
-                                        +1im * timeStep / 2,
-                                        C,
-                                        Lanczos())
+            newC, convHist = exponentiate(
+                x -> applyC(
+                    x,
+                    mpoEnvL[siteIdx + 1],
+                    mpoEnvR[siteIdx]
+                ),
+                +1im * timeStep / 2,
+                C,
+                Lanczos()
+            )
 
             # absorb newC into next MPS site
-            finiteMPS[siteIdx + 1] = permute(newC * permute(finiteMPS[siteIdx + 1], (1, ), (2, 3)), (1, 2), (3, ))
+            finiteMPS[siteIdx + 1] = permute(newC * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)), (1, 2), (3,))
 
         else
             finiteMPS[siteIdx] = newAC
@@ -237,37 +263,45 @@ function perform_timestep!(finiteMPS::SparseMPS,
     end
 
     # sweep L <--- R
-    for siteIdx = length(finiteMPS) : -1 : 1
+    for siteIdx in length(finiteMPS):-1:1
 
         # compute H(n) and apply it to AC(n) to evolve it with exp(-1im * δT/2 * H(n))
-        newAC, convHist = exponentiate(x -> applyAC(x,
-                                        finiteMPO[siteIdx],
-                                        mpoEnvL[siteIdx],
-                                        mpoEnvR[siteIdx]),
-                                        -1im * timeStep / 2,
-                                        finiteMPS[siteIdx],
-                                        Lanczos())
+        newAC, convHist = exponentiate(
+            x -> applyAC(
+                x,
+                finiteMPO[siteIdx],
+                mpoEnvL[siteIdx],
+                mpoEnvR[siteIdx]
+            ),
+            -1im * timeStep / 2,
+            finiteMPS[siteIdx],
+            Lanczos()
+        )
 
         if siteIdx > 1
 
             # right-orthogonalize newAC
-            (C, Q) = rightorth(newAC, (1, ), (2, 3), alg = TensorKit.LQpos())
+            (C, Q) = rightorth(newAC, (1,), (2, 3), alg = TensorKit.LQpos())
             C /= norm(C)
-            finiteMPS[siteIdx] = permute(Q, (1, 2), (3, ))
+            finiteMPS[siteIdx] = permute(Q, (1, 2), (3,))
 
             # update mpoEnvR
             mpoEnvR[siteIdx - 1] = update_MPOEnvR(mpoEnvR[siteIdx], finiteMPS[siteIdx], finiteMPO[siteIdx], finiteMPS[siteIdx])
 
             # compute K(n) and apply it to C(n) to evolve it with exp(+1im * δT/2 * H(n))
-            newC, convHist = exponentiate(x -> applyC(x,
-                                        mpoEnvL[siteIdx],
-                                        mpoEnvR[siteIdx - 1]),
-                                        +1im * timeStep / 2,
-                                        C,
-                                        Lanczos())
+            newC, convHist = exponentiate(
+                x -> applyC(
+                    x,
+                    mpoEnvL[siteIdx],
+                    mpoEnvR[siteIdx - 1]
+                ),
+                +1im * timeStep / 2,
+                C,
+                Lanczos()
+            )
 
             # absorb newC into previous MPS site
-            finiteMPS[siteIdx - 1] = permute(permute(finiteMPS[siteIdx - 1], (1, 2), (3, )) * newC, (1, 2), (3, ))
+            finiteMPS[siteIdx - 1] = permute(permute(finiteMPS[siteIdx - 1], (1, 2), (3,)) * newC, (1, 2), (3,))
 
         else
             finiteMPS[siteIdx] = newAC
@@ -284,17 +318,21 @@ function perform_timestep!(finiteMPS::SparseMPS,
 
 end
 
-function perform_timestep(finiteMPS::SparseMPS,
-                          finiteMPO::SparseMPO,
-                          timeStep::Union{Float64,ComplexF64},
-                          alg::TDVP1)
+function perform_timestep(
+        finiteMPS::SparseMPS,
+        finiteMPO::SparseMPO,
+        timeStep::Union{Float64, ComplexF64},
+        alg::TDVP1
+    )
     return perform_timestep!(copy(finiteMPS), finiteMPO, timeStep, alg)
 end
 
-function perform_timestep!(finiteMPS::SparseMPS,
-                           finiteMPO::SparseMPO,
-                           timeStep::Union{Float64,ComplexF64},
-                           alg::TDVP2)
+function perform_timestep!(
+        finiteMPS::SparseMPS,
+        finiteMPO::SparseMPO,
+        timeStep::Union{Float64, ComplexF64},
+        alg::TDVP2
+    )
     """ 2-site TDVP implementation for finiteMPO with global Krylov subspace expansion """
 
     if typeof(timeStep) == ComplexF64
@@ -316,26 +354,38 @@ function perform_timestep!(finiteMPS::SparseMPS,
     for siteIdx in 1:+1:(length(finiteMPS) - 1)
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
-                      ((1, 2),
-                       (3, 4)))
+        AC2 = permute(
+            finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+            (
+                (1, 2),
+                (3, 4),
+            )
+        )
 
         # compute H(n, n + 1) and apply it to AC(n, n + 1) to evolve it with exp(-1im * timeStep/2 * H(n, n + 1))
-        newAC2, convHist = exponentiate(x -> applyAC2(x,
-                                                      finiteMPO[siteIdx + 0],
-                                                      finiteMPO[siteIdx + 1],
-                                                      mpoEnvL[siteIdx + 0],
-                                                      mpoEnvR[siteIdx + 1]),
-                                        -1im * timeStep / 2,
-                                        AC2,
-                                        Lanczos())
+        newAC2, convHist = exponentiate(
+            x -> applyAC2(
+                x,
+                finiteMPO[siteIdx + 0],
+                finiteMPO[siteIdx + 1],
+                mpoEnvL[siteIdx + 0],
+                mpoEnvR[siteIdx + 1]
+            ),
+            -1im * timeStep / 2,
+            AC2,
+            Lanczos()
+        )
 
         #  perform SVD and truncate to desired bond dimension
-        U, S, V, ϵ = tsvd(newAC2,
-                          ((1, 2),
-                           (3, 4));
-                          trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
-                          alg = TensorKit.SVD(),)
+        U, S, V, ϵ = tsvd(
+            newAC2,
+            (
+                (1, 2),
+                (3, 4),
+            );
+            trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
+            alg = TensorKit.SVD(),
+        )
         S /= norm(S)
         U = permute(U, ((1, 2), (3,)))
         V = permute(S * V, ((1, 2), (3,)))
@@ -346,18 +396,24 @@ function perform_timestep!(finiteMPS::SparseMPS,
         finiteMPS[siteIdx + 1] = V
 
         # update mpoEnvL
-        mpoEnvL[siteIdx + 1] = update_MPOEnvL(mpoEnvL[siteIdx], finiteMPS[siteIdx],
-                                              finiteMPO[siteIdx], finiteMPS[siteIdx])
+        mpoEnvL[siteIdx + 1] = update_MPOEnvL(
+            mpoEnvL[siteIdx], finiteMPS[siteIdx],
+            finiteMPO[siteIdx], finiteMPS[siteIdx]
+        )
 
         # compute K(n + 1) and apply it to V(n + 1) to evolve it with exp(+1im * timeStep/2 * K(n + 1))
         if siteIdx < (length(finiteMPS) - 1)
-            finiteMPS[siteIdx + 1], convHist = exponentiate(x -> applyAC(x,
-                                                                         finiteMPO[siteIdx + 1],
-                                                                         mpoEnvL[siteIdx + 1],
-                                                                         mpoEnvR[siteIdx + 1]),
-                                                            +1im * timeStep / 2,
-                                                            finiteMPS[siteIdx + 1],
-                                                            Lanczos())
+            finiteMPS[siteIdx + 1], convHist = exponentiate(
+                x -> applyAC(
+                    x,
+                    finiteMPO[siteIdx + 1],
+                    mpoEnvL[siteIdx + 1],
+                    mpoEnvR[siteIdx + 1]
+                ),
+                +1im * timeStep / 2,
+                finiteMPS[siteIdx + 1],
+                Lanczos()
+            )
         end
     end
 
@@ -365,26 +421,38 @@ function perform_timestep!(finiteMPS::SparseMPS,
     for siteIdx in (length(finiteMPS) - 1):-1:1
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
-                      ((1, 2),
-                       (3, 4)))
+        AC2 = permute(
+            finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+            (
+                (1, 2),
+                (3, 4),
+            )
+        )
 
         # compute H(n, n + 1) and apply it to AC(n, n + 1) to evolve it with exp(-1im * timeStep/2 * H(n, n + 1))
-        newAC2, convHist = exponentiate(x -> applyAC2(x,
-                                                      finiteMPO[siteIdx + 0],
-                                                      finiteMPO[siteIdx + 1],
-                                                      mpoEnvL[siteIdx + 0],
-                                                      mpoEnvR[siteIdx + 1]),
-                                        -1im * timeStep / 2,
-                                        AC2,
-                                        Lanczos())
+        newAC2, convHist = exponentiate(
+            x -> applyAC2(
+                x,
+                finiteMPO[siteIdx + 0],
+                finiteMPO[siteIdx + 1],
+                mpoEnvL[siteIdx + 0],
+                mpoEnvR[siteIdx + 1]
+            ),
+            -1im * timeStep / 2,
+            AC2,
+            Lanczos()
+        )
 
         #  perform SVD and truncate to desired bond dimension
-        U, S, V, ϵ = tsvd(newAC2,
-                          ((1, 2),
-                           (3, 4));
-                          trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
-                          alg = TensorKit.SVD(),)
+        U, S, V, ϵ = tsvd(
+            newAC2,
+            (
+                (1, 2),
+                (3, 4),
+            );
+            trunc = truncdim(alg.bondDim) & truncerr(alg.truncErrT),
+            alg = TensorKit.SVD(),
+        )
         S /= norm(S)
         U = permute(U * S, ((1, 2), (3,)))
         V = permute(V, ((1, 2), (3,)))
@@ -395,20 +463,26 @@ function perform_timestep!(finiteMPS::SparseMPS,
         finiteMPS[siteIdx + 1] = V
 
         # update mpoEnvR
-        mpoEnvR[siteIdx + 0] = update_MPOEnvR(mpoEnvR[siteIdx + 1],
-                                              finiteMPS[siteIdx + 1],
-                                              finiteMPO[siteIdx + 1],
-                                              finiteMPS[siteIdx + 1])
+        mpoEnvR[siteIdx + 0] = update_MPOEnvR(
+            mpoEnvR[siteIdx + 1],
+            finiteMPS[siteIdx + 1],
+            finiteMPO[siteIdx + 1],
+            finiteMPS[siteIdx + 1]
+        )
 
         # compute K(n) and apply it to V(n) to evolve it with exp(+1im * timeStep/2 * K(n))
         if siteIdx > 1
-            finiteMPS[siteIdx + 0], convHist = exponentiate(x -> applyAC(x,
-                                                                         finiteMPO[siteIdx + 0],
-                                                                         mpoEnvL[siteIdx + 0],
-                                                                         mpoEnvR[siteIdx + 0]),
-                                                            +1im * timeStep / 2,
-                                                            finiteMPS[siteIdx + 0],
-                                                            Lanczos())
+            finiteMPS[siteIdx + 0], convHist = exponentiate(
+                x -> applyAC(
+                    x,
+                    finiteMPO[siteIdx + 0],
+                    mpoEnvL[siteIdx + 0],
+                    mpoEnvR[siteIdx + 0]
+                ),
+                +1im * timeStep / 2,
+                finiteMPS[siteIdx + 0],
+                Lanczos()
+            )
         end
     end
 
@@ -416,18 +490,22 @@ function perform_timestep!(finiteMPS::SparseMPS,
     return finiteMPS, mpoEnvL, mpoEnvR, maximum(truncationErrors)
 end
 
-function perform_timestep(finiteMPS::SparseMPS,
-                          finiteMPO::SparseMPO,
-                          timeStep::Union{Float64,ComplexF64},
-                          alg::TDVP2)
+function perform_timestep(
+        finiteMPS::SparseMPS,
+        finiteMPO::SparseMPO,
+        timeStep::Union{Float64, ComplexF64},
+        alg::TDVP2
+    )
     return perform_timestep!(copy(finiteMPS), finiteMPO, timeStep, alg)
 end
 
 # ------------------------------------------------------------
 # perform local basis optimization to reduce entanglement
 
-function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTModel,
-                                    alg::TDVP2)
+function perform_basisOptimization!(
+        finiteMPS::SparseMPS, QFTModel::AbstractQFTModel,
+        alg::TDVP2
+    )
     """ rotates pairs of modes [-k,+k] to optimal basis, such that the Renyi-1/2 entropy is minimized """
 
     # get bogParameters
@@ -441,8 +519,10 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
     for siteIdx in 1:+1:(length(finiteMPS) - 1)
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                      (1, 2), (3, 4))
+        AC2 = permute(
+            finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
+            (1, 2), (3, 4)
+        )
 
         if mod(siteIdx, 2) == 0
 
@@ -467,8 +547,12 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
                 storeAnalyticGradient = zeros(Float64, length(listOfXiValues))
                 for (idx, ξ) in enumerate(listOfXiValues)
                     sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-                    storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp,
-                                                                                                   AC2))
+                    storeEntanglementEntropy[idx] = computeRenyiEntropy(
+                        applyTwoModeTransformation(
+                            sqOp,
+                            AC2
+                        )
+                    )
                     # storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL,
                     #                                                           kR, PL, PR,
                     #                                                           AC2)
@@ -502,10 +586,12 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # println(gval)
 
             # optimize twoSiteUnitary
-            optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
-                                bogParameters[1 + kR] +
-                                0.2 * randn(eltype(bogParameters[1 + kR])),
-                                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1e-4))
+            optimRes = optimize(
+                x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
+                bogParameters[1 + kR] +
+                    0.2 * randn(eltype(bogParameters[1 + kR])),
+                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1.0e-4)
+            )
             optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
             # apply rotation and decompose optimizedTheta
@@ -518,19 +604,25 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
 
                 # update QFTModel with new bogParameters
                 bogParameters[1 + kR] += optimalXi
-                QFTModel = updateBogoliubovParameters(QFTModel; bogoliubovRot = true,
-                                                      bogParameters = bogParameters)
+                QFTModel = updateBogoliubovParameters(
+                    QFTModel; bogoliubovRot = true,
+                    bogParameters = bogParameters
+                )
                 println(bogParameters, "\n")
             end
         end
 
         # perform SVD and truncate to desired bond dimension (also move orthogonality center to the right)
-        U, S, V, ϵ = tsvd(AC2,
-                          ((1, 2),
-                           (3, 4));
-                          trunc = truncdim(alg.bondDim) &
-                                  truncerr(alg.truncErrT),
-                          alg = TensorKit.SVD(),)
+        U, S, V, ϵ = tsvd(
+            AC2,
+            (
+                (1, 2),
+                (3, 4),
+            );
+            trunc = truncdim(alg.bondDim) &
+                truncerr(alg.truncErrT),
+            alg = TensorKit.SVD(),
+        )
         S /= norm(S)
         U = permute(U, ((1, 2), (3,)))
         V = permute(S * V, ((1, 2), (3,)))
@@ -545,8 +637,10 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
     for siteIdx in (length(finiteMPS) - 1):-1:1
 
         # construct initial AC
-        AC2 = permute(finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
-                      (1, 2), (3, 4))
+        AC2 = permute(
+            finiteMPS[siteIdx] * permute(finiteMPS[siteIdx + 1], (1,), (2, 3)),
+            (1, 2), (3, 4)
+        )
 
         if mod(siteIdx, 2) == 0
 
@@ -571,8 +665,12 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
                 storeAnalyticGradient = zeros(Float64, length(listOfXiValues))
                 for (idx, ξ) in enumerate(listOfXiValues)
                     sqOp = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-                    storeEntanglementEntropy[idx] = computeRenyiEntropy(applyTwoModeTransformation(sqOp,
-                                                                                                   AC2))
+                    storeEntanglementEntropy[idx] = computeRenyiEntropy(
+                        applyTwoModeTransformation(
+                            sqOp,
+                            AC2
+                        )
+                    )
                     # storeAnalyticGradient[idx] = analyticGradientCostFunction(ξ, nMax, kL,
                     #                                                           kR, PL, PR,
                     #                                                           AC2)
@@ -602,10 +700,12 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
             # @show optimalXi
 
             # optimize twoSiteUnitary
-            optimRes = optimize(x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
-                                bogParameters[1 + kR] +
-                                0.2 * randn(eltype(bogParameters[1 + kR])),
-                                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1e-4))
+            optimRes = optimize(
+                x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
+                bogParameters[1 + kR] +
+                    0.2 * randn(eltype(bogParameters[1 + kR])),
+                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1.0e-4)
+            )
             optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
             # apply rotation and decompose optimizedTheta
@@ -618,19 +718,25 @@ function perform_basisOptimization!(finiteMPS::SparseMPS, QFTModel::AbstractQFTM
 
                 # update QFTModel with new bogParameters
                 bogParameters[1 + kR] += optimalXi
-                QFTModel = updateBogoliubovParameters(QFTModel; bogoliubovRot = true,
-                                                      bogParameters = bogParameters)
+                QFTModel = updateBogoliubovParameters(
+                    QFTModel; bogoliubovRot = true,
+                    bogParameters = bogParameters
+                )
                 println(bogParameters, "\n")
             end
         end
 
         #  perform SVD and truncate to desired bond dimension (also move orthogonality center to the left)
-        U, S, V, ϵ = tsvd(AC2,
-                          ((1, 2),
-                           (3, 4));
-                          trunc = truncdim(alg.bondDim) &
-                                  truncerr(alg.truncErrT),
-                          alg = TensorKit.SVD(),)
+        U, S, V, ϵ = tsvd(
+            AC2,
+            (
+                (1, 2),
+                (3, 4),
+            );
+            trunc = truncdim(alg.bondDim) &
+                truncerr(alg.truncErrT),
+            alg = TensorKit.SVD(),
+        )
         S /= norm(S)
         U = permute(U * S, ((1, 2), (3,)))
         V = permute(V, ((1, 2), (3,)))

@@ -21,12 +21,14 @@ bogoliubovRot = false;
 L = 15.0;
 
 # create NamedTuple for truncation parameters and model parameters
-truncationParameters = (kMax = kMax,
-                        nMax = nMax,
-                        nMaxZM = nMaxZM,
-                        truncMethod = truncMethod,
-                        modeOrdering = modeOrdering,
-                        bogoliubovRot = bogoliubovRot);
+truncationParameters = (
+    kMax = kMax,
+    nMax = nMax,
+    nMaxZM = nMaxZM,
+    truncMethod = truncMethod,
+    modeOrdering = modeOrdering,
+    bogoliubovRot = bogoliubovRot,
+);
 hamiltonianParameters = (β = β, λ = λ, L = L);
 
 # construct Sine-Gordon model (with MPO)
@@ -37,16 +39,20 @@ display(sG.modeOccupations)
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = sG.physSpaces;
-virtSpaces = constructVirtSpaces(sG.physSpaces, boundarySpaceL, boundarySpaceR;
-                                 removeDegeneracy = true);
+virtSpaces = constructVirtSpaces(
+    sG.physSpaces, boundarySpaceL, boundarySpaceR;
+    removeDegeneracy = true
+);
 ######################################################################
 
 # initialize random MPS
 initialTensors = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces));
 for siteIdx in eachindex(physSpaces)
     physSpace = physSpaces[siteIdx]
-    initialTensors[siteIdx] = randn(ComplexF64, virtSpaces[siteIdx] ⊗ physSpace,
-                                    virtSpaces[siteIdx + 1])
+    initialTensors[siteIdx] = randn(
+        ComplexF64, virtSpaces[siteIdx] ⊗ physSpace,
+        virtSpaces[siteIdx + 1]
+    )
 end
 initialMPS = SparseMPS(initialTensors; normalizeMPS = true);
 

@@ -7,16 +7,18 @@
 abstract type AbstractMPS end
 abstract type AbstractFiniteMPS <: AbstractMPS end
 
-struct SparseMPS{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteMPS
+struct SparseMPS{T <: Number, A <: AbstractTensorMap{T}} <: AbstractFiniteMPS
     mpsTensors::Vector{A}
 
-    function SparseMPS{T,A}(mpsTensors::Vector{A}) where {T<:Number,A<:AbstractTensorMap{T}}
+    function SparseMPS{T, A}(mpsTensors::Vector{A}) where {T <: Number, A <: AbstractTensorMap{T}}
         return new(mpsTensors)
     end
 
-    function SparseMPS(mpsTensors::Vector{A};
-                       orthogonalizeMPS::Bool = true,
-                       normalizeMPS::Bool = false) where {T<:Number,A<:AbstractTensorMap{T}}
+    function SparseMPS(
+            mpsTensors::Vector{A};
+            orthogonalizeMPS::Bool = true,
+            normalizeMPS::Bool = false
+        ) where {T <: Number, A <: AbstractTensorMap{T}}
 
         # bring MPS into right canonical form
         if orthogonalizeMPS
@@ -24,19 +26,29 @@ struct SparseMPS{T<:Number,A<:AbstractTensorMap{T}} <: AbstractFiniteMPS
                 (L, Q) = rightorth(mpsTensors[siteIdx], ((1,), (2, 3)); alg = LQpos())
                 normalizeMPS && normalize!(L)
                 if siteIdx > 1
-                    mpsTensors[siteIdx - 1] = permute(permute(mpsTensors[siteIdx - 1],
-                                                              ((1, 2),
-                                                               (3,))) * L, ((1, 2), (3,)))
+                    mpsTensors[siteIdx - 1] = permute(
+                        permute(
+                            mpsTensors[siteIdx - 1],
+                            (
+                                (1, 2),
+                                (3,),
+                            )
+                        ) * L, ((1, 2), (3,))
+                    )
                     mpsTensors[siteIdx - 0] = permute(Q, ((1, 2), (3,)))
                 else
-                    mpsTensors[siteIdx - 0] = permute(L * permute(Q, ((1,), (2, 3))),
-                                                      ((1, 2),
-                                                       (3,)))
+                    mpsTensors[siteIdx - 0] = permute(
+                        L * permute(Q, ((1,), (2, 3))),
+                        (
+                            (1, 2),
+                            (3,),
+                        )
+                    )
                 end
             end
         end
 
-        return new{T,A}(mpsTensors)
+        return new{T, A}(mpsTensors)
     end
 end
 
@@ -82,57 +94,73 @@ end
 # SparseMPS constructors
 #--------------------------------------------------------------
 
-function SparseMPS(initMethod,
-                   elementType::DataType,
-                   physSpaces::Vector{<:Union{S,CompositeSpace{S}}},
-                   virtSpaces::Vector{S};
-                   normalizeMPS = true,) where {S<:ElementarySpace}
+function SparseMPS(
+        initMethod,
+        elementType::DataType,
+        physSpaces::Vector{<:Union{S, CompositeSpace{S}}},
+        virtSpaces::Vector{S};
+        normalizeMPS = true,
+    ) where {S <: ElementarySpace}
     N = length(physSpaces)
     length(virtSpaces) == N + 1 ||
         throw(DimensionMismatch("length of physical spaces ($N) and virtual spaces $(length(virtSpaces)) should differ by 1"))
 
     # construct MPS
-    mpsTensors = [TensorMap(initMethod,
-                            elementType,
-                            virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
-                            virtSpaces[siteIdx + 1]) for siteIdx in 1:N]
+    mpsTensors = [
+        TensorMap(
+                initMethod,
+                elementType,
+                virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
+                virtSpaces[siteIdx + 1]
+            ) for siteIdx in 1:N
+    ]
     return SparseMPS(mpsTensors; normalizeMPS = normalizeMPS)
 end
 
-function SparseMPS(physSpaces::Vector{<:Union{S,CompositeSpace{S}}},
-                   virtSpaces::Vector{S},
-                   inputState::SparseMPS;
-                   normalizeMPS = true,) where {S<:ElementarySpace}
+function SparseMPS(
+        physSpaces::Vector{<:Union{S, CompositeSpace{S}}},
+        virtSpaces::Vector{S},
+        inputState::SparseMPS;
+        normalizeMPS = true,
+    ) where {S <: ElementarySpace}
 
     # construct MPS
     numSites = length(inputState)
     chainCenter = Int((numSites + 1) / 2)
     mpsTensors = Vector{TensorMap{ComplexF64}}(undef, numSites)
     for siteIdx in 1:numSites
-        initTensor = 1e-0 * convert(Array, inputState[siteIdx])
-        siteTensor = randn(ComplexF64,
-                           virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
-                           virtSpaces[siteIdx + 1])
+        initTensor = 1.0e-0 * convert(Array, inputState[siteIdx])
+        siteTensor = randn(
+            ComplexF64,
+            virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
+            virtSpaces[siteIdx + 1]
+        )
         if siteIdx == 1
-            siteTensor = 1e-2 * convert(Array, siteTensor)
+            siteTensor = 1.0e-2 * convert(Array, siteTensor)
         else
-            siteTensor = 1e-1 * convert(Array, siteTensor)
+            siteTensor = 1.0e-1 * convert(Array, siteTensor)
         end
         dimsInitTensor = size(initTensor)
         dimsSiteTensor = size(siteTensor)
         minTensorDim = min(dimsInitTensor, dimsSiteTensor)
         if siteIdx != chainCenter
-            siteTensor[1:minTensorDim[1], 1:minTensorDim[2], 1:minTensorDim[3]] = initTensor[1:minTensorDim[1],
-                                                                                             1:minTensorDim[2],
-                                                                                             1:minTensorDim[3]]
+            siteTensor[1:minTensorDim[1], 1:minTensorDim[2], 1:minTensorDim[3]] = initTensor[
+                1:minTensorDim[1],
+                1:minTensorDim[2],
+                1:minTensorDim[3],
+            ]
         else
-            siteTensor[1:minTensorDim[1], 1:minTensorDim[2], 1:minTensorDim[3]] = initTensor[1:minTensorDim[1],
-                                                                                             1:minTensorDim[2],
-                                                                                             1:minTensorDim[3]]
+            siteTensor[1:minTensorDim[1], 1:minTensorDim[2], 1:minTensorDim[3]] = initTensor[
+                1:minTensorDim[1],
+                1:minTensorDim[2],
+                1:minTensorDim[3],
+            ]
         end
-        mpsTensors[siteIdx] = TensorMap(siteTensor,
-                                        virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
-                                        virtSpaces[siteIdx + 1])
+        mpsTensors[siteIdx] = TensorMap(
+            siteTensor,
+            virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
+            virtSpaces[siteIdx + 1]
+        )
     end
 
     # construct MPS
@@ -157,8 +185,12 @@ function Base.similar(ψ::SparseMPS{A}) where {A}
 end
 
 function getLinkDimsMPS(ψ::SparseMPS)
-    return dim.(vcat([getVirtualSpaceL(ψ, idx) for idx in 1:length(ψ)],
-                     getVirtualSpaceR(ψ, length(ψ))))
+    return dim.(
+        vcat(
+            [getVirtualSpaceL(ψ, idx) for idx in 1:length(ψ)],
+            getVirtualSpaceR(ψ, length(ψ))
+        )
+    )
 end
 maxLinkDimsMPS(ψ::SparseMPS) = maximum(getLinkDimsMPS(ψ))
 
@@ -177,17 +209,21 @@ function orthogonalizeMPS!(finiteMPS, orthCenter::Int = 1)
     for siteIdx in 1:+1:(orthCenter - 1)
         (Q, R) = leftorth(finiteMPS[siteIdx], ((1, 2), (3,)); alg = QRpos())
         finiteMPS[siteIdx + 0] = permute(Q, ((1, 2), (3,)))
-        finiteMPS[siteIdx + 1] = permute(R *
-                                         permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
-                                         ((1, 2), (3,)))
+        finiteMPS[siteIdx + 1] = permute(
+            R *
+                permute(finiteMPS[siteIdx + 1], ((1,), (2, 3))),
+            ((1, 2), (3,))
+        )
     end
 
     # bring sites orthCenter + 1 to N into right-canonical form
     for siteIdx in length(finiteMPS):-1:(orthCenter + 1)
         (L, Q) = rightorth(finiteMPS[siteIdx], ((1,), (2, 3)); alg = LQpos())
-        finiteMPS[siteIdx - 1] = permute(permute(finiteMPS[siteIdx - 1], ((1, 2), (3,))) *
-                                         L,
-                                         ((1, 2), (3,)))
+        finiteMPS[siteIdx - 1] = permute(
+            permute(finiteMPS[siteIdx - 1], ((1, 2), (3,))) *
+                L,
+            ((1, 2), (3,))
+        )
         finiteMPS[siteIdx - 0] = permute(Q, ((1, 2), (3,)))
     end
     return finiteMPS
@@ -229,7 +265,7 @@ function dotMPS(mpsA::SparseMPS, mpsB::SparseMPS)
     overlapMPS = ones(Float64, space(mpsA[1], 1), space(mpsB[1], 1))
     for siteIdx in 1:N
         @tensor overlapMPS[-1; -2] := overlapMPS[1, 2] * conj(mpsA[siteIdx][1, 3, -1]) *
-                                      mpsB[siteIdx][2, 3, -2]
+            mpsB[siteIdx][2, 3, -2]
     end
     overlapMPS = tr(overlapMPS)
     return overlapMPS
@@ -256,35 +292,43 @@ function Base.:+(mpsA::SparseMPS, mpsB::SparseMPS)
 
         # left boundary tensor
         idxMPS = 1
-        isoRA = isometry(space(mpsA[idxMPS], 3)' ⊕ space(mpsB[idxMPS], 3)',
-                         space(mpsA[idxMPS], 3)')'
+        isoRA = isometry(
+            space(mpsA[idxMPS], 3)' ⊕ space(mpsB[idxMPS], 3)',
+            space(mpsA[idxMPS], 3)'
+        )'
         isoRB = rightnull(isoRA)
         @tensor newTensor[-1 -2; -3] := mpsA[idxMPS][-1, -2, 3] * isoRA[3, -3] +
-                                        mpsB[idxMPS][-1, -2, 3] * isoRB[3, -3]
+            mpsB[idxMPS][-1, -2, 3] * isoRB[3, -3]
         MPSC[idxMPS] = newTensor
 
         # bulk tensors
         for idxMPS in 2:(NA - 1)
-            isoLA = isometry(space(mpsA[idxMPS], 1) ⊕ space(mpsB[idxMPS], 1),
-                             space(mpsA[idxMPS], 1))
+            isoLA = isometry(
+                space(mpsA[idxMPS], 1) ⊕ space(mpsB[idxMPS], 1),
+                space(mpsA[idxMPS], 1)
+            )
             isoLB = leftnull(isoLA)
-            isoRA = isometry(space(mpsA[idxMPS], 3)' ⊕ space(mpsB[idxMPS], 3)',
-                             space(mpsA[idxMPS], 3)')'
+            isoRA = isometry(
+                space(mpsA[idxMPS], 3)' ⊕ space(mpsB[idxMPS], 3)',
+                space(mpsA[idxMPS], 3)'
+            )'
             isoRB = rightnull(isoRA)
             @tensor newTensor[-1 -2; -3] := isoLA[-1, 1] * mpsA[idxMPS][1, -2, 3] *
-                                            isoRA[3, -3] +
-                                            isoLB[-1, 1] * mpsB[idxMPS][1, -2, 3] *
-                                            isoRB[3, -3]
+                isoRA[3, -3] +
+                isoLB[-1, 1] * mpsB[idxMPS][1, -2, 3] *
+                isoRB[3, -3]
             MPSC[idxMPS] = newTensor
         end
 
         # right boundary tensor
         idxMPS = NA
-        isoLA = isometry(space(mpsA[idxMPS], 1) ⊕ space(mpsB[idxMPS], 1),
-                         space(mpsA[idxMPS], 1))
+        isoLA = isometry(
+            space(mpsA[idxMPS], 1) ⊕ space(mpsB[idxMPS], 1),
+            space(mpsA[idxMPS], 1)
+        )
         isoLB = leftnull(isoLA)
         @tensor newTensor[-1 -2; -3] := isoLA[-1, 1] * mpsA[idxMPS][1, -2, -3] +
-                                        isoLB[-1, 1] * mpsB[idxMPS][1, -2, -3]
+            isoLB[-1, 1] * mpsB[idxMPS][1, -2, -3]
         MPSC[idxMPS] = newTensor
     end
     return SparseMPS(MPSC)

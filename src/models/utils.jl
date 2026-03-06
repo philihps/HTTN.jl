@@ -1,7 +1,8 @@
-
-function convertLocalOperatorsToMPO(localOperators::Vector{<:AbstractTensorMap};
-                                    qnL::ElementarySpace = U1Space(0 => 1),
-                                    qnR::ElementarySpace = U1Space(0 => 1),)
+function convertLocalOperatorsToMPO(
+        localOperators::Vector{<:AbstractTensorMap};
+        qnL::ElementarySpace = U1Space(0 => 1),
+        qnR::ElementarySpace = U1Space(0 => 1),
+    )
     """ Generates MPO out of three-index local operators using kroneckerDeltaMPS """
 
     # construct kroneckerDeltaMPS
@@ -24,26 +25,38 @@ function convertLocalOperatorsToMPO(localOperators::SparseMPO, kroneckerDeltaMPS
     mpoTensors = Vector{TensorMap{ComplexF64}}(undef, numSites)
     for siteIdx in 1:numSites
         @tensor mpoTensors[siteIdx][-1 -2; -3 -4] := localOperators[siteIdx][-2, -4, 1] *
-                                                     kroneckerDeltaMPS[siteIdx][-1, 1, -3]
+            kroneckerDeltaMPS[siteIdx][-1, 1, -3]
     end
     return SparseMPO(mpoTensors)
 end
 
-function constructIdentityMPO(physSpaces::Vector{<:Union{ElementarySpace,
-                                                         CompositeSpace{ElementarySpace}}},
-                              virtVecSpace::Union{ElementarySpace,
-                                                  CompositeSpace{ElementarySpace}})
+function constructIdentityMPO(
+        physSpaces::Vector{
+            <:Union{
+                ElementarySpace,
+                CompositeSpace{ElementarySpace},
+            },
+        },
+        virtVecSpace::Union{
+            ElementarySpace,
+            CompositeSpace{ElementarySpace},
+        }
+    )
     """ Constructs the identity MPO with trivial vector space on virtual indices """
 
     # construct identity MPOs
     identityMPO = Vector{TensorMap{ComplexF64}}(undef, length(physSpaces))
     for (siteIdx, physSpace) in enumerate(physSpaces)
         dimPhysSpace = dim(physSpace)
-        localMPO = zeros(ComplexF64, dim(virtVecSpace), dim(physSpace), dim(virtVecSpace),
-                         dim(physSpace))
+        localMPO = zeros(
+            ComplexF64, dim(virtVecSpace), dim(physSpace), dim(virtVecSpace),
+            dim(physSpace)
+        )
         localMPO[1, :, 1, :] = diagm(ones(dimPhysSpace))
-        identityMPO[siteIdx] = TensorMap(localMPO, virtVecSpace ⊗ physSpace,
-                                         virtVecSpace ⊗ physSpace)
+        identityMPO[siteIdx] = TensorMap(
+            localMPO, virtVecSpace ⊗ physSpace,
+            virtVecSpace ⊗ physSpace
+        )
     end
     return SparseMPO(identityMPO)
 end

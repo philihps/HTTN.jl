@@ -23,12 +23,14 @@ L = 100.0;
 fermionMass = 0.1;
 
 # create NamedTuple for truncation parameters and model parameters
-truncationParameters = (kMax = kMax,
-                        nMax = nMax,
-                        nMaxZM = nMaxZM,
-                        truncMethod = truncMethod,
-                        modeOrdering = modeOrdering,
-                        bogoliubovRot = bogoliubovRot);
+truncationParameters = (
+    kMax = kMax,
+    nMax = nMax,
+    nMaxZM = nMaxZM,
+    truncMethod = truncMethod,
+    modeOrdering = modeOrdering,
+    bogoliubovRot = bogoliubovRot,
+);
 hamiltonianParameters = (θ = θ, m = fermionMass, M = M, L = L)
 
 # construct Sine-Gordon model (with MPO)
@@ -40,8 +42,10 @@ hamMPO = generate_MPO_mS(mS)
 boundarySpaceL = U1Space(0 => 1);
 boundarySpaceR = U1Space(0 => 1);
 physSpaces = mS.physSpaces;
-virtSpaces = constructVirtSpaces(mS.physSpaces, boundarySpaceL, boundarySpaceR;
-                                 removeDegeneracy = true);
+virtSpaces = constructVirtSpaces(
+    mS.physSpaces, boundarySpaceL, boundarySpaceR;
+    removeDegeneracy = true
+);
 fullVirtSpaces = [virtSpace.dims.keys for virtSpace in virtSpaces]
 
 @testset "Test basis extension" begin
@@ -51,16 +55,22 @@ fullVirtSpaces = [virtSpace.dims.keys for virtSpace in virtSpaces]
     momSample = [0, -1, 3, -6, 4]
 
     finiteMPS = sample_to_CPS(mpsSample, momSample, mS)
-    virtSpacesCPS = vcat([space(finiteMPS[1], 1).dims.keys],
-                         [space(finiteMPS[i], 3).dims.keys for i in 1:length(physSpaces)])
+    virtSpacesCPS = vcat(
+        [space(finiteMPS[1], 1).dims.keys],
+        [space(finiteMPS[i], 3).dims.keys for i in 1:length(physSpaces)]
+    )
 
     timeStep = 0.05
     finiteMPS, _, _, _ = perform_timestep!(finiteMPS, hamMPO, timeStep, TDVP2())
 
-    virtSpacesMPS = vcat([space(finiteMPS[1], 1).dims.keys],
-                         [space(finiteMPS[i], 3).dims.keys for i in 1:length(physSpaces)])
-    @test any(length(virtSpacesMPS[i]) > length(virtSpacesCPS[i])
-              for i in eachindex(virtSpacesCPS))
+    virtSpacesMPS = vcat(
+        [space(finiteMPS[1], 1).dims.keys],
+        [space(finiteMPS[i], 3).dims.keys for i in 1:length(physSpaces)]
+    )
+    @test any(
+        length(virtSpacesMPS[i]) > length(virtSpacesCPS[i])
+            for i in eachindex(virtSpacesCPS)
+    )
 end
 
 nothing

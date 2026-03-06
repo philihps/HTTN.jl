@@ -72,7 +72,7 @@ function computeAverage(A)
     intCorrTime = computeAutoCorrTime(A)
     println("Autocorrelation time is $(intCorrTime)")
     var = 1 / N * (sum(A .^ 2) / N - mean_A^2)
-    if abs(var - 0) < 1e-8
+    if abs(var - 0) < 1.0e-8
         var = 0
     end
     stDev = sqrt(var)

@@ -1,9 +1,10 @@
-
-function compute_phase_distribution(mS::MassiveSchwingerModel,
-                                    finiteMPS::SparseMPS;
-                                    ϕMax::Float64 = 4π,
-                                    λNums::Int64 = 101,
-                                    verbosePrint::Bool = false,)
+function compute_phase_distribution(
+        mS::MassiveSchwingerModel,
+        finiteMPS::SparseMPS;
+        ϕMax::Float64 = 4π,
+        λNums::Int64 = 101,
+        verbosePrint::Bool = false,
+    )
 
     # get truncationParameters
     truncationParameters = mS.modelParameters.truncationParameters
@@ -26,9 +27,11 @@ function compute_phase_distribution(mS::MassiveSchwingerModel,
 
     # construct kroneckerDeltaMPS
     physSpaces = mS.physSpaces
-    kronDelSpaces = [removeDegeneracyQN(fuse(physSpace, conj(flip(physSpace))))
-                     for
-                     physSpace in physSpaces]
+    kronDelSpaces = [
+        removeDegeneracyQN(fuse(physSpace, conj(flip(physSpace))))
+            for
+            physSpace in physSpaces
+    ]
     fullKroneckerDeltaMPS = generateKroneckerDeltaMPS(kronDelSpaces)
     # combinedVecSpace = space(fullKroneckerDeltaMPS[chainCenter], 4)';
 
@@ -64,12 +67,16 @@ function compute_phase_distribution(mS::MassiveSchwingerModel,
         for (siteIdx, momentumVal) in enumerate(momentumModes)
             physSpace = physSpaces[siteIdx]
             if momentumVal == 0
-                localOperators[siteIdx] = localVertexOp_mS(momentumVal, physSpace, λ, M, L,
-                                                           bogoliubovR)
+                localOperators[siteIdx] = localVertexOp_mS(
+                    momentumVal, physSpace, λ, M, L,
+                    bogoliubovR
+                )
             else
                 localOperators[siteIdx] = exp(-(λ / R)^2 / (2 * abs(momentumVal))) *
-                                          localVertexOp_mS(momentumVal, physSpace, λ, M, L,
-                                                           bogoliubovR)
+                    localVertexOp_mS(
+                    momentumVal, physSpace, λ, M, L,
+                    bogoliubovR
+                )
             end
         end
         localOperators = SparseMPO(localOperators)
@@ -86,7 +93,7 @@ function compute_phase_distribution(mS::MassiveSchwingerModel,
         # compute expectation value of phiMPO operator
         expVal_phiField = expectation_value_mpo(finiteMPS, vertexMPO)
         # expVal_phiField = expectation_value_mpo(finiteMPS, phiMPO);
-        if imag(expVal_phiField) > 1e-12
+        if imag(expVal_phiField) > 1.0e-12
             ErrorException("complex expectation value found, check MPO construction.")
         end
         phiFieldExpVals[idxL] = real(expVal_phiField)

@@ -8,16 +8,20 @@ function convertSqueezingParameter(ξ::Number)
 end
 
 function convertLocalOperatorsToTwoBodyGate(localOperators::Vector{<:AbstractTensorMap})
-    kroneckerTensor = ones(ComplexF64, space(localOperators[1], 3)',
-                           space(localOperators[2], 3))
+    kroneckerTensor = ones(
+        ComplexF64, space(localOperators[1], 3)',
+        space(localOperators[2], 3)
+    )
     @tensor twoBodyGate[-1 -2; -3 -4] := localOperators[1][-1, -3, 1] *
-                                         localOperators[2][-2, -4, 2] *
-                                         kroneckerTensor[1, 2]
+        localOperators[2][-2, -4, 2] *
+        kroneckerTensor[1, 2]
     return twoBodyGate
 end
 
-function applyTwoModeTransformation(twoModeU::TensorMap,
-                                    twoModeT::TensorMap)
+function applyTwoModeTransformation(
+        twoModeU::TensorMap,
+        twoModeT::TensorMap
+    )
     @tensor twoModeUT[-1 -2 -3; -4] := twoModeU[-2, -3, 2, 3] * twoModeT[-1, 2, 3, -4]
     return twoModeUT
 end
@@ -39,13 +43,15 @@ function matrixExponentialSeries(operator::TensorMap, nMax::Int64)
 end
 
 # construct squeezing operator
-function squeezingOp(ξ::Number,
-                     nMax::Int64,
-                     kL::Int64,
-                     kR::Int64,
-                     PL::ElementarySpace,
-                     PR::ElementarySpace;
-                     conserveZ2::Bool = false)
+function squeezingOp(
+        ξ::Number,
+        nMax::Int64,
+        kL::Int64,
+        kR::Int64,
+        PL::ElementarySpace,
+        PR::ElementarySpace;
+        conserveZ2::Bool = false
+    )
     """
     S = e^{-tanh(ξ) . K_A_plus} . e^{-2 . log(cosh(ξ)) . K_A_0} . e^{tanh(ξ) . K_A_min}
     K_A_0 = (1/2) * (N_{-k} + N_k + Id)
@@ -55,10 +61,18 @@ function squeezingOp(ξ::Number,
 
     # construct two-site operators
 
-    CrCr = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localCreationOp(kL, PL),
-                                               localCreationOp(kR, PR)])
-    AnAn = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localAnnihilationOp(kL, PL),
-                                               localAnnihilationOp(kR, PR)])
+    CrCr = @Zygote.ignore convertLocalOperatorsToTwoBodyGate(
+        [
+            localCreationOp(kL, PL),
+            localCreationOp(kR, PR),
+        ]
+    )
+    AnAn = @Zygote.ignore convertLocalOperatorsToTwoBodyGate(
+        [
+            localAnnihilationOp(kL, PL),
+            localAnnihilationOp(kR, PR),
+        ]
+    )
     IdId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localIdentityOp(PR)])
     NuId = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localNumberOp(PL), localIdentityOp(PR)])
     IdNu = @Zygote.ignore convertLocalOperatorsToTwoBodyGate([localIdentityOp(PL), localNumberOp(PR)])
@@ -83,10 +97,12 @@ function squeezingOp(ξ::Number,
     return S
 end
 
-function singleSqueezingOp(ξ::Number,
-                           nMax::Int64,
-                           physSpace::ElementarySpace;
-                           conserveZ2::Bool = false)
+function singleSqueezingOp(
+        ξ::Number,
+        nMax::Int64,
+        physSpace::ElementarySpace;
+        conserveZ2::Bool = false
+    )
     """
     Squeezing operator for zero mode
         
@@ -113,29 +129,41 @@ function singleSqueezingOp(ξ::Number,
     return S
 end
 
-function findDisentanglingRotation(ξ::Number,
-                                   nMax::Int64,
-                                   kL::Int64,
-                                   kR::Int64,
-                                   PL::ElementarySpace,
-                                   PR::ElementarySpace,
-                                   twoSiteTensor::TensorMap)
+function findDisentanglingRotation(
+        ξ::Number,
+        nMax::Int64,
+        kL::Int64,
+        kR::Int64,
+        PL::ElementarySpace,
+        PR::ElementarySpace,
+        twoSiteTensor::TensorMap
+    )
     twoSiteSqueezingOperator = squeezingOp(ξ, nMax, kL, kR, PL, PR)
-    costFunction = computeRenyiEntropy(applyTwoModeTransformation(twoSiteSqueezingOperator,
-                                                                  twoSiteTensor))
+    costFunction = computeRenyiEntropy(
+        applyTwoModeTransformation(
+            twoSiteSqueezingOperator,
+            twoSiteTensor
+        )
+    )
     return costFunction
 end
 
-function value_and_gradient(ξ::Number, nMax::Int64, kL::Int64, kR::Int64,
-                            PL::ElementarySpace, PR::ElementarySpace,
-                            twoSiteTensor::TensorMap)
+function value_and_gradient(
+        ξ::Number, nMax::Int64, kL::Int64, kR::Int64,
+        PL::ElementarySpace, PR::ElementarySpace,
+        twoSiteTensor::TensorMap
+    )
     fval = findDisentanglingRotation(ξ, nMax, kL, kR, PL, PR, twoSiteTensor)
-    gval = Zygote.gradient(x -> findDisentanglingRotation(x, nMax, kL, kR, PL, PR,
-                                                          twoSiteTensor), ξ)[1]
+    gval = Zygote.gradient(
+        x -> findDisentanglingRotation(
+            x, nMax, kL, kR, PL, PR,
+            twoSiteTensor
+        ), ξ
+    )[1]
     return fval, gval
 end
 
-function bogTransformMPO(finiteMPO::SparseMPO, bogParameters::Union{Vector{Float64}, Vector{ComplexF64}}; truncErr::Float64 = 1e-8)
+function bogTransformMPO(finiteMPO::SparseMPO, bogParameters::Union{Vector{Float64}, Vector{ComplexF64}}; truncErr::Float64 = 1.0e-8)
 
     # bring MPO into canonical form
     finiteMPO = orthogonalizeMPO(finiteMPO, 1)
@@ -171,7 +199,7 @@ function bogTransformMPO(finiteMPO::SparseMPO, bogParameters::Union{Vector{Float
             @tensor newAC2[-1 -2 -3; -4 -5 -6] := squeezingOperator[-2, -3, 2, 3] * AC2[-1, 2, 3, 4, 5, -6] * squeezingOperator'[4, 5, -4, -5]
 
             # perform SVD and truncate to desired bond dimension (also move orthogonality center to the right)
-            U, S, V, ϵ = tsvd(newAC2, ((1, 2, 4), (3, 6, 5)); trunc = truncdim(dimVirtSpace) & truncerr(truncErr), alg = TensorKit.SVD(),)
+            U, S, V, ϵ = tsvd(newAC2, ((1, 2, 4), (3, 6, 5)); trunc = truncdim(dimVirtSpace) & truncerr(truncErr), alg = TensorKit.SVD())
             # S /= norm(S)
             finiteMPO[siteIdx + 0] = permute(U, ((1, 2), (4, 3)))
             finiteMPO[siteIdx + 1] = permute(S * V, ((1, 2), (3, 4)))

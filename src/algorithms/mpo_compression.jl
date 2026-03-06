@@ -1,10 +1,9 @@
-
 """
     function compress_MPO(vecTensor::Vector{TensorMap{ComplexF64}}; truncError = 1e-14)
 
     Function to compress an MPO with truncError the singular values
 """
-function compress_MPO(vecTensor::SparseMPO; truncError::Float64 = 1e-14, verbose::Int64 = 0)
+function compress_MPO(vecTensor::SparseMPO; truncError::Float64 = 1.0e-14, verbose::Int64 = 0)
     matMPO = convert_MPO_33block(vecTensor)
     matMPO, Le, Re, Ss = compress_MPO(matMPO; truncError = truncError, verbose)
     return convert_33block_MPO(matMPO; leftEnvironment = Le, rightEnvironment = Re), Ss
@@ -16,18 +15,24 @@ end
     Example function for the optimization of the MPO.
     We assume a representation as a set of 3x3 matrix of tensors
 """
-function compress_MPO(vecTensor::Vector{Array{TensorMap}}; truncError::Float64 = 1e-14,
-                      verbose::Int64 = 0)
+function compress_MPO(
+        vecTensor::Vector{Array{TensorMap}}; truncError::Float64 = 1.0e-14,
+        verbose::Int64 = 0
+    )
 
     # bring the MPO in a well-defined canonical form
     vecTensor, rightEnv = left_canonicalize(vecTensor; verbose)
     vecTensor, leftEnv = right_canonicalize(vecTensor; verbose)
 
     # perform actual truncation of the MPO
-    vecTensor, rightEnv = left_canonicalize(vecTensor; rightEnvironment = rightEnv,
-                                            truncation = true, truncError, verbose)
-    vecTensor, leftEnv, Ss = right_canonicalize(vecTensor; leftEnvironment = leftEnv,
-                                                truncation = true, truncError, verbose)
+    vecTensor, rightEnv = left_canonicalize(
+        vecTensor; rightEnvironment = rightEnv,
+        truncation = true, truncError, verbose
+    )
+    vecTensor, leftEnv, Ss = right_canonicalize(
+        vecTensor; leftEnvironment = leftEnv,
+        truncation = true, truncError, verbose
+    )
 
     # note it can be useful to repeat once or twice this truncation step for _very_ large MPO
     return vecTensor, leftEnv, rightEnv, Ss
@@ -80,25 +85,37 @@ function convert_MPO_33block(vecTensor::SparseMPO)
         localVector[3, 3] = TensorKit.id(U1Space(0 => 1) ⊗ physSpace)
 
         # set local zero blocks
-        localVector[1, 3] = zeros(ComplexF64, U1Space(0 => 1) ⊗ physSpace,
-                                  U1Space(0 => 1) ⊗ physSpace)
-        localVector[3, 1] = zeros(ComplexF64, U1Space(0 => 1) ⊗ physSpace,
-                                  U1Space(0 => 1) ⊗ physSpace)
+        localVector[1, 3] = zeros(
+            ComplexF64, U1Space(0 => 1) ⊗ physSpace,
+            U1Space(0 => 1) ⊗ physSpace
+        )
+        localVector[3, 1] = zeros(
+            ComplexF64, U1Space(0 => 1) ⊗ physSpace,
+            U1Space(0 => 1) ⊗ physSpace
+        )
         for x in [1, 3]
-            localVector[x, 2] = zeros(ComplexF64, U1Space(0 => 1) ⊗ physSpace,
-                                      virtSpaceR ⊗ physSpace)
-            localVector[2, x] = zeros(ComplexF64, virtSpaceL ⊗ physSpace,
-                                      U1Space(0 => 1) ⊗ physSpace)
+            localVector[x, 2] = zeros(
+                ComplexF64, U1Space(0 => 1) ⊗ physSpace,
+                virtSpaceR ⊗ physSpace
+            )
+            localVector[2, x] = zeros(
+                ComplexF64, virtSpaceL ⊗ physSpace,
+                U1Space(0 => 1) ⊗ physSpace
+            )
         end
 
         # set remaining blocks
         if siteIndex == 1
             localVector[1, 2] = vecTensor[siteIndex]
-            localVector[2, 2] = zeros(Float64, virtSpaceL ⊗ physSpace,
-                                      virtSpaceR ⊗ physSpace)
+            localVector[2, 2] = zeros(
+                Float64, virtSpaceL ⊗ physSpace,
+                virtSpaceR ⊗ physSpace
+            )
         elseif siteIndex == L
-            localVector[2, 2] = zeros(Float64, virtSpaceL ⊗ physSpace,
-                                      virtSpaceR ⊗ physSpace)
+            localVector[2, 2] = zeros(
+                Float64, virtSpaceL ⊗ physSpace,
+                virtSpaceR ⊗ physSpace
+            )
             localVector[2, 3] = vecTensor[siteIndex]
         else
             localVector[2, 2] = vecTensor[siteIndex]
@@ -122,8 +139,10 @@ end
     3 is the right virtual space
 
 """
-function convert_33block_MPO(vecTensor::Vector{Array{TensorMap}}; leftEnvironment = undef,
-                             rightEnvironment = undef)
+function convert_33block_MPO(
+        vecTensor::Vector{Array{TensorMap}}; leftEnvironment = undef,
+        rightEnvironment = undef
+    )
     L = length(vecTensor)
     mpoTensors = Vector{eltype(eltype(vecTensor))}(undef, L)
     for siteIndex in eachindex(mpoTensors)
@@ -132,19 +151,29 @@ function convert_33block_MPO(vecTensor::Vector{Array{TensorMap}}; leftEnvironmen
         localMatrix = vecTensor[siteIndex]
 
         # compute projectors
-        left_projs = generate_projectors([localMatrix[idx, 1].codom[1]
-                                          for idx in axes(localMatrix, 1)]...)
-        right_projs = generate_projectors([localMatrix[1, idy].dom[1]
-                                           for idy in axes(localMatrix, 2)]...)
+        left_projs = generate_projectors(
+            [
+                localMatrix[idx, 1].codom[1]
+                    for idx in axes(localMatrix, 1)
+            ]...
+        )
+        right_projs = generate_projectors(
+            [
+                localMatrix[1, idy].dom[1]
+                    for idy in axes(localMatrix, 2)
+            ]...
+        )
 
         # combine 3x3 block into single mpo tensor
-        combined_tensor = zeros(eltype(localMatrix[1, 1]),
-                                left_projs[1].codom[1] ⊗ localMatrix[1, 1].codom[2],
-                                right_projs[1].codom[1] ⊗ localMatrix[1, 1].dom[2])
+        combined_tensor = zeros(
+            eltype(localMatrix[1, 1]),
+            left_projs[1].codom[1] ⊗ localMatrix[1, 1].codom[2],
+            right_projs[1].codom[1] ⊗ localMatrix[1, 1].dom[2]
+        )
         for idx in axes(localMatrix, 1), idy in axes(localMatrix, 2)
             @tensor temp[-1 -2; -3 -4] := left_projs[idx][-1, 1] *
-                                          localMatrix[idx, idy][1, -2, 3, -4] *
-                                          right_projs[idy]'[3, -3]
+                localMatrix[idx, idy][1, -2, 3, -4] *
+                right_projs[idy]'[3, -3]
             combined_tensor += temp
         end
         mpoTensors[siteIndex] = combined_tensor
@@ -154,19 +183,29 @@ function convert_33block_MPO(vecTensor::Vector{Array{TensorMap}}; leftEnvironmen
     if leftEnvironment == undef
         leftEnvironment = Vector{eltype(vecTensor[1])}(undef, size(vecTensor[1], 1))
         rightspace = vecTensor[1][1, 1].codom[1]
-        leftEnvironment[1] = ones(eltype(vecTensor[1][2, 2]), U1Space(0 => 1),
-                                  rightspace)
+        leftEnvironment[1] = ones(
+            eltype(vecTensor[1][2, 2]), U1Space(0 => 1),
+            rightspace
+        )
         for idx in 2:length(leftEnvironment)
             rightspace = vecTensor[1][idx, 1].codom[1]
-            leftEnvironment[idx] = zeros(eltype(vecTensor[1][2, 2]),
-                                         U1Space(0 => 1), rightspace)
+            leftEnvironment[idx] = zeros(
+                eltype(vecTensor[1][2, 2]),
+                U1Space(0 => 1), rightspace
+            )
         end
     end
-    right_projs = generate_projectors([leftEnvironment[idx].dom[1]
-                                       for idx in eachindex(leftEnvironment)]...)
-    new_left = zeros(eltype(leftEnvironment[1]),
-                     leftEnvironment[1].codom[1],
-                     right_projs[1].codom[1])
+    right_projs = generate_projectors(
+        [
+            leftEnvironment[idx].dom[1]
+                for idx in eachindex(leftEnvironment)
+        ]...
+    )
+    new_left = zeros(
+        eltype(leftEnvironment[1]),
+        leftEnvironment[1].codom[1],
+        right_projs[1].codom[1]
+    )
     for idx in eachindex(leftEnvironment)
         @tensor temp[-1; -2] := leftEnvironment[idx][-1; 1] * right_projs[idx]'[1, -2]
         new_left += temp
@@ -180,18 +219,28 @@ function convert_33block_MPO(vecTensor::Vector{Array{TensorMap}}; leftEnvironmen
         rightEnvironment = Vector{eltype(vecTensor[1])}(undef, size(vecTensor[end], 2))
         for idy in 1:(length(rightEnvironment) - 1)
             leftSpace = vecTensor[end][1, idy].dom[1]
-            rightEnvironment[idy] = zeros(eltype(vecTensor[end][2, 2]),
-                                          leftSpace, U1Space(0 => 1))
+            rightEnvironment[idy] = zeros(
+                eltype(vecTensor[end][2, 2]),
+                leftSpace, U1Space(0 => 1)
+            )
         end
         leftSpace = vecTensor[end][1, end].dom[1]
-        rightEnvironment[end] = ones(eltype(vecTensor[end][2, 2]), leftSpace,
-                                     U1Space(0 => 1))
+        rightEnvironment[end] = ones(
+            eltype(vecTensor[end][2, 2]), leftSpace,
+            U1Space(0 => 1)
+        )
     end
-    left_projs = generate_projectors([rightEnvironment[x].codom[1]
-                                      for x in eachindex(rightEnvironment)]...)
-    new_right = zeros(eltype(rightEnvironment[1]),
-                      left_projs[1].codom[1],
-                      rightEnvironment[1].dom[1])
+    left_projs = generate_projectors(
+        [
+            rightEnvironment[x].codom[1]
+                for x in eachindex(rightEnvironment)
+        ]...
+    )
+    new_right = zeros(
+        eltype(rightEnvironment[1]),
+        left_projs[1].codom[1],
+        rightEnvironment[1].dom[1]
+    )
     for idy in eachindex(rightEnvironment)
         @tensor temp[-1; -2] := left_projs[idy][-1; 1] * rightEnvironment[idy][1; -2]
         new_right += temp
@@ -261,12 +310,14 @@ end
     - tol: warning for the truncation
     - verbose -> control the verbosity of the function
 """
-function left_canonicalize(matrixMPO;
-                           rightEnvironment = undef,
-                           truncation::Bool = false,
-                           truncError::Float64 = 1e-14,
-                           tol::Float64 = 1e-12,
-                           verbose::Int64 = 0,)
+function left_canonicalize(
+        matrixMPO;
+        rightEnvironment = undef,
+        truncation::Bool = false,
+        truncError::Float64 = 1.0e-14,
+        tol::Float64 = 1.0e-12,
+        verbose::Int64 = 0,
+    )
     matMPO = deepcopy(matrixMPO)
     L = length(matMPO)
     Ss = TensorMap[]
@@ -278,14 +329,20 @@ function left_canonicalize(matrixMPO;
         end
         rightEnvironment = Vector{eltype(matrixMPO[1])}(undef, 3)
         leftSpace = matMPO[end][1, 1].dom[1]
-        rightEnvironment[1] = zeros(eltype(matMPO[end][2, 2]), leftSpace,
-                                    U1Space(0 => 1))
+        rightEnvironment[1] = zeros(
+            eltype(matMPO[end][2, 2]), leftSpace,
+            U1Space(0 => 1)
+        )
         leftSpace = matMPO[end][1, 2].dom[1]
-        rightEnvironment[2] = zeros(eltype(matMPO[end][2, 2]), leftSpace,
-                                    U1Space(0 => 1))
+        rightEnvironment[2] = zeros(
+            eltype(matMPO[end][2, 2]), leftSpace,
+            U1Space(0 => 1)
+        )
         leftSpace = matMPO[end][1, 3].dom[1]
-        rightEnvironment[3] = ones(eltype(matMPO[end][2, 2]), leftSpace,
-                                   U1Space(0 => 1))
+        rightEnvironment[3] = ones(
+            eltype(matMPO[end][2, 2]), leftSpace,
+            U1Space(0 => 1)
+        )
     else
         rightEnvironment = deepcopy(rightEnvironment)
     end
@@ -324,7 +381,7 @@ function left_canonicalize(matrixMPO;
         leftSpace_W = W.codom[1]
         proj_at, proj_W = generate_projectors(leftSpace_at, leftSpace_W)
         @tensor fused_tensor[-1 -2; -3 -4] := proj_at[-1, 1] * at[1, -2, -3, -4] +
-                                              proj_W[-1, 1] * W[1, -2, -3, -4]
+            proj_W[-1, 1] * W[1, -2, -3, -4]
 
         # # we then do a simple QR and reproject
         # Q, R = leftorth(fused_tensor, (1, 2, 4), (3, ), alg = QRpos());
@@ -342,14 +399,14 @@ function left_canonicalize(matrixMPO;
         R = R / sqrt(localDim)
         Q = permute(Q, ((1, 2), (4, 3)))
 
-        if norm(R) <= 1e-12
+        if norm(R) <= 1.0e-12
             if verbose > 1
                 println("Dirty fix, need to think about it a bit")
             end
             Q = Q * 0
         end
 
-        if truncation && norm(R) > 1e-12
+        if truncation && norm(R) > 1.0e-12
             norm(t) > tol && println("The form is not perfectly canonical")
             U, S, V, err = tsvd(R; trunc = truncerr(truncError))
             @tensor Q[-1 -2; -3 -4] := Q[-1, -2, 3, -4] * U[3, -3]
@@ -368,10 +425,12 @@ function left_canonicalize(matrixMPO;
         newRightSpace = Q.dom[1]
         matMPO[siteIndex][1, 2] = af
         matMPO[siteIndex][2, 2] = Wf
-        matMPO[siteIndex][3, 2] = TensorMap(zeros,
-                                            eltype(matMPO[siteIndex][3, 2]),
-                                            U1Space(0 => 1) ⊗ localSpace,
-                                            newRightSpace ⊗ localSpace)
+        matMPO[siteIndex][3, 2] = TensorMap(
+            zeros,
+            eltype(matMPO[siteIndex][3, 2]),
+            U1Space(0 => 1) ⊗ localSpace,
+            newRightSpace ⊗ localSpace
+        )
 
         # at this point, we have obtained
         # 1 a c     1 af c     1  0  0     1  t  0     1 af c     1  t  0
@@ -410,10 +469,12 @@ function left_canonicalize(matrixMPO;
             matMPO[newSiteIndex][2, 3] = temp
 
             # a bit of bookeeping
-            matMPO[newSiteIndex][2, 1] = TensorMap(zeros,
-                                                   eltype(matMPO[newSiteIndex][2, 1]),
-                                                   R.codom[1] ⊗ localSpace,
-                                                   U1Space(0 => 1) ⊗ localSpace)
+            matMPO[newSiteIndex][2, 1] = TensorMap(
+                zeros,
+                eltype(matMPO[newSiteIndex][2, 1]),
+                R.codom[1] ⊗ localSpace,
+                U1Space(0 => 1) ⊗ localSpace
+            )
 
         else
             if verbose > 1
@@ -458,12 +519,14 @@ end
     - tol: warning for the truncation
     - verbose -> control the verbosity of the function
 """
-function right_canonicalize(matrixMPO;
-                            leftEnvironment = undef,
-                            truncation = false,
-                            truncError::Float64 = 1e-14,
-                            tol::Float64 = 1e-12,
-                            verbose::Int64 = 0,)
+function right_canonicalize(
+        matrixMPO;
+        leftEnvironment = undef,
+        truncation = false,
+        truncError::Float64 = 1.0e-14,
+        tol::Float64 = 1.0e-12,
+        verbose::Int64 = 0,
+    )
     matMPO = deepcopy(matrixMPO)
     L = length(matMPO)
     Ss = TensorMap[]
@@ -475,14 +538,20 @@ function right_canonicalize(matrixMPO;
         end
         leftEnvironment = Vector{eltype(matrixMPO[1])}(undef, 3)
         rightSpace = matMPO[1][1, 1].codom[1]
-        leftEnvironment[1] = TensorMap(ones, eltype(matMPO[1][2, 2]), U1Space(0 => 1),
-                                       rightSpace)
+        leftEnvironment[1] = TensorMap(
+            ones, eltype(matMPO[1][2, 2]), U1Space(0 => 1),
+            rightSpace
+        )
         rightSpace = matMPO[1][2, 1].codom[1]
-        leftEnvironment[2] = zeros(eltype(matMPO[1][2, 2]), U1Space(0 => 1),
-                                   rightSpace)
+        leftEnvironment[2] = zeros(
+            eltype(matMPO[1][2, 2]), U1Space(0 => 1),
+            rightSpace
+        )
         rightSpace = matMPO[1][3, 1].codom[1]
-        leftEnvironment[3] = zeros(eltype(matMPO[1][2, 2]), U1Space(0 => 1),
-                                   rightSpace)
+        leftEnvironment[3] = zeros(
+            eltype(matMPO[1][2, 2]), U1Space(0 => 1),
+            rightSpace
+        )
     else
         leftEnvironment = deepcopy(leftEnvironment)
     end
@@ -521,7 +590,7 @@ function right_canonicalize(matrixMPO;
         rightSpace_W = W.dom[1]
         proj_W, proj_bt = generate_projectors(rightSpace_W, rightSpace_bt)
         @tensor fused_tensor[-1 -2; -3 -4] := W[-1, -2, 3, -4] * proj_W'[3, -3] +
-                                              bt[-1, -2, 3, -4] * proj_bt'[3, -3]
+            bt[-1, -2, 3, -4] * proj_bt'[3, -3]
 
         # # we then do a simple RQ and reproject
         # R, Q = rightorth(fused_tensor, (1, ), (2, 3, 4), alg = RQpos());
@@ -545,14 +614,14 @@ function right_canonicalize(matrixMPO;
         # R = R / sqrt(localDim);
         # Q = permute(Q, (1, 2), (3, 4));
 
-        if norm(R) <= 1e-12
+        if norm(R) <= 1.0e-12
             if verbose > 1
                 println("Dirty fix, need to think about it a bit")
             end
             Q = Q * 0
         end
 
-        if truncation && norm(R) > 1e-12
+        if truncation && norm(R) > 1.0e-12
             norm(t) > tol && println("The form is not perfectly canonical")
             U, S, V, err = tsvd(R; trunc = truncerr(truncError))
             R = U * S
@@ -571,10 +640,12 @@ function right_canonicalize(matrixMPO;
         newLeftSpace = Q.codom[1]
         matMPO[siteIndex][2, 3] = bf
         matMPO[siteIndex][2, 2] = Wf
-        matMPO[siteIndex][2, 1] = TensorMap(zeros,
-                                            eltype(matMPO[siteIndex][2, 1]),
-                                            newLeftSpace ⊗ localSpace,
-                                            U1Space(0 => 1) ⊗ localSpace)
+        matMPO[siteIndex][2, 1] = TensorMap(
+            zeros,
+            eltype(matMPO[siteIndex][2, 1]),
+            newLeftSpace ⊗ localSpace,
+            U1Space(0 => 1) ⊗ localSpace
+        )
 
         # we need to transfer the left matrix to the next site
         # 1  a  c     1 0 0     1     a R     c + a t
@@ -608,10 +679,12 @@ function right_canonicalize(matrixMPO;
             matMPO[newSiteIndex][2, 2] = temp
 
             # a bit of bookeeping
-            matMPO[newSiteIndex][3, 2] = TensorMap(zeros,
-                                                   eltype(matMPO[newSiteIndex][3, 2]),
-                                                   U1Space(0 => 1) ⊗ localSpace,
-                                                   R.dom[1] ⊗ localSpace)
+            matMPO[newSiteIndex][3, 2] = TensorMap(
+                zeros,
+                eltype(matMPO[newSiteIndex][3, 2]),
+                U1Space(0 => 1) ⊗ localSpace,
+                R.dom[1] ⊗ localSpace
+            )
 
         else
             if verbose > 1
