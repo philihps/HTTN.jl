@@ -13,8 +13,8 @@ using JLD2
 using KrylovKit
 using OptimKit
 using Printf
-using LaTeXStrings
-using Plots
+# using LaTeXStrings
+# using Plots
 using Roots
 using SpecialFunctions
 using TensorKit
@@ -22,7 +22,6 @@ using Zygote
 
 import Distributions: Normal
 
-using PackageExtensionCompat
 
 # export states
 export SparseMPS, normMPS
@@ -81,14 +80,12 @@ export constructPhysSpaces, constructVirtSpaces, getLinkDimsMPS, getLinkDimsMPO
 export diagTM
 export transform_basis!, sample_MPS!, sample_MPS_block!, sample_to_BPS, sample_to_CPS
 
-# # export save_to_file, load_from_file
-# export compute_average
-
 # export Bogoliubov transformation functions
 export squeezingOp, singleSqueezingOp, applyTwoModeTransformation, bogTransformMPO
 
 # export functions to compute expectation values
 export expectation_value_mpo, variance_mpo, expectation_values, expectation_values_density_matrix
+
 
 # include source files
 include("utility/bosonOperators.jl")

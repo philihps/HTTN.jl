@@ -394,17 +394,17 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                                                                                                            newTheta))
                         end
 
-                        titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
-                        titleString = latexstring(titleString)
-                        renyiEntropyPlot = plot(listOfXiValues,
-                                                storeEntanglementEntropy;
-                                                linewidth = 2.0,
-                                                xlabel = L"\xi",
-                                                ylabel = L"S",
-                                                label = L"S(\xi)",
-                                                frame = :box,
-                                                title = titleString,)
-                        display(renyiEntropyPlot)
+                        # titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
+                        # titleString = latexstring(titleString)
+                        # renyiEntropyPlot = plot(listOfXiValues,
+                        #                         storeEntanglementEntropy;
+                        #                         linewidth = 2.0,
+                        #                         xlabel = L"\xi",
+                        #                         ylabel = L"S",
+                        #                         label = L"S(\xi)",
+                        #                         frame = :box,
+                        #                         title = titleString,)
+                        # display(renyiEntropyPlot)
                     end
 
                     # optimize twoSiteUnitary
@@ -556,17 +556,17 @@ function find_groundstate!(finiteMPS::SparseMPS, mpoHandle::Function,
                                                                                                            newTheta))
                         end
 
-                        titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
-                        titleString = latexstring(titleString)
-                        renyiEntropyPlot = plot(listOfXiValues,
-                                                storeEntanglementEntropy;
-                                                linewidth = 2.0,
-                                                xlabel = L"\xi",
-                                                ylabel = L"S",
-                                                label = L"S(\xi)",
-                                                frame = :box,
-                                                title = titleString,)
-                        display(renyiEntropyPlot)
+                        # titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
+                        # titleString = latexstring(titleString)
+                        # renyiEntropyPlot = plot(listOfXiValues,
+                        #                         storeEntanglementEntropy;
+                        #                         linewidth = 2.0,
+                        #                         xlabel = L"\xi",
+                        #                         ylabel = L"S",
+                        #                         label = L"S(\xi)",
+                        #                         frame = :box,
+                        #                         title = titleString,)
+                        # display(renyiEntropyPlot)
                     end
 
                     # optimize twoSiteUnitary
@@ -1132,22 +1132,22 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                                                                                       newTheta)
                         end
 
-                        titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
-                        titleString = latexstring(titleString)
-                        renyiEntropyPlot = plot(listOfXiValues,
-                                                storeEntanglementEntropy;
-                                                linewidth = 2.0,
-                                                xlabel = L"\xi",
-                                                ylabel = L"S",
-                                                label = L"S(\xi)",
-                                                frame = :box,
-                                                title = titleString,)
-                        plot!(renyiEntropyPlot,
-                              listOfXiValues,
-                              storeAnalyticGradient;
-                              linewidth = 2.0,
-                              label = L"\partial S(\xi)/\partial \xi",)
-                        display(renyiEntropyPlot)
+                        # titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
+                        # titleString = latexstring(titleString)
+                        # renyiEntropyPlot = plot(listOfXiValues,
+                        #                         storeEntanglementEntropy;
+                        #                         linewidth = 2.0,
+                        #                         xlabel = L"\xi",
+                        #                         ylabel = L"S",
+                        #                         label = L"S(\xi)",
+                        #                         frame = :box,
+                        #                         title = titleString,)
+                        # plot!(renyiEntropyPlot,
+                        #       listOfXiValues,
+                        #       storeAnalyticGradient;
+                        #       linewidth = 2.0,
+                        #       label = L"\partial S(\xi)/\partial \xi",)
+                        # display(renyiEntropyPlot)
                     end
 
                     # find optimimal ξ by roots of gradient
@@ -1340,22 +1340,22 @@ function find_excitedstate!(finiteMPS::SparseMPS,
                                                                                       newTheta)
                         end
 
-                        titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
-                        titleString = latexstring(titleString)
-                        renyiEntropyPlot = plot(listOfXiValues,
-                                                storeEntanglementEntropy;
-                                                linewidth = 2.0,
-                                                xlabel = L"\xi",
-                                                ylabel = L"S",
-                                                label = L"S(\xi)",
-                                                frame = :box,
-                                                title = titleString,)
-                        plot!(renyiEntropyPlot,
-                              listOfXiValues,
-                              storeAnalyticGradient;
-                              linewidth = 2.0,
-                              label = L"\partial S(\xi)/\partial \xi",)
-                        display(renyiEntropyPlot)
+                        # titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
+                        # titleString = latexstring(titleString)
+                        # renyiEntropyPlot = plot(listOfXiValues,
+                        #                         storeEntanglementEntropy;
+                        #                         linewidth = 2.0,
+                        #                         xlabel = L"\xi",
+                        #                         ylabel = L"S",
+                        #                         label = L"S(\xi)",
+                        #                         frame = :box,
+                        #                         title = titleString,)
+                        # plot!(renyiEntropyPlot,
+                        #       listOfXiValues,
+                        #       storeAnalyticGradient;
+                        #       linewidth = 2.0,
+                        #       label = L"\partial S(\xi)/\partial \xi",)
+                        # display(renyiEntropyPlot)
                     end
 
                     # find optimimal ξ by roots of gradient

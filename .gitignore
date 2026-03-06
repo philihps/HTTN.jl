@@ -1,7 +1,1 @@
-/Manifest.toml
-dataFiles/
-numFiles/
-.DS_STORE
-*.txt
-*.err
-*.out
+Manifest.toml
