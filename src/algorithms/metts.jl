@@ -451,7 +451,8 @@ function transform_basis!(finiteMPS, model; squeezeZM, squeezeNonZM)
         elseif mod(siteIdx, 2) == 0 && squeezeNonZM
             physSpaceL, physSpaceR = space(finiteMPS[siteIdx + 0], 2),
                 space(finiteMPS[siteIdx + 1], 2)
-            transfOp = randisometry(physSpaceL ⊗ physSpaceR, physSpaceL ⊗ physSpaceR
+            transfOp = randisometry(
+                physSpaceL ⊗ physSpaceR, physSpaceL ⊗ physSpaceR
             )
             transfOps[siteIdx ÷ 2 + 1] = transfOp
 
