@@ -57,8 +57,7 @@ end
 #-------------------------------------------------
 
 function extendMPS(
-        finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS};
-        truncErrM::Float64 = 1.0e-6
+        finiteMPS::SparseMPS, krylovVectors::Vector{<:SparseMPS}, bondDim::Int, truncErrM::Float64
     )::SparseMPS
     """    
     Implement basis extension using Krylov subspace 
@@ -119,7 +118,7 @@ function extendMPS(
             # diagonalize projected density matrix to compute UR', which spans part of right
             # basis of the Krylov vectors, which is orthogonal to right basis of |ψ(t)⟩
             UR, SR, VR = tsvd(
-                reducedDensityMatrix; trunc = truncerr(truncErrM),
+                reducedDensityMatrix; trunc = truncdim(bondDim) & truncerr(truncErrM),
                 alg = TensorKit.SVD()
             )
 
@@ -186,7 +185,7 @@ function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP
     end
 
     # extend and return |ψ⟩
-    finiteMPSX = extendMPS(finiteMPS, krylovVectors; truncErrM = alg.truncErrM)
+    finiteMPSX = extendMPS(finiteMPS, krylovVectors, alg.bondDim, alg.truncErrM)
     return finiteMPSX
 end
 
