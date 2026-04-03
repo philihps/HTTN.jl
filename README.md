@@ -9,7 +9,5 @@ The package can be installed by running
 pkg> add https://github.com/philihps/HTTN.jl
 ```
 
-Example script for DMRG and TDVP are provided.
-
 # Content of the package
-HTTN implements matrix product state (MPS) methods to simulate (1+1)d QFTs, with current support for the sine-Gordon model (sG) and the massive Schwinger model (mS). The MPS is set up in the basis of the free part of the Hamiltonian as a tensor product of decoupled harmonic oscillators. The length of the system corresponds to a UV cutoff in momentum space, while each bosonic Hilbert space is truncated to a finite number of occupations.
+HTTN.jl implements matrix product state (MPS) methods to simulate (1+1)d bosonic QFTs, with current support for the sine-Gordon model (sG) and the massive Schwinger model (mS). The MPS is set up in the basis of the free part of the Hamiltonian as a tensor product of decoupled harmonic oscillators. The interacting part is implemented as the sum of two vertex operator, generating long-range interaction between the modes. The length of the system corresponds to a UV cutoff in momentum space, while each bosonic Hilbert space is truncated to a finite number of occupations.
