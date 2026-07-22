@@ -472,10 +472,10 @@ function find_groundstate!(
                             newTheta
                         ),
                         bogParameters[1 + kR] +
-                            0.05 * randn(eltype(bogParameters[1 + kR])),
+                            0.05 * 2 * rand(eltype(bogParameters[1 + kR])) - 1,
                         LBFGS(
-                            12; verbosity = 1, maxiter = 50,
-                            gradtol = 1.0e-4
+                            12; verbosity = 1, maxiter = 100,
+                            gradtol = 1.0e-3
                         )
                     )
                     optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
@@ -613,7 +613,7 @@ function find_groundstate!(
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0 && loopCounter > alg.startOptimization
+                if mod(siteIdx, 2) == 0 && loopCounter >= alg.startOptimization
 
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2)
@@ -664,10 +664,10 @@ function find_groundstate!(
                             newTheta
                         ),
                         bogParameters[1 + kR] +
-                            0.05 * randn(eltype(bogParameters[1 + kR])),
+                            0.05 * 2 * rand(eltype(bogParameters[1 + kR])) - 1,
                         LBFGS(
-                            12; verbosity = 1, maxiter = 50,
-                            gradtol = 1.0e-4
+                            12; verbosity = 1, maxiter = 100,
+                            gradtol = 1.0e-3
                         )
                     )
                     optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
