@@ -68,7 +68,7 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
     # apply finiteMPO to finiteMPS to introduce QNs that cannot be introduced by a regular 2-site update due to different local Hilbert spaces
     if alg.subspaceExpansion
         finiteMPS = applyMPO(
-            finiteMPO, finiteMPS; truncErr = 1.0e-3,
+            finiteMPO, finiteMPS; maxDim = alg.bondDim, truncErr = 1.0e-3,
             compressionAlg = "zipUp"
         )
     end
@@ -342,7 +342,7 @@ function find_groundstate!(
     # apply finiteMPO to finiteMPS to introduce QNs that cannot be introduced by a regular 2-site update due to different local Hilbert spaces
     if alg.subspaceExpansion
         finiteMPS = applyMPO(
-            finiteMPO, finiteMPS; truncErr = 1.0e-3,
+            finiteMPO, finiteMPS; maxDim = alg.bondDim, truncErr = 1.0e-3,
             compressionAlg = "zipUp"
         )
     end
@@ -472,15 +472,15 @@ function find_groundstate!(
                             newTheta
                         ),
                         bogParameters[1 + kR] +
-                            0.05 * 2 * rand(eltype(bogParameters[1 + kR])) - 1,
+                            0.1 * 2 * rand(eltype(bogParameters[1 + kR])) - 1,
                         LBFGS(
                             12; verbosity = 1, maxiter = 100,
-                            gradtol = 1.0e-3
+                            gradtol = 1.0e-5
                         )
                     )
                     optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
-                    if any(abs.(optimalXi) .> 1.0e-3)
+                    if any(abs.(optimalXi) .> 1.0e-4)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -613,7 +613,7 @@ function find_groundstate!(
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0 && loopCounter >= alg.startOptimization
+                if mod(siteIdx, 2) == 0 && loopCounter > alg.startOptimization
 
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2)
@@ -664,15 +664,15 @@ function find_groundstate!(
                             newTheta
                         ),
                         bogParameters[1 + kR] +
-                            0.05 * 2 * rand(eltype(bogParameters[1 + kR])) - 1,
+                            0.1 * 2 * rand(eltype(bogParameters[1 + kR])) - 1,
                         LBFGS(
                             12; verbosity = 1, maxiter = 100,
-                            gradtol = 1.0e-3
+                            gradtol = 1.0e-5
                         )
                     )
                     optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
-                    if any(abs.(optimalXi) .> 1.0e-3)
+                    if any(abs.(optimalXi) .> 1.0e-4)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -1387,7 +1387,7 @@ function find_excitedstate!(
                     # );
                     # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
 
-                    if any(abs.(optimalXi) .> 1.0e-3)
+                    if any(abs.(optimalXi) .> 1.0e-4)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -1641,7 +1641,7 @@ function find_excitedstate!(
                     # );
                     # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
 
-                    if any(abs.(optimalXi) .> 1.0e-3)
+                    if any(abs.(optimalXi) .> 1.0e-4)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
