@@ -137,14 +137,11 @@ function updateBogoliubovParameters(
 
     # update truncationParameters
     truncationParameters = Model.modelParameters.truncationParameters
-    truncationParameters = (
-        kMax = truncationParameters[:kMax],
-        nMax = truncationParameters[:nMax],
-        nMaxZM = truncationParameters[:nMaxZM],
-        truncMethod = truncationParameters[:truncMethod],
-        modeOrdering = truncationParameters[:modeOrdering],
-        bogoliubovRot = bogoliubovRot,
-        bogParameters = bogParameters,
+    truncationParameters = merge(
+        truncationParameters, (
+            bogoliubovRot = bogoliubovRot,
+            bogParameters = copy(bogParameters),
+        )
     )
 
     # get hamiltonianParameters
@@ -732,6 +729,7 @@ function generate_H0_Part_B(
     else
         useMomentumModes = collect(1:kMax)
     end
+    isempty(useMomentumModes) && return 0 * constructIdentityMPO(physSpaces, U1Space(0 => 1))
     storeIndividualMPOs = Vector{SparseMPO}(undef, length(useMomentumModes))
     for (kIdx, kVal) in enumerate(useMomentumModes)
 
@@ -821,7 +819,7 @@ function generate_H0_Part_B(
 
             # apply Bogoliubov rotation parameters
             sK = findfirst(m -> abs(m) == kVal, momentumModes)
-            mpoCrCr = scaleAt(mpoCrCr, 2 * modeEnergy(kVal, L, M) * μ * ν,       sK)
+            mpoCrCr = scaleAt(mpoCrCr, 2 * modeEnergy(kVal, L, M) * μ * ν, sK)
             mpoAnAn = scaleAt(mpoAnAn, 2 * modeEnergy(kVal, L, M) * μ * conj(ν), sK)
 
             # store sum of MPOs
@@ -874,7 +872,7 @@ function generate_H0_Part_C(
 
     # get momentumModes
     numSites = length(physSpaces)
-    momentumModes = modeOccupations[1, :] 
+    momentumModes = modeOccupations[1, :]
 
     # construct H0 Part C
     if abs(bogParameters[1]) > 1.0e-6
@@ -882,13 +880,14 @@ function generate_H0_Part_C(
     else
         useMomentumModes = collect(1:kMax)
     end
+    isempty(useMomentumModes) && return 0 * constructIdentityMPO(physSpaces, U1Space(0 => 1))
     storeIndividualMPOs = Vector{SparseMPO}(undef, length(useMomentumModes))
     for (kIdx, kVal) in enumerate(useMomentumModes)
-        
+
         # get Bogoliubov rotation parameters
         ξ = bogParameters[abs(kVal) + 1]
         μ, ν = convertSqueezingParameter(ξ)
-        
+
         # construct momentum-presering identity MPO (constant energy term after Bogoliubov rotation)
         localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites)
         for siteIdx in 1:numSites
@@ -1027,6 +1026,10 @@ function localVertexOp(
     :Params:
     - n: labels eigenstate of Π0
     """
+
+    if get(modelParameters.truncationParameters, :bogoliubovRot, false)
+        return localDisplacementOp(modelParameters, physVecSpace, k, n, β, M, L)
+    end
 
     # construct kroneckerDelta space
     kronDelSpace = removeDegeneracyQN(fuse(physVecSpace, conj(flip(physVecSpace))))

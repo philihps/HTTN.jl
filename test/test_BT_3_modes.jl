@@ -1,5 +1,6 @@
 using HTTN
 using TensorKit
+using LinearAlgebra
 using Test
 
 # set display parameters
@@ -127,7 +128,7 @@ initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
     groundStateSqMPS[2] = U
     groundStateSqMPS[3] = V
     groundStateSqMPS = SparseMPS(groundStateSqMPS; normalizeMPS = true)
-    @test abs(real(dotMPS(vacuumMPS, groundStateSqMPS))) - 1.0 < 1.0e-8
+    @test abs(abs(dotMPS(vacuumMPS, groundStateSqMPS)) - 1.0) < 1.0e-8
 
     @info "Full Hamiltonian"
     HMPO = generate_MPO_mS(mS)
@@ -141,7 +142,7 @@ initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
 
     dims = (nMaxZM + 1) * (nMax + 1) * (nMax + 1)
     HMat = reshape(convert(Array, HMat), dims, dims)
-    eigValsFull, _ = eigen(HMat)
+    eigValsFull, eigVecsFull = eigen(HMat)
 
     @info "Full transformed Hamiltonian"
     ξ = [0.1, 0.1]
@@ -187,7 +188,7 @@ initialMPS = initializeMPS(mS, vacuumMPS; modeOrdering = modeOrdering)
     energy = real(expectation_value_mpo(groundStateInvTransf, HMPO))
 
     @test abs(energy - eigValsFull[1]) < 1.0e-8
-    @test abs(real(dotMPS(groundStateMPS, groundStateInvTransf))) - 1.0 < 1.0e-8
+    @test abs(abs(dot(eigVecsFull[:, 1], vec(mps2vec(groundStateInvTransf)))) - 1.0) < 1.0e-8
 end
 
 nothing

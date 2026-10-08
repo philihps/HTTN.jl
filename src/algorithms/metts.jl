@@ -540,7 +540,7 @@ function metts!(
         if abs(imag(mpoExpVal)) < 1.0e-12
             mpoExpVal = real(mpoExpVal)
         else
-            ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
+            error("The Hamiltonian is not Hermitian, complex eigenvalue found.")
         end
 
         if step <= alg.numWarmUp
@@ -753,7 +753,7 @@ function metts_ZM!(
         if abs(imag(mpoExpVal)) < 1.0e-12
             mpoExpVal = real(mpoExpVal)
         else
-            ErrorException("The Hamiltonian is not Hermitian, complex eigenvalue found.")
+            error("The Hamiltonian is not Hermitian, complex eigenvalue found.")
         end
 
         if step <= alg.numWarmUp

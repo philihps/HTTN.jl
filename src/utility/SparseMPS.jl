@@ -108,11 +108,11 @@ function SparseMPS(
     # construct MPS
     mpsTensors = [
         TensorMap(
-                initMethod,
-                elementType,
-                virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
-                virtSpaces[siteIdx + 1]
-            ) for siteIdx in 1:N
+            initMethod,
+            elementType,
+            virtSpaces[siteIdx] ⊗ physSpaces[siteIdx],
+            virtSpaces[siteIdx + 1]
+        ) for siteIdx in 1:N
     ]
     return SparseMPS(mpsTensors; normalizeMPS = normalizeMPS)
 end
@@ -180,8 +180,8 @@ Base.iterate(ψ::SparseMPS, args...) = iterate(ψ.mpsTensors, args...)
 Base.eachindex(ψ::SparseMPS, args...) = eachindex(ψ.mpsTensors, args...)
 Base.copy(ψ::SparseMPS) = SparseMPS(copy(ψ.mpsTensors))
 Base.lastindex(ψ::SparseMPS) = lastindex(ψ.mpsTensors)
-function Base.similar(ψ::SparseMPS{A}) where {A}
-    return SparseMPS{A}(similar(ψ.mpsTensors))
+function Base.similar(ψ::SparseMPS{T, A}) where {T, A}
+    return SparseMPS{T, A}(similar(ψ.mpsTensors))
 end
 
 function getLinkDimsMPS(ψ::SparseMPS)

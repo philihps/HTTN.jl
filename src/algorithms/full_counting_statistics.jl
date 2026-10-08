@@ -93,8 +93,8 @@ function compute_phase_distribution(
         # compute expectation value of phiMPO operator
         expVal_phiField = expectation_value_mpo(finiteMPS, vertexMPO)
         # expVal_phiField = expectation_value_mpo(finiteMPS, phiMPO);
-        if imag(expVal_phiField) > 1.0e-12
-            ErrorException("complex expectation value found, check MPO construction.")
+        if abs(imag(expVal_phiField)) > 1.0e-12
+            error("complex expectation value found, check MPO construction.")
         end
         phiFieldExpVals[idxL] = real(expVal_phiField)
     end

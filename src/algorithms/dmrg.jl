@@ -251,7 +251,7 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
             if abs(imag(mpoExpVal)) < 1.0e-12
                 mpoExpVal = real(mpoExpVal)
             else
-                ErrorException("the Hamiltonian is not Hermitian, complex eigenvalue found.")
+                error("the Hamiltonian is not Hermitian, complex eigenvalue found.")
             end
             mpsEnergy = vcat(mpsEnergy, mpoExpVal)
 
@@ -327,6 +327,9 @@ function find_groundstate!(
         finiteMPS::SparseMPS, mpoHandle::Function,
         QFTModel::AbstractQFTModel, alg::DMRG2BO
     )
+
+    QFTModel.modelParameters.truncationParameters[:modeOrdering] ||
+        throw(ArgumentError("basis optimization requires modeOrdering = true"))
 
     # create MPO that should be simulated
     finiteMPO = mpoHandle(QFTModel)
@@ -478,7 +481,7 @@ function find_groundstate!(
                     optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
                     # println(optimalXi)
 
-                    if any(abs.(optimalXi) .> 1e-4) && all(abs.(optimalXi) .< 1.0)
+                    if any(abs.(optimalXi) .> 1.0e-4) && all(abs.(optimalXi) .< 1.0)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -510,12 +513,12 @@ function find_groundstate!(
                             )
 
                             # update two site tensor
-                            optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                            optimalS, newXi = squeezingUpdate(bogParameters[kR + 1], optimalXi, nMax, kL, kR, PL, PR)
                             newTheta = applyTwoModeTransformation(optimalS, newTheta)
                             println("k = ±", kR, ", new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            bogParameters[1 + kR] += optimalXi
+                            bogParameters[1 + kR] = newXi
                             QFTModel = updateBogoliubovParameters(
                                 QFTModel;
                                 bogoliubovRot = true,
@@ -673,7 +676,7 @@ function find_groundstate!(
                     optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
                     # println(optimalXi)
 
-                    if any(abs.(optimalXi) .> 1e-4) && all(abs.(optimalXi) .< 1.0)
+                    if any(abs.(optimalXi) .> 1.0e-4) && all(abs.(optimalXi) .< 1.0)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -705,12 +708,12 @@ function find_groundstate!(
                             )
 
                             # update two site tensor
-                            optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                            optimalS, newXi = squeezingUpdate(bogParameters[kR + 1], optimalXi, nMax, kL, kR, PL, PR)
                             newTheta = applyTwoModeTransformation(optimalS, newTheta)
                             println("k = ±", kR, ", new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            bogParameters[1 + kR] += optimalXi
+                            bogParameters[1 + kR] = newXi
                             QFTModel = updateBogoliubovParameters(
                                 QFTModel;
                                 bogoliubovRot = true,
@@ -778,7 +781,7 @@ function find_groundstate!(
             if abs(imag(mpoExpVal)) < 1.0e-8
                 mpoExpVal = real(mpoExpVal)
             else
-                ErrorException("the Hamiltonian is not Hermitian, complex eigenvalue found.")
+                error("the Hamiltonian is not Hermitian, complex eigenvalue found.")
             end
             mpsEnergy = vcat(mpsEnergy, mpoExpVal)
 
@@ -1136,10 +1139,10 @@ function find_excitedstate!(
 
             # compute MPO expectation value
             mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
-            if imag(mpoExpVal) < 1.0e-12
+            if abs(imag(mpoExpVal)) < 1.0e-12
                 mpoExpVal = real(mpoExpVal)
             else
-                ErrorException("the Hamiltonian is not Hermitian, complex eigenvalue found.")
+                error("the Hamiltonian is not Hermitian, complex eigenvalue found.")
             end
             mpsEnergy = vcat(mpsEnergy, mpoExpVal)
 
@@ -1204,12 +1207,15 @@ function find_excitedstate!(
         alg::DMRG2BO
     )
 
+    QFTModel.modelParameters.truncationParameters[:modeOrdering] ||
+        throw(ArgumentError("basis optimization requires modeOrdering = true"))
+
     # create MPO that should be simulated
     finiteMPO = mpoHandle(QFTModel)
     println(getLinkDimsMPO(finiteMPO))
 
     # get bogParameters
-    bogParameters = QFTModel.modelParameters.truncationParameters[:bogParameters]
+    bogParameters = copy(QFTModel.modelParameters.truncationParameters[:bogParameters])
     println(bogParameters)
 
     # apply finiteMPO to finiteMPS to introduce QNs that cannot be introduced by a regular 2-site update due to different local Hilbert spaces
@@ -1223,7 +1229,7 @@ function find_excitedstate!(
     # initialize array to store Bogoliubov parameters
     storeBogoliubovParameters = zeros(
         Float64, 0,
-        QFTModel.modelParameters.truncationParameters[:kMax]
+        length(bogParameters)
     )
     # storeBogoliubovParameters = vcat(storeBogoliubovParameters, reshape(bogParameters, 1, length(bogParameters)));
 
@@ -1391,7 +1397,7 @@ function find_excitedstate!(
                     # );
                     # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
 
-                    if any(abs.(optimalXi) .> 1e-4) && all(abs.(optimalXi) .< 1.00)
+                    if any(abs.(optimalXi) .> 1.0e-4) && all(abs.(optimalXi) .< 1.0)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -1423,12 +1429,12 @@ function find_excitedstate!(
                             )
 
                             # update two site tensor
-                            optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                            optimalS, newXi = squeezingUpdate(bogParameters[kR + 1], optimalXi, nMax, kL, kR, PL, PR)
                             newTheta = applyTwoModeTransformation(optimalS, newTheta)
                             alg.verbosePrint > 0 && println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            bogParameters[kR + 1] += optimalXi
+                            bogParameters[kR + 1] = newXi
                             QFTModel = updateBogoliubovParameters(
                                 QFTModel;
                                 bogoliubovRot = true,
@@ -1646,7 +1652,7 @@ function find_excitedstate!(
                     # );
                     # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
 
-                    if any(abs.(optimalXi) .> 1e-4) && all(abs.(optimalXi) .< 1.00)
+                    if any(abs.(optimalXi) .> 1.0e-4) && all(abs.(optimalXi) .< 1.0)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -1678,12 +1684,12 @@ function find_excitedstate!(
                             )
 
                             # update two site tensor
-                            optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                            optimalS, newXi = squeezingUpdate(bogParameters[kR + 1], optimalXi, nMax, kL, kR, PL, PR)
                             newTheta = applyTwoModeTransformation(optimalS, newTheta)
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            bogParameters[kR + 1] += optimalXi
+                            bogParameters[kR + 1] = newXi
                             QFTModel = updateBogoliubovParameters(
                                 QFTModel;
                                 bogoliubovRot = true,
@@ -1776,10 +1782,10 @@ function find_excitedstate!(
 
             # compute MPO expectation value
             mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
-            if imag(mpoExpVal) < 1.0e-12
+            if abs(imag(mpoExpVal)) < 1.0e-12
                 mpoExpVal = real(mpoExpVal)
             else
-                ErrorException("the Hamiltonian is not Hermitian, complex eigenvalue found.")
+                error("the Hamiltonian is not Hermitian, complex eigenvalue found.")
             end
             mpsEnergy = vcat(mpsEnergy, mpoExpVal)
 

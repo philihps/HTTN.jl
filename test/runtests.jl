@@ -2,6 +2,7 @@ using HTTN
 using Test
 
 Ti = time()
+include("test_basis_optimization.jl")
 include("test_basis_extension.jl")
 include("test_BT_1_mode.jl")
 include("test_BT_3_modes.jl")

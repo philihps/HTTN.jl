@@ -18,9 +18,9 @@ TensorKit = "07d1fe3e-3e46-537d-9eac-e9e13d0d4cec"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
-Aqua = "0.6, 0.7, 0.8"
+Aqua = "0.8"
 ArgParse = "1.2.0"
-ChainRulesCore = "1.26.0"
+ChainRulesCore = "1.26.1"
 Distributions = "0.25.113"
 FFTW = "1.8"
 JLD2 = "0.5.10"
@@ -28,17 +28,19 @@ KrylovKit = "0.9"
 LinearAlgebra = "1.11"
 OptimKit = "0.4.0"
 Printf = "1"
+Random = "1"
 Roots = "2.2"
 SpecialFunctions = "2.5"
 TensorKit = "0.14"
 Test = "1"
 Zygote = "0.7"
-julia = "1"
+julia = "1.11"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "Test"]
+test = ["Aqua", "Random", "Test"]

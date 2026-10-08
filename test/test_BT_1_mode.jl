@@ -77,7 +77,7 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     normSQState = real(tr(groundStateSqMPS' * groundStateSqMPS))
     println("Norm of the squeezed (vacuum) state: $normSQState")
     groundStateSqMPS = SparseMPS([groundStateSqMPS]; normalizeMPS = true)
-    @test abs(abs(dotMPS(vacuumMPS, groundStateSqMPS))) - 1.0 < 1.0e-8
+    @test abs(abs(dotMPS(vacuumMPS, groundStateSqMPS)) - 1.0) < 1.0e-8
 
     # TODO: check norm of squeezed state for complex squeezing parameter
     # ξ = 0.2 + 0.1im
@@ -101,7 +101,7 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     # normSQState = real(tr(groundStateSqMPS' * groundStateSqMPS))
     # println("Norm of the squeezed (vacuum) state: $normSQState")
     # groundStateSqMPS = SparseMPS([groundStateSqMPS]; normalizeMPS = true)
-    # @test abs(abs(dotMPS(vacuumMPS, groundStateSqMPS))) - 1.0 < 1e-8
+    # @test abs(abs(dotMPS(vacuumMPS, groundStateSqMPS)) - 1.0) < 1e-8
 
     @info "Full Hamiltonian"
     HMPO = generate_MPO_mS(mS)
@@ -131,7 +131,7 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     energy = real(expectation_value_mpo(groundStateInvTransf, HMPO))
 
     @test abs(energy - eigValsFull[1]) < 1.0e-8
-    @test abs(dotMPS(groundStateMPS, groundStateInvTransf) - 1.0) < 1.0e-8
+    @test abs(abs(dotMPS(groundStateMPS, groundStateInvTransf)) - 1.0) < 1.0e-8
 
     # TODO: check norm of squeezed state for complex squeezing parameter
     # ξ = 0.2 + 0.1im
@@ -153,7 +153,7 @@ H0Mat = reshape(convert(Array, H0MPO[1]), (zeroDim, zeroDim))
     # energy = real(expectation_value_mpo(groundStateInvTransf, HMPO))
 
     # @test abs(energy - eigValsFull[1]) < 1e-8
-    # @test abs(dotMPS(groundStateMPS, groundStateInvTransf) - 1.0) < 1e-8
+    # @test abs(abs(dotMPS(groundStateMPS, groundStateInvTransf)) - 1.0) < 1e-8
 
 end
 

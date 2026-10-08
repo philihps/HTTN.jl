@@ -67,7 +67,7 @@ Returns the Kronecker-Delta space of the EXP tensor at site 'siteIdx'.
 # function getKroneckerDeltaSpace end
 
 function getKroneckerDeltaSpace(E::SparseLocalOp, siteIdx::Integer)
-    return dual(space(E.expTensors[siteIdx], 3))
+    return dual(space(E.localTensors[siteIdx], 3))
 end
 
 """
@@ -79,13 +79,13 @@ Returns the physical space of the EXP tensor at site 'siteIdx'.
 # function getPhysicalSpace end
 
 function getPhysicalSpace(E::SparseLocalOp, siteIdx::Integer)
-    return space(E.expTensors[siteIdx], 1)
+    return space(E.localTensors[siteIdx], 1)
 end
 
-Base.getindex(E::SparseLocalOp, idx) = E.expTensors[idx];
-Base.size(E::SparseLocalOp, args...) = size(E.expTensors, args...);
-Base.length(E::SparseLocalOp) = length(E.expTensors);
-Base.iterate(E::SparseLocalOp, args...) = iterate(E.expTensors, args...);
+Base.getindex(E::SparseLocalOp, idx) = E.localTensors[idx];
+Base.size(E::SparseLocalOp, args...) = size(E.localTensors, args...);
+Base.length(E::SparseLocalOp) = length(E.localTensors);
+Base.iterate(E::SparseLocalOp, args...) = iterate(E.localTensors, args...);
 
 
 #--------------------------------------------------------------
@@ -148,8 +148,8 @@ Base.eachindex(M::SparseMPO, args...) = eachindex(M.mpoTensors, args...)
 Base.lastindex(M::SparseMPO) = lastindex(M.mpoTensors)
 Base.copy(M::SparseMPO) = SparseMPO(copy(M.mpoTensors))
 LinearAlgebra.real(M::SparseMPO) = SparseMPO(real.(M.mpoTensors))
-function Base.similar(M::SparseMPO{A}) where {A}
-    return SparseMPO{A}(similar(M.mpoTensors))
+function Base.similar(M::SparseMPO{T, A}) where {T, A}
+    return SparseMPO{T, A}(similar(M.mpoTensors))
 end
 
 # elementary operations

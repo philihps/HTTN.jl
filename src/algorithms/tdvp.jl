@@ -72,6 +72,8 @@ function extendMPS(
                     orthogonal to basis of |ψ(t)⟩
     """
 
+    isempty(krylovVectors) && return orthogonalizeMPS!(finiteMPS, 1)
+
     # get length of finiteMPS
     N = length(finiteMPS)
 
@@ -104,12 +106,11 @@ function extendMPS(
             @tensor rdm[-1 -2; -3 -4] := mpsTensor'[-1, -2, 1] * mpsTensor[1, -3, -4]
             reducedDensityMatrix += rdm
         end
-        reducedDensityMatrix /= real(tr(reducedDensityMatrix))
+        if real(tr(reducedDensityMatrix)) > 0
+            reducedDensityMatrix /= real(tr(reducedDensityMatrix))
+        end
 
-        if norm(nullSpaceProjector) > 1.0e-8
-
-            # normalize nullSpaceProjector
-            nullSpaceProjector /= real(tr(nullSpaceProjector))
+        if norm(nullSpaceProjector) > 1.0e-8 && norm(reducedDensityMatrix) > 0
 
             # project reducedDensityMatrix by nullSpaceProjector
             reducedDensityMatrix = nullSpaceProjector * reducedDensityMatrix *
@@ -169,19 +170,20 @@ function extendBasis(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::Union{TDVP
     maxDimKrylovVectors = min(2 * maxLinkDimsMPS(finiteMPS), 3000)
 
     # construct Krylov vectors H|ψ⟩, (H^2)|ψ⟩, ..., (H^l)|ψ⟩
-    krylovVectors = Vector{SparseMPS}(undef, alg.krylovDim)
-    for idxK in 1:(alg.krylovDim)
+    alg.krylovDim >= 0 || throw(ArgumentError("krylovDim must be nonnegative"))
+    krylovVectors = SparseMPS[]
+    for idxK in 1:alg.krylovDim
         prevMPS = idxK == 1 ? finiteMPS : krylovVectors[idxK - 1]
-        # krylovVectors[idxK] = normalizeMPS(applyMPO(finiteMPO, prevMPS, maxDim = maxDimKrylovVectors, truncErr = alg.truncErrK, compressionAlg = alg.compressionAlg));
-        krylovVectors[idxK] = normalizeMPS(
-            applyMPO(
-                finiteMPO,
-                prevMPS;
-                truncErr = alg.truncErrK,
-                compressionAlg = alg.compressionAlg,
-            )
+        krylovMPS = applyMPO(
+            finiteMPO, prevMPS;
+            maxDim = maxDimKrylovVectors,
+            truncErr = alg.truncErrK,
+            compressionAlg = alg.compressionAlg,
         )
-        # println("maxLinkDim Krylov MPS : ", maxLinkDimsMPS(krylovVectors[idxK]))
+        krylovNorm = normMPS(krylovMPS)
+        iszero(krylovNorm) && break
+        krylovMPS[1] /= sqrt(krylovNorm)
+        push!(krylovVectors, krylovMPS)
     end
 
     # extend and return |ψ⟩
@@ -199,13 +201,13 @@ function perform_timestep!(
     )
     """ 1-site TDVP implementation for finiteMPO with global Krylov subspace expansion """
 
-    if typeof(timeStep) == ComplexF64
-        timeStep = -timeStep # t = -iτ
-    end
+    timeStep = conj(timeStep) # δt + iδτ specifies real time and imaginary-time cooling
 
     # make basis extension to include a number of global Krylov vectors
     if alg.extendBasis
         finiteMPS = extendBasis(finiteMPS, finiteMPO, alg)
+    else
+        orthogonalizeMPS!(finiteMPS, 1)
     end
 
     # initialize MPO environments
@@ -330,17 +332,22 @@ function perform_timestep!(
         finiteMPS::SparseMPS,
         finiteMPO::SparseMPO,
         timeStep::Union{Float64, ComplexF64},
-        alg::TDVP2
+        alg::Union{TDVP2, TDVP2BO}
     )
     """ 2-site TDVP implementation for finiteMPO with global Krylov subspace expansion """
 
-    if typeof(timeStep) == ComplexF64
-        timeStep = -timeStep # t = -iτ
+    if length(finiteMPS) == 1
+        alg1 = TDVP1(; (name => getfield(alg, name) for name in fieldnames(typeof(alg)))...)
+        return perform_timestep!(finiteMPS, finiteMPO, timeStep, alg1)
     end
+
+    timeStep = conj(timeStep) # δt + iδτ specifies real time and imaginary-time cooling
 
     # make basis extension to include a number of global Krylov vectors
     if alg.extendBasis
         finiteMPS = extendBasis(finiteMPS, finiteMPO, alg)
+    else
+        orthogonalizeMPS!(finiteMPS, 1)
     end
 
     # initialize MPO environments
@@ -493,7 +500,7 @@ function perform_timestep(
         finiteMPS::SparseMPS,
         finiteMPO::SparseMPO,
         timeStep::Union{Float64, ComplexF64},
-        alg::TDVP2
+        alg::Union{TDVP2, TDVP2BO}
     )
     return perform_timestep!(copy(finiteMPS), finiteMPO, timeStep, alg)
 end
@@ -503,9 +510,13 @@ end
 
 function perform_basisOptimization!(
         finiteMPS::SparseMPS, QFTModel::AbstractQFTModel,
-        alg::TDVP2
+        alg::Union{TDVP2, TDVP2BO}
     )
     """ rotates pairs of modes [-k,+k] to optimal basis, such that the Renyi-1/2 entropy is minimized """
+
+    QFTModel.modelParameters.truncationParameters[:modeOrdering] ||
+        throw(ArgumentError("basis optimization requires modeOrdering = true"))
+    orthogonalizeMPS!(finiteMPS, 1)
 
     # get bogParameters
     bogParameters = copy(QFTModel.modelParameters.truncationParameters[:bogParameters])
@@ -588,22 +599,22 @@ function perform_basisOptimization!(
             optimRes = optimize(
                 x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
                 0.1 * (2 * rand(eltype(bogParameters[1 + kR])) - 1),
-                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1e-6)
+                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1.0e-6)
             )
             optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
-            if abs(optimalXi) > 1e-4
+            if abs(optimalXi) > 1.0e-4
 
                 # apply rotation and decompose optimizedTheta
                 if checkAcceptance(costFuncPre, optimCostFunc, bogParameters[1 + kR], optimalXi)
 
                     # update two site tensor
-                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                    optimalS, newXi = squeezingUpdate(bogParameters[kR + 1], optimalXi, nMax, kL, kR, PL, PR)
                     AC2 = applyTwoModeTransformation(optimalS, AC2)
                     println("new optimal ξ = ", optimalXi)
 
                     # update QFTModel with new bogParameters
-                    bogParameters[1 + kR] += optimalXi
+                    bogParameters[1 + kR] = newXi
                     QFTModel = updateBogoliubovParameters(
                         QFTModel; bogoliubovRot = true,
                         bogParameters = bogParameters
@@ -705,29 +716,29 @@ function perform_basisOptimization!(
             optimRes = optimize(
                 x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
                 0.1 * (2 * rand(eltype(bogParameters[1 + kR])) - 1),
-                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1e-6)
+                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1.0e-6)
             )
             optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
-            if abs(optimalXi) > 1e-4
+            if abs(optimalXi) > 1.0e-4
 
                 # apply rotation and decompose optimizedTheta
                 if checkAcceptance(costFuncPre, optimCostFunc, bogParameters[1 + kR], optimalXi)
 
                     # update two site tensor
-                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                    optimalS, newXi = squeezingUpdate(bogParameters[kR + 1], optimalXi, nMax, kL, kR, PL, PR)
                     AC2 = applyTwoModeTransformation(optimalS, AC2)
                     println("new optimal ξ = ", optimalXi)
 
                     # update QFTModel with new bogParameters
-                    bogParameters[1 + kR] += optimalXi
+                    bogParameters[1 + kR] = newXi
                     QFTModel = updateBogoliubovParameters(
                         QFTModel; bogoliubovRot = true,
                         bogParameters = bogParameters
                     )
                     println(bogParameters, "\n")
                 end
-                
+
             end
         end
 
