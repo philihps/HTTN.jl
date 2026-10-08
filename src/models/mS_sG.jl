@@ -820,8 +820,9 @@ function generate_H0_Part_B(
             mpoAnAn = convertLocalOperatorsToMPO(localOperators)
 
             # apply Bogoliubov rotation parameters
-            mpoCrCr *= 2 * modeEnergy(kVal, L, M) * μ * ν
-            mpoAnAn *= 2 * modeEnergy(kVal, L, M) * μ * conj(ν)
+            sK = findfirst(m -> abs(m) == kVal, momentumModes)
+            mpoCrCr = scaleAt(mpoCrCr, 2 * modeEnergy(kVal, L, M) * μ * ν,       sK)
+            mpoAnAn = scaleAt(mpoAnAn, 2 * modeEnergy(kVal, L, M) * μ * conj(ν), sK)
 
             # store sum of MPOs
             storeIndividualMPOs[kIdx] = mpoAnAn + mpoCrCr
@@ -837,6 +838,7 @@ function generate_H0_Part_C(
             MassiveSchwingerParameters,
             SineGordonParameters,
         },
+        modeOccupations::Matrix{Int64},
         physSpaces::Vector{
             <:Union{
                 ElementarySpace,
@@ -872,6 +874,7 @@ function generate_H0_Part_C(
 
     # get momentumModes
     numSites = length(physSpaces)
+    momentumModes = modeOccupations[1, :] 
 
     # construct H0 Part C
     if abs(bogParameters[1]) > 1.0e-6
@@ -881,11 +884,11 @@ function generate_H0_Part_C(
     end
     storeIndividualMPOs = Vector{SparseMPO}(undef, length(useMomentumModes))
     for (kIdx, kVal) in enumerate(useMomentumModes)
-
+        
         # get Bogoliubov rotation parameters
         ξ = bogParameters[abs(kVal) + 1]
         μ, ν = convertSqueezingParameter(ξ)
-
+        
         # construct momentum-presering identity MPO (constant energy term after Bogoliubov rotation)
         localOperators = Vector{TensorMap{ComplexF64}}(undef, numSites)
         for siteIdx in 1:numSites
@@ -895,14 +898,12 @@ function generate_H0_Part_C(
         # construct momentum-preserving MPO using a kroneckerDelta MPS
         mpoIdId = convertLocalOperatorsToMPO(localOperators)
 
-        # get Bogoliubov rotation parameters (this is not checked for complex ξ)
+        sK = findfirst(m -> abs(m) == kVal, momentumModes)
         if kVal == 0
-            mpoIdId *= modeEnergy(kVal, L, M) * abs(ν)^2
+            mpoIdId = scaleAt(mpoIdId, modeEnergy(kVal, L, M) * abs(ν)^2, sK)
         else
-            mpoIdId *= 2 * modeEnergy(kVal, L, M) * abs(ν)^2
+            mpoIdId = scaleAt(mpoIdId, 2 * modeEnergy(kVal, L, M) * abs(ν)^2, sK)
         end
-
-        # store MPO
         storeIndividualMPOs[kIdx] = mpoIdId
     end
 
@@ -946,6 +947,7 @@ function generate_H0(
         )
         mpo_H0 += generate_H0_Part_C(
             modelParameters,
+            modeOccupations,
             physSpaces
         )
     end

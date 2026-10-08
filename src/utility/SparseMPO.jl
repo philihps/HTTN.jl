@@ -227,6 +227,12 @@ function Base.:*(M::SparseMPO, b::Number)
 end
 Base.:*(b::Number, M::SparseMPO) = M * b
 
+function scaleAt(M::SparseMPO, b::Number, siteIdx::Int)
+    newTensors = copy(M.mpoTensors)
+    newTensors[siteIdx] *= b
+    return SparseMPO(newTensors)
+end
+
 function orthogonalizeMPO!(finiteMPO::SparseMPO, orthCenter::Int)
     """ Function to bring MPO into mixed canonical form with orthogonality center at site 'orthCenter' """
 

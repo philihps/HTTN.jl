@@ -508,7 +508,7 @@ function perform_basisOptimization!(
     """ rotates pairs of modes [-k,+k] to optimal basis, such that the Renyi-1/2 entropy is minimized """
 
     # get bogParameters
-    bogParameters = QFTModel.modelParameters.truncationParameters[:bogParameters]
+    bogParameters = copy(QFTModel.modelParameters.truncationParameters[:bogParameters])
     println(bogParameters)
 
     # initialize truncationErrors
@@ -587,27 +587,30 @@ function perform_basisOptimization!(
             # optimize twoSiteUnitary
             optimRes = optimize(
                 x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
-                bogParameters[1 + kR] +
-                    0.2 * randn(eltype(bogParameters[1 + kR])),
-                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1.0e-4)
+                0.1 * (2 * rand(eltype(bogParameters[1 + kR])) - 1),
+                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1e-6)
             )
             optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
-            # apply rotation and decompose optimizedTheta
-            if checkAcceptance(costFuncPre, optimCostFunc, bogParameters[1 + kR], optimalXi)
+            if abs(optimalXi) > 1e-4
 
-                # update two site tensor
-                optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
-                AC2 = applyTwoModeTransformation(optimalS, AC2)
-                println("new optimal ξ = ", optimalXi)
+                # apply rotation and decompose optimizedTheta
+                if checkAcceptance(costFuncPre, optimCostFunc, bogParameters[1 + kR], optimalXi)
 
-                # update QFTModel with new bogParameters
-                bogParameters[1 + kR] += optimalXi
-                QFTModel = updateBogoliubovParameters(
-                    QFTModel; bogoliubovRot = true,
-                    bogParameters = bogParameters
-                )
-                println(bogParameters, "\n")
+                    # update two site tensor
+                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                    AC2 = applyTwoModeTransformation(optimalS, AC2)
+                    println("new optimal ξ = ", optimalXi)
+
+                    # update QFTModel with new bogParameters
+                    bogParameters[1 + kR] += optimalXi
+                    QFTModel = updateBogoliubovParameters(
+                        QFTModel; bogoliubovRot = true,
+                        bogParameters = bogParameters
+                    )
+                    println(bogParameters, "\n")
+                end
+
             end
         end
 
@@ -701,27 +704,30 @@ function perform_basisOptimization!(
             # optimize twoSiteUnitary
             optimRes = optimize(
                 x -> value_and_gradient(x, nMax, kL, kR, PL, PR, AC2),
-                bogParameters[1 + kR] +
-                    0.2 * randn(eltype(bogParameters[1 + kR])),
-                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1.0e-4)
+                0.1 * (2 * rand(eltype(bogParameters[1 + kR])) - 1),
+                LBFGS(12; verbosity = 1, maxiter = 100, gradtol = 1e-6)
             )
             optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
 
-            # apply rotation and decompose optimizedTheta
-            if checkAcceptance(costFuncPre, optimCostFunc, bogParameters[1 + kR], optimalXi)
+            if abs(optimalXi) > 1e-4
 
-                # update two site tensor
-                optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
-                AC2 = applyTwoModeTransformation(optimalS, AC2)
-                println("new optimal ξ = ", optimalXi)
+                # apply rotation and decompose optimizedTheta
+                if checkAcceptance(costFuncPre, optimCostFunc, bogParameters[1 + kR], optimalXi)
 
-                # update QFTModel with new bogParameters
-                bogParameters[1 + kR] += optimalXi
-                QFTModel = updateBogoliubovParameters(
-                    QFTModel; bogoliubovRot = true,
-                    bogParameters = bogParameters
-                )
-                println(bogParameters, "\n")
+                    # update two site tensor
+                    optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
+                    AC2 = applyTwoModeTransformation(optimalS, AC2)
+                    println("new optimal ξ = ", optimalXi)
+
+                    # update QFTModel with new bogParameters
+                    bogParameters[1 + kR] += optimalXi
+                    QFTModel = updateBogoliubovParameters(
+                        QFTModel; bogoliubovRot = true,
+                        bogParameters = bogParameters
+                    )
+                    println(bogParameters, "\n")
+                end
+                
             end
         end
 

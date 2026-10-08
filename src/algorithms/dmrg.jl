@@ -157,7 +157,7 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                 V = permute(S * V, ((1, 2), (3,)))
 
                 # compute error
-                v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
+                v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
                 # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
                 ϵs[siteIdx] = abs(1 - abs(v))
 
@@ -229,7 +229,7 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
                 V = permute(V, ((1, 2), (3,)))
 
                 # compute error
-                v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
+                v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
                 # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
                 ϵs[siteIdx] = abs(1 - abs(v))
 
@@ -314,9 +314,6 @@ function find_groundstate!(finiteMPS::SparseMPS, finiteMPO::SparseMPO, alg::DMRG
     return finiteMPS, finalEnergy, ϵs
 end
 
-# # LineSearch settings
-# optimAlg = LBFGS(8, verbosity = 1, maxiter  = 25, gradtol = 1e-6);
-
 # function to check acceptance of new basis
 function checkAcceptance(oldVal::Float64, newVal::Float64, oldXi::Number, newXi::Number)
     if (oldVal - newVal > 1.0e-3)
@@ -336,7 +333,7 @@ function find_groundstate!(
     println(getLinkDimsMPO(finiteMPO))
 
     # get bogParameters
-    bogParameters = QFTModel.modelParameters.truncationParameters[:bogParameters]
+    bogParameters = copy(QFTModel.modelParameters.truncationParameters[:bogParameters])
     println(bogParameters)
 
     # apply finiteMPO to finiteMPS to introduce QNs that cannot be introduced by a regular 2-site update due to different local Hilbert spaces
@@ -421,7 +418,7 @@ function find_groundstate!(
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0 && loopCounter > alg.startOptimization
+                if mod(siteIdx, 2) == 0 && (3 >= loopCounter > alg.startOptimization)
 
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2)
@@ -451,6 +448,7 @@ function find_groundstate!(
                                 )
                             )
                         end
+                        # println(storeEntanglementEntropy)
 
                         # titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
                         # titleString = latexstring(titleString)
@@ -471,16 +469,16 @@ function find_groundstate!(
                             x, nMax, kL, kR, PL, PR,
                             newTheta
                         ),
-                        bogParameters[1 + kR] +
-                            0.1 * 2 * rand(eltype(bogParameters[1 + kR])) - 1,
+                        0.1 * (2 * rand(eltype(bogParameters[1 + kR])) - 1),
                         LBFGS(
                             12; verbosity = 1, maxiter = 100,
-                            gradtol = 1.0e-5
+                            gradtol = 1.0e-6,
                         )
                     )
                     optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
+                    # println(optimalXi)
 
-                    if any(abs.(optimalXi) .> 1.0e-4)
+                    if any(abs.(optimalXi) .> 1e-4) && all(abs.(optimalXi) .< 1.0)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -514,7 +512,7 @@ function find_groundstate!(
                             # update two site tensor
                             optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
                             newTheta = applyTwoModeTransformation(optimalS, newTheta)
-                            println("new optimal ξ = ", optimalXi)
+                            println("k = ±", kR, ", new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
                             bogParameters[1 + kR] += optimalXi
@@ -526,7 +524,9 @@ function find_groundstate!(
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
+                            # mpoOld = deepcopy(finiteMPO)
                             finiteMPO = mpoHandle(QFTModel)
+                            # @show findall(i -> norm(finiteMPO[i] - mpoOld[i]) > 1e-12, eachindex(finiteMPO))
                         end
                     end
                 end
@@ -552,7 +552,7 @@ function find_groundstate!(
                 V = permute(S * V, ((1, 2), (3,)))
 
                 # compute error
-                v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
+                v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
                 # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
                 ϵs[siteIdx] = abs(1 - abs(v))
 
@@ -613,7 +613,7 @@ function find_groundstate!(
                 # ------------------------------------------------------------
                 # perform local basis optimization to reduce entanglement
 
-                if mod(siteIdx, 2) == 0 && loopCounter > alg.startOptimization
+                if mod(siteIdx, 2) == 0 && (3 >= loopCounter > alg.startOptimization)
 
                     # get physVecSpaces for squeezing operator
                     PL = space(finiteMPS[siteIdx + 0], 2)
@@ -643,6 +643,7 @@ function find_groundstate!(
                                 )
                             )
                         end
+                        # println(storeEntanglementEntropy)
 
                         # titleString = @sprintf("[k_L, k_R] = [%+d, %+d]", kL, kR)
                         # titleString = latexstring(titleString)
@@ -663,16 +664,16 @@ function find_groundstate!(
                             x, nMax, kL, kR, PL, PR,
                             newTheta
                         ),
-                        bogParameters[1 + kR] +
-                            0.1 * 2 * rand(eltype(bogParameters[1 + kR])) - 1,
+                        0.1 * (2 * rand(eltype(bogParameters[1 + kR])) - 1),
                         LBFGS(
                             12; verbosity = 1, maxiter = 100,
-                            gradtol = 1.0e-5
+                            gradtol = 1.0e-6,
                         )
                     )
                     optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes
+                    # println(optimalXi)
 
-                    if any(abs.(optimalXi) .> 1.0e-4)
+                    if any(abs.(optimalXi) .> 1e-4) && all(abs.(optimalXi) .< 1.0)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -706,7 +707,7 @@ function find_groundstate!(
                             # update two site tensor
                             optimalS = squeezingOp(optimalXi, nMax, kL, kR, PL, PR)
                             newTheta = applyTwoModeTransformation(optimalS, newTheta)
-                            println("new optimal ξ = ", optimalXi)
+                            println("k = ±", kR, ", new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
                             bogParameters[1 + kR] += optimalXi
@@ -718,7 +719,9 @@ function find_groundstate!(
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
+                            # mpoOld = deepcopy(finiteMPO)
                             finiteMPO = mpoHandle(QFTModel)
+                            # @show findall(i -> norm(finiteMPO[i] - mpoOld[i]) > 1e-12, eachindex(finiteMPO))
                         end
                     end
                 end
@@ -744,7 +747,7 @@ function find_groundstate!(
                 V = permute(V, ((1, 2), (3,)))
 
                 # compute error
-                v = @tensor theta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
+                v = @tensor newTheta[1, 2, 3, 4] * conj(U[1, 2, 5]) * conj(V[5, 3, 4])
                 # ϵs[siteIdx] = max(ϵs[siteIdx], abs(1 - abs(v)));
                 ϵs[siteIdx] = abs(1 - abs(v))
 
@@ -772,7 +775,7 @@ function find_groundstate!(
 
             # compute MPO expectation value
             mpoExpVal = expectation_value_mpo(finiteMPS, finiteMPO)
-            if abs(imag(mpoExpVal)) < 1.0e-12
+            if abs(imag(mpoExpVal)) < 1.0e-8
                 mpoExpVal = real(mpoExpVal)
             else
                 ErrorException("the Hamiltonian is not Hermitian, complex eigenvalue found.")
@@ -805,28 +808,29 @@ function find_groundstate!(
         energyVariance = variance_mpo(finiteMPS, finiteMPO)
         @printf("Energy variance ⟨ψ|(H - E)^2|ψ⟩ = %0.4e\n", energyVariance)
 
-        # re-randomize finiteMPS if non-eigenstate was found
-        if energyVariance > 1.0e-0
-            if optimizationLoopCounter < maxOptimSteps
-                @printf("\nre-randomizing MPS...\n")
-                for idxMPS in eachindex(finiteMPS)
-                    finiteMPS[idxMPS] += 0.1 *
-                        randn(
-                        ComplexF64, codomain(finiteMPS[idxMPS]),
-                        domain(finiteMPS[idxMPS])
-                    )
-                end
-                finiteMPS = normalizeMPS(finiteMPS)
-                finiteMPS = applyMPO(
-                    finiteMPO, finiteMPS; truncErr = 1.0e-3,
-                    compressionAlg = "zipUp"
-                )
-            else
-                runOptimization = false
-            end
-        else
-            runOptimization = false
-        end
+        # # re-randomize finiteMPS if non-eigenstate was found
+        # if energyVariance > 1.0e-0
+        #     if optimizationLoopCounter < maxOptimSteps
+        #         @printf("\nre-randomizing MPS...\n")
+        #         for idxMPS in eachindex(finiteMPS)
+        #             finiteMPS[idxMPS] += 0.1 *
+        #                 randn(
+        #                 ComplexF64, codomain(finiteMPS[idxMPS]),
+        #                 domain(finiteMPS[idxMPS])
+        #             )
+        #         end
+        #         finiteMPS = normalizeMPS(finiteMPS)
+        #         finiteMPS = applyMPO(
+        #             finiteMPO, finiteMPS; truncErr = 1.0e-3,
+        #             compressionAlg = "zipUp"
+        #         )
+        #     else
+        #         runOptimization = false
+        #     end
+        # else
+        #     runOptimization = false
+        # end
+        runOptimization = false
 
         # increase optimizationLoopCounter
         optimizationLoopCounter += 1
@@ -1387,7 +1391,7 @@ function find_excitedstate!(
                     # );
                     # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
 
-                    if any(abs.(optimalXi) .> 1.0e-4)
+                    if any(abs.(optimalXi) .> 1e-4) && all(abs.(optimalXi) .< 1.00)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -1424,7 +1428,6 @@ function find_excitedstate!(
                             alg.verbosePrint > 0 && println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            # bogParameters[kR + 1] -= optimalXi;
                             bogParameters[kR + 1] += optimalXi
                             QFTModel = updateBogoliubovParameters(
                                 QFTModel;
@@ -1434,7 +1437,9 @@ function find_excitedstate!(
                             println(bogParameters, "\n")
 
                             # recreate modified MPO
+                            # mpoOld = deepcopy(finiteMPO)
                             finiteMPO = mpoHandle(QFTModel)
+                            # @show findall(i -> norm(finiteMPO[i] - mpoOld[i]) > 1e-12, eachindex(finiteMPO))
                         end
                     end
                 end
@@ -1641,7 +1646,7 @@ function find_excitedstate!(
                     # );
                     # optimalXi, optimCostFunc, normGrad, normGradHistory = optimRes;
 
-                    if any(abs.(optimalXi) .> 1.0e-4)
+                    if any(abs.(optimalXi) .> 1e-4) && all(abs.(optimalXi) .< 1.00)
 
                         # check acceptance of optimalXi
                         newCostFunction = zeros(Float64, length(optimalXi))
@@ -1678,8 +1683,7 @@ function find_excitedstate!(
                             println("new optimal ξ = ", optimalXi)
 
                             # update QFTModel with new bogParameters
-                            bogParameters[kR + 1] -= optimalXi
-                            # bogParameters[kR + 1] += optimalXi;
+                            bogParameters[kR + 1] += optimalXi
                             QFTModel = updateBogoliubovParameters(
                                 QFTModel;
                                 bogoliubovRot = true,
@@ -1688,7 +1692,9 @@ function find_excitedstate!(
                             alg.verbosePrint > 0 && println(bogParameters, "\n")
 
                             # recreate modified MPO
+                            # mpoOld = deepcopy(finiteMPO)
                             finiteMPO = mpoHandle(QFTModel)
+                            # @show findall(i -> norm(finiteMPO[i] - mpoOld[i]) > 1e-12, eachindex(finiteMPO))
                         end
                     end
                 end
